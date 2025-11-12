@@ -27,7 +27,10 @@ type MyCommunity = {
   name: string;
   subject: string;
   description: string | null;
+  cover_image_url: string | null;
   group_count: number;
+  student_count: number;
+  message_count: number;
 };
 
 type Profile = {
@@ -213,17 +216,51 @@ const Communities = () => {
 
       const communitiesWithCounts = await Promise.all(
         (communitiesData || []).map(async (community) => {
-          const { count } = await supabase
+          // Count groups
+          const { count: groupCount } = await supabase
             .from("conversation_groups" as any)
             .select("*", { count: "exact", head: true })
             .eq("community_id", community.id);
+
+          // Get all group IDs for this community
+          const { data: groupsData } = await supabase
+            .from("conversation_groups" as any)
+            .select("id")
+            .eq("community_id", community.id);
+
+          const groupIds = groupsData?.map((g: any) => g.id) || [];
+
+          let studentCount = 0;
+          let messageCount = 0;
+
+          if (groupIds.length > 0) {
+            // Count unique students across all groups
+            const { data: membersData } = await supabase
+              .from("group_members" as any)
+              .select("user_id")
+              .in("group_id", groupIds);
+
+            const uniqueStudents = new Set(membersData?.map((m: any) => m.user_id) || []);
+            studentCount = uniqueStudents.size;
+
+            // Count total messages across all groups
+            const { count: msgCount } = await supabase
+              .from("messages" as any)
+              .select("*", { count: "exact", head: true })
+              .in("group_id", groupIds);
+
+            messageCount = msgCount || 0;
+          }
 
           return {
             id: community.id,
             name: community.name,
             subject: community.subject,
             description: community.description,
-            group_count: count || 0,
+            cover_image_url: community.cover_image_url,
+            group_count: groupCount || 0,
+            student_count: studentCount,
+            message_count: messageCount,
           };
         })
       );
@@ -275,9 +312,17 @@ const Communities = () => {
               variant="ghost"
               size="icon"
               onClick={() => setProfileSheetOpen(true)}
-              className="transition-gentle"
+              className="transition-gentle p-0 rounded-full overflow-hidden"
             >
-              <UserIcon className="h-5 w-5" />
+              {profile?.avatar_url ? (
+                <img 
+                  src={profile.avatar_url} 
+                  alt={profile.name}
+                  className="h-10 w-10 object-cover"
+                />
+              ) : (
+                <UserIcon className="h-5 w-5" />
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -335,26 +380,48 @@ const Communities = () => {
                   const emoji = subjectEmojis[community.subject.toLowerCase()] || "📚";
                   
                   return (
-                    <Card key={community.id} className="p-6 space-y-4">
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-2xl">{emoji}</span>
-                      </div>
-                      <div>
-                        <h4 className="text-xl font-medium">{community.name}</h4>
-                        <p className="text-sm text-muted-foreground">{community.subject}</p>
-                      </div>
-                      {community.description && (
-                        <p className="text-sm text-muted-foreground">{community.description}</p>
-                      )}
-                      <div className="flex items-center gap-2 text-sm text-caption">
-                        <span>{community.group_count} grupos</span>
-                      </div>
-                      <Button
-                        className="w-full"
-                        onClick={() => navigate(`/communities/${community.id}/manage`)}
+                    <Card 
+                      key={community.id} 
+                      className="overflow-hidden transition-gentle hover:shadow-lg"
+                    >
+                      {/* Cover Image */}
+                      <div 
+                        className="h-32 bg-cover bg-center relative"
+                        style={{ 
+                          backgroundImage: community.cover_image_url 
+                            ? `url(${community.cover_image_url})` 
+                            : 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.6) 100%)'
+                        }}
                       >
-                        Gerenciar
-                      </Button>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute bottom-3 left-3">
+                          <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
+                            <span className="text-xl">{emoji}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="p-6 space-y-4">
+                        <div>
+                          <h4 className="text-xl font-medium">{community.name}</h4>
+                          <p className="text-sm text-muted-foreground">{community.subject}</p>
+                        </div>
+                        {community.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">{community.description}</p>
+                        )}
+                        <div className="flex items-center gap-4 text-sm text-caption">
+                          <span>{community.student_count} alunos</span>
+                          <span>•</span>
+                          <span>{community.message_count} conversas</span>
+                        </div>
+                        <Button
+                          className="w-full"
+                          onClick={() => navigate(`/communities/${community.id}/manage`)}
+                        >
+                          Gerenciar
+                        </Button>
+                      </div>
                     </Card>
                   );
                 })}

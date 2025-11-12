@@ -49,10 +49,15 @@ export function CreateCommunityDialog({ userId, onCommunityCreated }: CreateComm
       const validated = communitySchema.parse(formData);
       setCreating(true);
 
+      // Generate Unsplash cover image URL based on community name and subject
+      const searchTerm = encodeURIComponent(`${validated.subject} ${validated.name}`);
+      const coverImageUrl = `https://source.unsplash.com/800x600/?${searchTerm}`;
+
       const { error } = await supabase.from("communities").insert({
         name: validated.name,
         subject: validated.subject,
         description: validated.description || null,
+        cover_image_url: coverImageUrl,
         created_by: userId,
       });
 
