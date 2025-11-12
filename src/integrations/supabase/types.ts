@@ -199,6 +199,7 @@ export type Database = {
           community_id: string
           content: string
           created_at: string
+          group_id: string | null
           id: string
           updated_at: string
           user_id: string
@@ -207,6 +208,7 @@ export type Database = {
           community_id: string
           content: string
           created_at?: string
+          group_id?: string | null
           id?: string
           updated_at?: string
           user_id: string
@@ -215,6 +217,7 @@ export type Database = {
           community_id?: string
           content?: string
           created_at?: string
+          group_id?: string | null
           id?: string
           updated_at?: string
           user_id?: string
@@ -225,6 +228,13 @@ export type Database = {
             columns: ["community_id"]
             isOneToOne: false
             referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_groups"
             referencedColumns: ["id"]
           },
         ]

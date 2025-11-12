@@ -406,7 +406,11 @@ const CommunityManagement = () => {
             {/* Groups List */}
             <div className="grid gap-4 md:grid-cols-2">
               {groups.map((group) => (
-                <Card key={group.id} className="p-6 space-y-4">
+                <Card 
+                  key={group.id} 
+                  className="p-6 space-y-4 cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => navigate(`/groups/${group.id}/chat`)}
+                >
                   <div>
                     <h3 className="text-xl font-medium">{group.name}</h3>
                     {group.description && (
@@ -422,7 +426,8 @@ const CommunityManagement = () => {
                   <Button
                     variant="outline"
                     className="w-full gap-2"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setSelectedGroupId(group.id);
                       setInviteDialogOpen(true);
                     }}
