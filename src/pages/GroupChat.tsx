@@ -240,35 +240,52 @@ const GroupChat = () => {
 
       {/* Messages Area */}
       <ScrollArea className="flex-1 px-4 py-6" ref={scrollRef}>
-        <div className="max-w-4xl mx-auto space-y-4">
-          {messages.map((message) => {
+        <div className="max-w-4xl mx-auto space-y-1">
+          {messages.map((message, index) => {
             const isOwn = message.user_id === user?.id;
+            const prevMessage = index > 0 ? messages[index - 1] : null;
+            const isFirstInGroup = !prevMessage || prevMessage.user_id !== message.user_id;
             
             return (
               <div
                 key={message.id}
-                className={`flex gap-3 ${isOwn ? "flex-row-reverse" : "flex-row"}`}
+                className={`flex gap-3 ${isOwn ? "flex-row-reverse" : "flex-row"} ${
+                  isFirstInGroup ? "mt-4" : "mt-0.5"
+                }`}
               >
-                <Avatar className="h-10 w-10 flex-shrink-0">
-                  <AvatarImage src={message.profiles?.avatar_url || undefined} />
-                  <AvatarFallback className="text-sm bg-primary/10">
-                    {message.profiles?.name?.charAt(0).toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
+                {/* Avatar - only show for first message in group */}
+                <div className="w-10 flex-shrink-0">
+                  {isFirstInGroup && (
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={message.profiles?.avatar_url || undefined} />
+                      <AvatarFallback className="text-sm bg-primary/10">
+                        {message.profiles?.name?.charAt(0).toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
                 
                 <div
                   className={`flex flex-col max-w-[70%] ${
                     isOwn ? "items-end" : "items-start"
                   }`}
                 >
-                  <span className="text-xs font-medium mb-1 px-1" style={{ color: isOwn ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>
-                    {isOwn ? "Você" : message.profiles?.name || "Usuário"}
-                  </span>
+                  {/* Name - only show for first message in group */}
+                  {isFirstInGroup && (
+                    <span className="text-xs font-medium mb-1 px-1" style={{ color: isOwn ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>
+                      {isOwn ? "Você" : message.profiles?.name || "Usuário"}
+                    </span>
+                  )}
+                  
                   <div
                     className={`rounded-2xl px-4 py-2 ${
                       isOwn
-                        ? "bg-primary text-primary-foreground rounded-tr-sm"
-                        : "bg-muted text-foreground rounded-tl-sm"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
+                    } ${
+                      isFirstInGroup
+                        ? isOwn ? "rounded-tr-sm" : "rounded-tl-sm"
+                        : ""
                     }`}
                   >
                     <p className="text-sm whitespace-pre-wrap break-words">
