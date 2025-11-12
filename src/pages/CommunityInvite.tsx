@@ -4,8 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
+import { z } from "zod";
+
+const signupSchema = z.object({
+  name: z.string().trim().min(3, "Nome deve ter pelo menos 3 caracteres"),
+  email: z.string().email("Email inválido"),
+  phone: z.string().regex(/^\(\d{2}\)\s?\d{5}-\d{4}$/, "Telefone inválido. Use o formato (11) 99999-9999"),
+  city: z.string().trim().min(2, "Cidade é obrigatória"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+});
 
 type InviteData = {
   community: {
@@ -30,6 +41,15 @@ const CommunityInvite = () => {
   const [inviteData, setInviteData] = useState<InviteData | null>(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const [signupForm, setSignupForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    city: "",
+    password: "",
+  });
+  const [signingUp, setSigningUp] = useState(false);
 
   useEffect(() => {
     const {
@@ -111,8 +131,7 @@ const CommunityInvite = () => {
 
   const handleAcceptInvite = async () => {
     if (!user) {
-      toast.error("Você precisa estar logado para aceitar o convite");
-      navigate("/auth");
+      setShowSignup(true);
       return;
     }
 
@@ -132,9 +151,6 @@ const CommunityInvite = () => {
 
       if (updateError) throw updateError;
 
-      // Add user to community_members (if needed for future features)
-      // For now, we just mark the invitation as used
-
       toast.success("Convite aceito com sucesso!");
       navigate("/communities");
     } catch (error: any) {
@@ -142,6 +158,70 @@ const CommunityInvite = () => {
       toast.error("Erro ao aceitar convite: " + error.message);
     } finally {
       setAccepting(false);
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const validated = signupSchema.parse(signupForm);
+      setSigningUp(true);
+
+      // Create account
+      const { data: authData, error: signupError } = await supabase.auth.signUp({
+        email: validated.email,
+        password: validated.password,
+        options: {
+          data: {
+            name: validated.name,
+          },
+          emailRedirectTo: `${window.location.origin}/invite/${inviteCode}`,
+        },
+      });
+
+      if (signupError) throw signupError;
+
+      if (!authData.user) {
+        throw new Error("Erro ao criar conta");
+      }
+
+      // Update profile with additional info
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          phone: validated.phone,
+          bio: validated.city,
+        })
+        .eq("id", authData.user.id);
+
+      if (profileError) {
+        console.error("Error updating profile:", profileError);
+      }
+
+      // Mark invitation as used
+      const { error: updateError } = await supabase
+        .from("community_invitations")
+        .update({
+          used_by: authData.user.id,
+          used_at: new Date().toISOString(),
+        })
+        .eq("id", inviteData?.inviteId);
+
+      if (updateError) {
+        console.error("Error updating invitation:", updateError);
+      }
+
+      toast.success("Conta criada com sucesso!");
+      navigate("/communities");
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0]?.message || "Erro de validação");
+      } else {
+        toast.error("Erro ao criar conta: " + error.message);
+      }
+    } finally {
+      setSigningUp(false);
     }
   };
 
@@ -256,19 +336,97 @@ const CommunityInvite = () => {
                   Ver Minhas Comunidades
                 </Button>
               </>
-            ) : (
+            ) : !showSignup ? (
               <>
                 <Button
-                  onClick={() => navigate("/auth")}
+                  onClick={handleAcceptInvite}
                   className="w-full"
                   size="lg"
                 >
-                  Fazer Login para Aceitar
+                  Criar Conta e Aceitar Convite
                 </Button>
-                <p className="text-center text-sm text-muted-foreground">
-                  Você precisa estar logado no Proskë para aceitar o convite
-                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("/auth")}
+                  className="w-full"
+                >
+                  Já tenho conta
+                </Button>
               </>
+            ) : (
+              <form onSubmit={handleSignup} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome Completo</Label>
+                  <Input
+                    id="name"
+                    value={signupForm.name}
+                    onChange={(e) => setSignupForm({ ...signupForm, name: e.target.value })}
+                    placeholder="Seu nome completo"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={signupForm.email}
+                    onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
+                    placeholder="seu@email.com"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">WhatsApp com DDD</Label>
+                  <Input
+                    id="phone"
+                    value={signupForm.phone}
+                    onChange={(e) => setSignupForm({ ...signupForm, phone: e.target.value })}
+                    placeholder="(11) 99999-9999"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="city">Cidade</Label>
+                  <Input
+                    id="city"
+                    value={signupForm.city}
+                    onChange={(e) => setSignupForm({ ...signupForm, city: e.target.value })}
+                    placeholder="Sua cidade"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Senha</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={signupForm.password}
+                    onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })}
+                    placeholder="Mínimo 6 caracteres"
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowSignup(false)}
+                    className="flex-1"
+                    disabled={signingUp}
+                  >
+                    Voltar
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={signingUp}>
+                    {signingUp ? "Criando conta..." : "Criar Conta"}
+                  </Button>
+                </div>
+              </form>
             )}
           </div>
         </div>
