@@ -99,6 +99,8 @@ export function AppSidebar() {
         const groupIds = membershipData?.map((m) => m.group_id) || [];
 
         if (groupIds.length === 0) {
+          setGroups([]);
+          setCommunities([]);
           setLoading(false);
           return;
         }
