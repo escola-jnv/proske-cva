@@ -10,11 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Users, Mail, Phone, BookOpen, GraduationCap, Edit, Calendar } from "lucide-react";
+import { ArrowLeft, Users, Mail, Phone, BookOpen, GraduationCap, Edit, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 import { z } from "zod";
-import { CreateEventDialog } from "@/components/CreateEventDialog";
 const groupSchema = z.object({
   name: z.string().trim().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
   description: z.string().trim().max(500, "Descrição muito longa").optional(),
@@ -69,7 +68,6 @@ const CommunityManagement = () => {
   const [loading, setLoading] = useState(true);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [createEventOpen, setCreateEventOpen] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [groupForm, setGroupForm] = useState({
     name: "",
@@ -119,12 +117,7 @@ const CommunityManagement = () => {
       } = await supabase.from("communities").select("*").eq("id", commId).single();
       if (commError) throw commError;
 
-      // Check if user is creator
-      if (commData.created_by !== userId) {
-        toast.error("Você não tem permissão para gerenciar esta comunidade");
-        navigate("/communities");
-        return;
-      }
+      // Removed creator check - all users can access this page
       setCommunity(commData);
 
       // Fetch groups, courses and events
@@ -383,12 +376,8 @@ const CommunityManagement = () => {
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Courses Section */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div>
               <h2 className="text-2xl font-medium">Cursos</h2>
-              <Button className="gap-2" onClick={() => navigate(`/communities/${communityId}/courses/new`)}>
-                <Plus className="h-4 w-4" />
-                Criar Curso
-              </Button>
             </div>
 
             {/* Courses List - WhatsApp Style */}
@@ -437,17 +426,8 @@ const CommunityManagement = () => {
 
           {/* Events Section */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div>
               <h2 className="text-2xl font-medium">Eventos</h2>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => navigate('/events')}>
-                  Ver Agenda
-                </Button>
-                <Button className="gap-2" onClick={() => setCreateEventOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  Criar Evento
-                </Button>
-              </div>
             </div>
 
             {/* Events List - WhatsApp Style */}
@@ -518,15 +498,9 @@ const CommunityManagement = () => {
 
           {/* Groups Section */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div>
               <h2 className="text-2xl font-medium">Grupos de Conversa</h2>
               <Dialog open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Criar Grupo
-                  </Button>
-                </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Criar Novo Grupo</DialogTitle>
@@ -689,12 +663,6 @@ const CommunityManagement = () => {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Create Event Dialog */}
-      <CreateEventDialog open={createEventOpen} onOpenChange={setCreateEventOpen} communityId={communityId || ""} userId={user?.id || ""} onSuccess={() => {
-      if (communityId) fetchEvents(communityId);
-      toast.success("Evento criado com sucesso!");
-    }} />
     </div>;
 };
 export default CommunityManagement;
