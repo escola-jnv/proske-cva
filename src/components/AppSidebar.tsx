@@ -16,7 +16,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { 
-  Home, 
   Hash,
   BookOpen,
   Settings,
@@ -208,18 +207,9 @@ export function AppSidebar() {
   return (
     <Sidebar className={isCollapsed ? "w-14" : "w-64"}>
       <SidebarContent>
-        {/* Home */}
+        {/* Agenda */}
         <SidebarGroup>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => navigate("/communities")}
-                isActive={location.pathname === "/communities"}
-              >
-                <Home className="h-4 w-4" />
-                {!isCollapsed && <span>Início</span>}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => navigate("/events")}

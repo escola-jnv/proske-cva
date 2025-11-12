@@ -25,12 +25,72 @@ const Auth = () => {
     }
 
     // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        navigate("/communities");
+        // Redirect to user's community
+        setTimeout(async () => {
+          await redirectToUserCommunity(session.user.id);
+        }, 0);
       }
     });
   }, [navigate]);
+
+  const redirectToUserCommunity = async (userId: string) => {
+    try {
+      // Check if user is teacher or admin
+      const { data: userRoles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+
+      const isTeacherOrAdmin = userRoles?.some(
+        (r) => r.role === "teacher" || r.role === "admin"
+      );
+
+      if (isTeacherOrAdmin) {
+        // Teachers and admins see all communities
+        const { data: communities } = await supabase
+          .from("communities")
+          .select("id")
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (communities && communities.length > 0) {
+          navigate(`/communities/${communities[0].id}/manage`);
+        } else {
+          navigate("/communities");
+        }
+      } else {
+        // Students see their groups' communities
+        const { data: membershipData } = await supabase
+          .from("group_members")
+          .select("group_id")
+          .eq("user_id", userId);
+
+        const groupIds = membershipData?.map((m) => m.group_id) || [];
+
+        if (groupIds.length === 0) {
+          navigate("/communities");
+          return;
+        }
+
+        const { data: groupData } = await supabase
+          .from("conversation_groups")
+          .select("community_id")
+          .in("id", groupIds)
+          .limit(1);
+
+        if (groupData && groupData.length > 0) {
+          navigate(`/communities/${groupData[0].community_id}/manage`);
+        } else {
+          navigate("/communities");
+        }
+      }
+    } catch (error) {
+      console.error("Error redirecting to community:", error);
+      navigate("/communities");
+    }
+  };
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
@@ -53,13 +113,18 @@ const Auth = () => {
         if (error) throw error;
 
         toast.success("Bem-vindo de volta!");
-        navigate("/communities");
+        
+        // Redirect to user's community
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await redirectToUserCommunity(user.id);
+        }
       } else {
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/communities`,
+            emailRedirectTo: `${window.location.origin}/`,
             data: {
               name: name,
             },
