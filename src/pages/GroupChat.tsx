@@ -7,10 +7,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfileModal } from "@/components/ProfileModal";
 import { GroupInfoModal } from "@/components/GroupInfoModal";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import { z } from "zod";
 
 const messageSchema = z.object({
@@ -55,8 +55,9 @@ const GroupChat = () => {
   } | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [groupInfoModalOpen, setGroupInfoModalOpen] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
-  const presenceChannelRef = useRef<RealtimeChannel | null>(null);
+
+  // Track user activity
+  useActivityTracker(user?.id);
 
   useEffect(() => {
     const {
@@ -85,7 +86,7 @@ const GroupChat = () => {
   }, [navigate, groupId]);
 
   useEffect(() => {
-    if (!groupId || !user) return;
+    if (!groupId) return;
 
     // Subscribe to new messages
     const messagesChannel = supabase
@@ -118,53 +119,10 @@ const GroupChat = () => {
       )
       .subscribe();
 
-    // Subscribe to presence
-    const presenceChannel = supabase.channel(`group-presence-${groupId}`, {
-      config: {
-        presence: {
-          key: user.id,
-        },
-      },
-    });
-
-    presenceChannel
-      .on('presence', { event: 'sync' }, () => {
-        const state = presenceChannel.presenceState();
-        const users = new Set<string>();
-        Object.values(state).forEach((presences: any) => {
-          presences.forEach((presence: any) => {
-            if (presence.user_id) {
-              users.add(presence.user_id);
-            }
-          });
-        });
-        setOnlineUsers(users);
-      })
-      .on('presence', { event: 'join' }, ({ newPresences }) => {
-        console.log('User joined:', newPresences);
-      })
-      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        console.log('User left:', leftPresences);
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await presenceChannel.track({
-            user_id: user.id,
-            online_at: new Date().toISOString(),
-          });
-        }
-      });
-
-    presenceChannelRef.current = presenceChannel;
-
     return () => {
       supabase.removeChannel(messagesChannel);
-      if (presenceChannelRef.current) {
-        presenceChannelRef.current.untrack();
-        supabase.removeChannel(presenceChannelRef.current);
-      }
     };
-  }, [groupId, user]);
+  }, [groupId]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -400,7 +358,6 @@ const GroupChat = () => {
         open={groupInfoModalOpen}
         onOpenChange={setGroupInfoModalOpen}
         group={group}
-        onlineUsers={onlineUsers}
       />
     </div>
   );

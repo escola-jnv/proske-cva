@@ -12,6 +12,7 @@ type Member = {
   profiles: {
     name: string;
     avatar_url: string | null;
+    last_active_at: string | null;
   };
 };
 
@@ -23,10 +24,9 @@ type GroupInfoModalProps = {
     name: string;
     description: string | null;
   } | null;
-  onlineUsers: Set<string>;
 };
 
-export function GroupInfoModal({ open, onOpenChange, group, onlineUsers }: GroupInfoModalProps) {
+export function GroupInfoModal({ open, onOpenChange, group }: GroupInfoModalProps) {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -57,7 +57,7 @@ export function GroupInfoModal({ open, onOpenChange, group, onlineUsers }: Group
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
           .from("profiles")
-          .select("id, name, avatar_url")
+          .select("id, name, avatar_url, last_active_at")
           .in("id", userIds);
 
         const membersWithProfiles = data?.map(m => ({
@@ -65,6 +65,7 @@ export function GroupInfoModal({ open, onOpenChange, group, onlineUsers }: Group
           profiles: profilesData?.find(p => p.id === m.user_id) || {
             name: "Usuário",
             avatar_url: null,
+            last_active_at: null,
           },
         }));
 
@@ -79,9 +80,19 @@ export function GroupInfoModal({ open, onOpenChange, group, onlineUsers }: Group
     }
   };
 
+  const isUserOnline = (lastActiveAt: string | null): boolean => {
+    if (!lastActiveAt) return false;
+    
+    const now = new Date();
+    const lastActive = new Date(lastActiveAt);
+    const diffMinutes = (now.getTime() - lastActive.getTime()) / (1000 * 60);
+    
+    return diffMinutes <= 90;
+  };
+
   if (!group) return null;
 
-  const onlineCount = members.filter(m => onlineUsers.has(m.user_id)).length;
+  const onlineCount = members.filter(m => isUserOnline(m.profiles.last_active_at)).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -134,7 +145,7 @@ export function GroupInfoModal({ open, onOpenChange, group, onlineUsers }: Group
               ) : members.length > 0 ? (
                 <div className="space-y-2">
                   {members.map((member) => {
-                    const isOnline = onlineUsers.has(member.user_id);
+                    const isOnline = isUserOnline(member.profiles.last_active_at);
                     const profile = member.profiles;
                     
                     return (
