@@ -67,8 +67,12 @@ type Group = {
   name: string;
   description?: string;
   community_id: string;
+  community_name?: string;
   students_can_message: boolean;
   is_visible: boolean;
+  member_count?: number;
+  online_count?: number;
+  messages_per_hour?: number;
 };
 
 type Event = {
@@ -157,7 +161,12 @@ export default function DevTools() {
       const [profilesRes, communitiesRes, groupsRes, eventsRes] = await Promise.all([
         supabase.from("profiles").select("*").order("name"),
         supabase.from("communities").select("*").order("name"),
-        supabase.from("conversation_groups").select("*").order("name"),
+        supabase.from("conversation_groups").select(`
+          *,
+          communities (
+            name
+          )
+        `).order("name"),
         supabase.from("events").select("*").order("event_date", { ascending: false }),
       ]);
 
@@ -182,7 +191,71 @@ export default function DevTools() {
       }
       
       if (communitiesRes.data) setCommunities(communitiesRes.data);
-      if (groupsRes.data) setGroups(groupsRes.data);
+      
+      // Fetch groups with additional data
+      if (groupsRes.data) {
+        const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+        
+        const groupsWithStats = await Promise.all(
+          groupsRes.data.map(async (group: any) => {
+            // Count members
+            const { count: memberCount } = await supabase
+              .from("group_members")
+              .select("*", { count: "exact", head: true })
+              .eq("group_id", group.id);
+
+            // Count online members (last_active_at within 2 hours)
+            const { data: onlineMembers } = await supabase
+              .from("group_members")
+              .select("user_id")
+              .eq("group_id", group.id);
+
+            let onlineCount = 0;
+            if (onlineMembers) {
+              const { data: onlineProfiles } = await supabase
+                .from("profiles")
+                .select("id")
+                .in("id", onlineMembers.map(m => m.user_id))
+                .gte("last_active_at", twoHoursAgo);
+              
+              onlineCount = onlineProfiles?.length || 0;
+            }
+
+            // Calculate messages per hour
+            const { data: messages, error: messagesError } = await supabase
+              .from("messages")
+              .select("created_at")
+              .eq("group_id", group.id)
+              .order("created_at", { ascending: true });
+
+            let messagesPerHour = 0;
+            if (messages && messages.length > 0) {
+              const firstMessage = new Date(messages[0].created_at);
+              const lastMessage = new Date(messages[messages.length - 1].created_at);
+              const hoursDiff = (lastMessage.getTime() - firstMessage.getTime()) / (1000 * 60 * 60);
+              
+              if (hoursDiff > 0) {
+                messagesPerHour = Math.round((messages.length / hoursDiff) * 10) / 10;
+              }
+            }
+
+            const communityName = Array.isArray(group.communities) 
+              ? group.communities[0]?.name 
+              : group.communities?.name;
+
+            return {
+              ...group,
+              community_name: communityName || "-",
+              member_count: memberCount || 0,
+              online_count: onlineCount,
+              messages_per_hour: messagesPerHour,
+            };
+          })
+        );
+        
+        setGroups(groupsWithStats);
+      }
+      
       if (eventsRes.data) setEvents(eventsRes.data);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -735,8 +808,11 @@ export default function DevTools() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Alunos Podem Enviar</TableHead>
+                    <TableHead>Comunidade</TableHead>
+                    <TableHead>Membros</TableHead>
+                    <TableHead>Online (2h)</TableHead>
+                    <TableHead>Msg/Hora</TableHead>
+                    <TableHead>Pode Enviar</TableHead>
                     <TableHead>Visível</TableHead>
                     <TableHead className="w-[100px]">Ações</TableHead>
                   </TableRow>
@@ -744,7 +820,7 @@ export default function DevTools() {
                 <TableBody>
                   {filteredGroups.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground">
                         Nenhum grupo encontrado
                       </TableCell>
                     </TableRow>
@@ -752,7 +828,20 @@ export default function DevTools() {
                     filteredGroups.map((group) => (
                       <TableRow key={group.id}>
                         <TableCell className="font-medium">{group.name}</TableCell>
-                        <TableCell>{group.description || "-"}</TableCell>
+                        <TableCell>{group.community_name || "-"}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{group.member_count || 0}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={group.online_count && group.online_count > 0 ? "default" : "outline"}>
+                            {group.online_count || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {group.messages_per_hour?.toFixed(1) || "0.0"}
+                          </span>
+                        </TableCell>
                         <TableCell>
                           <Badge variant={group.students_can_message ? "default" : "outline"}>
                             {group.students_can_message ? "Sim" : "Não"}
