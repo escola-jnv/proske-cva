@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Moon, Sun, Plus } from "lucide-react";
+import { LogOut, Moon, Sun, Plus, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -205,6 +205,14 @@ const Communities = () => {
               ) : (
                 <Sun className="h-5 w-5" />
               )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/profile")}
+              className="transition-gentle"
+            >
+              <UserIcon className="h-5 w-5" />
             </Button>
             <Button
               variant="ghost"
