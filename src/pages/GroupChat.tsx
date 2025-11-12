@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfileModal } from "@/components/ProfileModal";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
@@ -22,6 +23,7 @@ type Message = {
   profiles: {
     name: string;
     avatar_url: string | null;
+    city: string | null;
   };
 };
 
@@ -44,6 +46,12 @@ const GroupChat = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedProfile, setSelectedProfile] = useState<{
+    name: string;
+    avatar_url: string | null;
+    city: string | null;
+  } | null>(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   useEffect(() => {
     const {
@@ -91,13 +99,13 @@ const GroupChat = () => {
           // Fetch the profile data for the new message
           const { data: profileData } = await supabase
             .from("profiles")
-            .select("name, avatar_url")
+            .select("name, avatar_url, city")
             .eq("id", payload.new.user_id)
             .single();
 
           const newMsg = {
             ...payload.new,
-            profiles: profileData || { name: "Usuário", avatar_url: null },
+            profiles: profileData || { name: "Usuário", avatar_url: null, city: null },
           } as Message;
 
           setMessages((prev) => [...prev, newMsg]);
@@ -151,7 +159,7 @@ const GroupChat = () => {
       const userIds = [...new Set(messagesData?.map((m) => m.user_id) || [])];
       const { data: profilesData } = await supabase
         .from("profiles")
-        .select("id, name, avatar_url")
+        .select("id, name, avatar_url, city")
         .in("id", userIds);
 
       // Map profiles to messages
@@ -160,6 +168,7 @@ const GroupChat = () => {
         profiles: profilesData?.find((p) => p.id === msg.user_id) || {
           name: "Usuário",
           avatar_url: null,
+          city: null,
         },
       }));
 
@@ -204,6 +213,11 @@ const GroupChat = () => {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const handleAvatarClick = (profile: { name: string; avatar_url: string | null; city: string | null }) => {
+    setSelectedProfile(profile);
+    setProfileModalOpen(true);
   };
 
   if (loading) {
@@ -251,7 +265,10 @@ const GroupChat = () => {
                 {/* Avatar - only show for first message in group */}
                 <div className="w-10 flex-shrink-0">
                   {isFirstInGroup && (
-                    <Avatar className="h-10 w-10">
+                    <Avatar 
+                      className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                      onClick={() => handleAvatarClick(message.profiles)}
+                    >
                       <AvatarImage src={message.profiles?.avatar_url || undefined} />
                       <AvatarFallback className="text-sm bg-primary/10">
                         {message.profiles?.name?.charAt(0).toUpperCase() || "U"}
@@ -321,6 +338,12 @@ const GroupChat = () => {
           </Button>
         </form>
       </div>
+
+      <ProfileModal
+        open={profileModalOpen}
+        onOpenChange={setProfileModalOpen}
+        profile={selectedProfile}
+      />
     </div>
   );
 };

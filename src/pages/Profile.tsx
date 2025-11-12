@@ -15,6 +15,7 @@ import { z } from "zod";
 const profileSchema = z.object({
   name: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
   phone: z.string().trim().regex(/^\(\d{2}\)\s?\d{4,5}-\d{4}$/, "Formato inválido. Use: (11) 99999-9999").optional().or(z.literal("")),
+  city: z.string().trim().min(2, "Cidade deve ter pelo menos 2 caracteres").max(100, "Cidade muito longa").optional().or(z.literal("")),
 });
 
 type Profile = {
@@ -23,6 +24,7 @@ type Profile = {
   phone: string | null;
   avatar_url: string | null;
   bio: string | null;
+  city: string | null;
 };
 
 type UserRole = {
@@ -53,8 +55,8 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [formData, setFormData] = useState({ name: "", phone: "" });
-  const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+  const [formData, setFormData] = useState({ name: "", phone: "", city: "" });
+  const [errors, setErrors] = useState<{ name?: string; phone?: string; city?: string }>({});
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -118,7 +120,7 @@ const Profile = () => {
 
       if (error) throw error;
       setProfile(data);
-      setFormData({ name: data.name || "", phone: data.phone || "" });
+      setFormData({ name: data.name || "", phone: data.phone || "", city: data.city || "" });
       setAvatarUrl(data.avatar_url);
     } catch (error: any) {
       console.error("Error fetching profile:", error);
@@ -250,6 +252,7 @@ const Profile = () => {
         .update({
           name: validated.name,
           phone: validated.phone || null,
+          city: validated.city || null,
         })
         .eq("id", user?.id);
 
@@ -257,14 +260,14 @@ const Profile = () => {
 
       toast.success("Perfil atualizado com sucesso!");
       if (profile) {
-        setProfile({ ...profile, name: validated.name, phone: validated.phone || null });
+        setProfile({ ...profile, name: validated.name, phone: validated.phone || null, city: validated.city || null });
       }
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        const fieldErrors: { name?: string; phone?: string } = {};
+        const fieldErrors: { name?: string; phone?: string; city?: string } = {};
         error.errors.forEach((err) => {
           if (err.path[0]) {
-            fieldErrors[err.path[0] as "name" | "phone"] = err.message;
+            fieldErrors[err.path[0] as "name" | "phone" | "city"] = err.message;
           }
         });
         setErrors(fieldErrors);
@@ -524,6 +527,21 @@ const Profile = () => {
                   />
                   {errors.phone && (
                     <p className="text-sm text-destructive">{errors.phone}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="city">Cidade</Label>
+                  <Input
+                    id="city"
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="Sua cidade"
+                    className={errors.city ? "border-destructive" : ""}
+                  />
+                  {errors.city && (
+                    <p className="text-sm text-destructive">{errors.city}</p>
                   )}
                 </div>
               </div>
