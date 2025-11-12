@@ -61,33 +61,63 @@ export function AppSidebar() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get user's groups
-      const { data: membershipData } = await supabase
-        .from("group_members")
-        .select("group_id")
+      // Check if user is teacher or admin
+      const { data: userRoles } = await supabase
+        .from("user_roles")
+        .select("role")
         .eq("user_id", user.id);
 
-      const groupIds = membershipData?.map((m) => m.group_id) || [];
+      const isTeacherOrAdmin = userRoles?.some(
+        (r) => r.role === "teacher" || r.role === "admin"
+      );
 
-      if (groupIds.length === 0) {
-        setLoading(false);
-        return;
-      }
+      let groupsData;
 
-      // Get groups with community info
-      const { data: groupsData } = await supabase
-        .from("conversation_groups")
-        .select(`
-          id,
-          name,
-          community_id,
-          communities (
+      if (isTeacherOrAdmin) {
+        // Teachers and admins see all groups
+        const { data } = await supabase
+          .from("conversation_groups")
+          .select(`
             id,
             name,
-            subject
-          )
-        `)
-        .in("id", groupIds);
+            community_id,
+            communities (
+              id,
+              name,
+              subject
+            )
+          `)
+          .order("created_at", { ascending: false });
+        groupsData = data;
+      } else {
+        // Students see only their groups
+        const { data: membershipData } = await supabase
+          .from("group_members")
+          .select("group_id")
+          .eq("user_id", user.id);
+
+        const groupIds = membershipData?.map((m) => m.group_id) || [];
+
+        if (groupIds.length === 0) {
+          setLoading(false);
+          return;
+        }
+
+        const { data } = await supabase
+          .from("conversation_groups")
+          .select(`
+            id,
+            name,
+            community_id,
+            communities (
+              id,
+              name,
+              subject
+            )
+          `)
+          .in("id", groupIds);
+        groupsData = data;
+      }
 
       if (groupsData) {
         const groupsList: Group[] = groupsData.map((g: any) => ({
