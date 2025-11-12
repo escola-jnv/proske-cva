@@ -429,11 +429,11 @@ const GroupChat = () => {
                         ? isOwn ? "rounded-tr-sm" : "rounded-tl-sm"
                         : ""
                     } ${
-                      isSpecialRole && !isOwn ? "shadow-lg" : ""
+                      isSpecialRole ? "shadow-lg" : ""
                     }`}
                   >
                     <p className={`whitespace-pre-wrap break-words ${
-                      isAdmin && !isOwn ? "text-[15px] font-bold" : "text-sm"
+                      isAdmin ? "text-[15px] font-bold" : "text-sm"
                     }`}>
                       {message.content}
                     </p>
