@@ -10,10 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Users, Mail, Phone, BookOpen, GraduationCap, Edit, Calendar } from "lucide-react";
+import { ArrowLeft, Users, Mail, Phone, BookOpen, GraduationCap, Edit, Calendar, FileText } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 import { z } from "zod";
+import { SubmitTaskDialog } from "@/components/SubmitTaskDialog";
+import { SubmissionCard } from "@/components/SubmissionCard";
+import { ReviewSubmissionDialog } from "@/components/ReviewSubmissionDialog";
+import { ViewSubmissionDialog } from "@/components/ViewSubmissionDialog";
 const groupSchema = z.object({
   name: z.string().trim().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
   description: z.string().trim().max(500, "Descrição muito longa").optional(),
@@ -54,6 +58,26 @@ type Event = {
   group_names: string[];
   participant_count: number;
 };
+type Submission = {
+  id: string;
+  task_name: string;
+  video_url: string;
+  recording_date: string;
+  extra_notes?: string;
+  status: "pending" | "reviewed";
+  teacher_comments?: string;
+  grade?: number;
+  student_id: string;
+  community_id: string;
+  created_at: string;
+  reviewed_by?: string;
+};
+type SubmissionWithProfile = Submission & {
+  student_name: string;
+  student_avatar?: string;
+  teacher_name?: string;
+  teacher_avatar?: string;
+};
 const CommunityManagement = () => {
   const navigate = useNavigate();
   const {
@@ -66,6 +90,12 @@ const CommunityManagement = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isTeacher, setIsTeacher] = useState(false);
+  const [pendingSubmissions, setPendingSubmissions] = useState<SubmissionWithProfile[]>([]);
+  const [mySubmissions, setMySubmissions] = useState<SubmissionWithProfile[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithProfile | null>(null);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -120,10 +150,21 @@ const CommunityManagement = () => {
       // Removed creator check - all users can access this page
       setCommunity(commData);
 
+      // Check if user is teacher
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .in("role", ["teacher", "admin"]);
+      
+      const isTeacherOrAdmin = roleData && roleData.length > 0;
+      setIsTeacher(isTeacherOrAdmin);
+
       // Fetch groups, courses and events
       await fetchGroups(commId);
       await fetchCourses(commId);
       await fetchEvents(commId);
+      await fetchSubmissions(commId, userId, isTeacherOrAdmin);
     } catch (error: any) {
       console.error("Error fetching community:", error);
       toast.error("Erro ao carregar comunidade");
@@ -252,6 +293,83 @@ const CommunityManagement = () => {
       setEvents(eventsWithCounts);
     } catch (error: any) {
       console.error('Error fetching events:', error);
+    }
+  };
+
+  const fetchSubmissions = async (commId: string, userId: string, isTeacherOrAdmin: boolean) => {
+    try {
+      if (isTeacherOrAdmin) {
+        // Fetch pending submissions for teachers
+        const { data: submissionsData, error } = await supabase
+          .from("submissions")
+          .select("*")
+          .eq("community_id", commId)
+          .eq("status", "pending")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        const submissionsWithProfiles = await Promise.all(
+          (submissionsData || []).map(async (submission: any) => {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("name, avatar_url")
+              .eq("id", submission.student_id)
+              .single();
+
+            return {
+              ...submission,
+              student_name: profile?.name || "Aluno",
+              student_avatar: profile?.avatar_url,
+            };
+          })
+        );
+
+        setPendingSubmissions(submissionsWithProfiles);
+      } else {
+        // Fetch student's own submissions
+        const { data: submissionsData, error } = await supabase
+          .from("submissions")
+          .select("*")
+          .eq("community_id", commId)
+          .eq("student_id", userId)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        const submissionsWithProfiles = await Promise.all(
+          (submissionsData || []).map(async (submission: any) => {
+            let teacherName, teacherAvatar;
+            if (submission.reviewed_by) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("name, avatar_url")
+                .eq("id", submission.reviewed_by)
+                .single();
+              
+              teacherName = profile?.name;
+              teacherAvatar = profile?.avatar_url;
+            }
+
+            return {
+              ...submission,
+              student_name: "", // Not needed for own submissions
+              teacher_name: teacherName,
+              teacher_avatar: teacherAvatar,
+            };
+          })
+        );
+
+        setMySubmissions(submissionsWithProfiles);
+      }
+    } catch (error: any) {
+      console.error("Error fetching submissions:", error);
+    }
+  };
+
+  const handleReviewComplete = () => {
+    if (communityId && user) {
+      fetchSubmissions(communityId, user.id, isTeacher);
     }
   };
   const handleCreateGroup = async (e: React.FormEvent) => {
@@ -496,6 +614,106 @@ const CommunityManagement = () => {
             </div>
           </div>
 
+          {/* Submissions Section - For Teachers */}
+          {isTeacher && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-medium">Tarefas Pendentes de Correção</h2>
+              </div>
+
+              <div className="space-y-2">
+                {pendingSubmissions.map((submission) => (
+                  <SubmissionCard
+                    key={submission.id}
+                    taskName={submission.task_name}
+                    studentName={submission.student_name}
+                    studentAvatar={submission.student_avatar}
+                    createdAt={submission.created_at}
+                    status={submission.status}
+                    onClick={() => {
+                      setSelectedSubmission(submission);
+                      setReviewDialogOpen(true);
+                    }}
+                  />
+                ))}
+
+                {pendingSubmissions.length === 0 && (
+                  <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
+                    <FileText className="h-12 w-12 mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground text-center">
+                      Nenhuma tarefa pendente de correção no momento.
+                    </p>
+                  </Card>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Submissions Section - For Students */}
+          {!isTeacher && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-medium">Minhas Tarefas</h2>
+                {communityId && <SubmitTaskDialog communityId={communityId} />}
+              </div>
+
+              <div className="space-y-6">
+                {/* Pending Submissions */}
+                {mySubmissions.filter(s => s.status === "pending").length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-medium text-muted-foreground">Aguardando Correção</h3>
+                    {mySubmissions
+                      .filter(s => s.status === "pending")
+                      .map((submission) => (
+                        <SubmissionCard
+                          key={submission.id}
+                          taskName={submission.task_name}
+                          createdAt={submission.created_at}
+                          status={submission.status}
+                          onClick={() => {
+                            setSelectedSubmission(submission);
+                            setViewDialogOpen(true);
+                          }}
+                        />
+                      ))}
+                  </div>
+                )}
+
+                {/* Reviewed Submissions */}
+                {mySubmissions.filter(s => s.status === "reviewed").length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-medium text-muted-foreground">Corrigidas</h3>
+                    {mySubmissions
+                      .filter(s => s.status === "reviewed")
+                      .map((submission) => (
+                        <SubmissionCard
+                          key={submission.id}
+                          taskName={submission.task_name}
+                          createdAt={submission.created_at}
+                          status={submission.status}
+                          grade={submission.grade}
+                          onClick={() => {
+                            setSelectedSubmission(submission);
+                            setViewDialogOpen(true);
+                          }}
+                        />
+                      ))}
+                  </div>
+                )}
+
+                {mySubmissions.length === 0 && (
+                  <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
+                    <FileText className="h-12 w-12 mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground text-center mb-4">
+                      Você ainda não enviou nenhuma tarefa.
+                    </p>
+                    {communityId && <SubmitTaskDialog communityId={communityId} />}
+                  </Card>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Groups Section */}
           <div className="space-y-4">
             <div>
@@ -663,6 +881,29 @@ const CommunityManagement = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Review Submission Dialog - For Teachers */}
+      {selectedSubmission && (
+        <ReviewSubmissionDialog
+          submission={selectedSubmission}
+          studentName={selectedSubmission.student_name}
+          studentAvatar={selectedSubmission.student_avatar}
+          open={reviewDialogOpen}
+          onOpenChange={setReviewDialogOpen}
+          onReviewComplete={handleReviewComplete}
+        />
+      )}
+
+      {/* View Submission Dialog - For Students */}
+      {selectedSubmission && (
+        <ViewSubmissionDialog
+          submission={selectedSubmission}
+          teacherName={selectedSubmission.teacher_name}
+          teacherAvatar={selectedSubmission.teacher_avatar}
+          open={viewDialogOpen}
+          onOpenChange={setViewDialogOpen}
+        />
+      )}
     </div>;
 };
 export default CommunityManagement;

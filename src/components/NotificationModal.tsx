@@ -15,16 +15,18 @@ interface NotificationModalProps {
   notifications: Notification[];
   isOpen: boolean;
   onClose: () => void;
+  onMarkAsRead: (notificationId: string) => void;
 }
 
-export const NotificationModal = ({ notifications, isOpen, onClose }: NotificationModalProps) => {
+export const NotificationModal = ({ notifications, isOpen, onClose, onMarkAsRead }: NotificationModalProps) => {
   const navigate = useNavigate();
 
-  const handleAction = (action?: string) => {
-    if (action) {
-      navigate(action);
-      onClose();
+  const handleAction = (notification: Notification) => {
+    if (notification.action) {
+      navigate(notification.action);
     }
+    onMarkAsRead(notification.id);
+    onClose();
   };
 
   return (
@@ -49,7 +51,7 @@ export const NotificationModal = ({ notifications, isOpen, onClose }: Notificati
               {notification.action && (
                 <div className="flex justify-end">
                   <Button 
-                    onClick={() => handleAction(notification.action)}
+                    onClick={() => handleAction(notification)}
                     size="sm"
                   >
                     Resolver agora

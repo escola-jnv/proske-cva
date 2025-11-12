@@ -479,6 +479,45 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          action: string | null
+          created_at: string
+          description: string
+          id: string
+          is_read: boolean
+          message: string
+          related_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          is_read?: boolean
+          message: string
+          related_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          related_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -576,6 +615,65 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      submissions: {
+        Row: {
+          community_id: string
+          created_at: string
+          extra_notes: string | null
+          grade: number | null
+          id: string
+          recording_date: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          student_id: string
+          task_name: string
+          teacher_comments: string | null
+          updated_at: string
+          video_url: string
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          extra_notes?: string | null
+          grade?: number | null
+          id?: string
+          recording_date: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          student_id: string
+          task_name: string
+          teacher_comments?: string | null
+          updated_at?: string
+          video_url: string
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          extra_notes?: string | null
+          grade?: number | null
+          id?: string
+          recording_date?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          student_id?: string
+          task_name?: string
+          teacher_comments?: string | null
+          updated_at?: string
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_plans: {
         Row: {

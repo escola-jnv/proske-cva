@@ -3,7 +3,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationModal } from "./NotificationModal";
 
 export const NotificationBar = () => {
-  const { notifications } = useNotifications();
+  const { notifications, markAsRead } = useNotifications();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   if (notifications.length === 0) return null;
@@ -33,6 +33,7 @@ export const NotificationBar = () => {
         notifications={notifications}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onMarkAsRead={markAsRead}
       />
     </>
   );
