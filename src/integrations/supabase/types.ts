@@ -538,6 +538,9 @@ export type Database = {
           email: string | null
           id: string
           last_active_at: string | null
+          monitoring_day_of_week: number | null
+          monitoring_frequency: string | null
+          monitoring_time: string | null
           name: string
           phone: string | null
           updated_at: string
@@ -550,6 +553,9 @@ export type Database = {
           email?: string | null
           id: string
           last_active_at?: string | null
+          monitoring_day_of_week?: number | null
+          monitoring_frequency?: string | null
+          monitoring_time?: string | null
           name: string
           phone?: string | null
           updated_at?: string
@@ -562,6 +568,9 @@ export type Database = {
           email?: string | null
           id?: string
           last_active_at?: string | null
+          monitoring_day_of_week?: number | null
+          monitoring_frequency?: string | null
+          monitoring_time?: string | null
           name?: string
           phone?: string | null
           updated_at?: string

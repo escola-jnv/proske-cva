@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Moon, Sun, Save, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
@@ -25,6 +26,9 @@ type Profile = {
   avatar_url: string | null;
   bio: string | null;
   city: string | null;
+  monitoring_frequency: string | null;
+  monitoring_day_of_week: number | null;
+  monitoring_time: string | null;
 };
 
 type UserRole = {
@@ -58,6 +62,11 @@ const Profile = () => {
   const [formData, setFormData] = useState({ name: "", phone: "", city: "" });
   const [errors, setErrors] = useState<{ name?: string; phone?: string; city?: string }>({});
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [monitoringData, setMonitoringData] = useState({
+    frequency: "",
+    dayOfWeek: "",
+    time: "",
+  });
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
@@ -122,6 +131,11 @@ const Profile = () => {
       setProfile(data);
       setFormData({ name: data.name || "", phone: data.phone || "", city: data.city || "" });
       setAvatarUrl(data.avatar_url);
+      setMonitoringData({
+        frequency: data.monitoring_frequency || "",
+        dayOfWeek: data.monitoring_day_of_week?.toString() || "",
+        time: data.monitoring_time || "",
+      });
     } catch (error: any) {
       console.error("Error fetching profile:", error);
     }
@@ -253,6 +267,9 @@ const Profile = () => {
           name: validated.name,
           phone: validated.phone || null,
           city: validated.city || null,
+          monitoring_frequency: monitoringData.frequency || null,
+          monitoring_day_of_week: monitoringData.dayOfWeek ? parseInt(monitoringData.dayOfWeek) : null,
+          monitoring_time: monitoringData.time || null,
         })
         .eq("id", user?.id);
 
@@ -260,7 +277,15 @@ const Profile = () => {
 
       toast.success("Perfil atualizado com sucesso!");
       if (profile) {
-        setProfile({ ...profile, name: validated.name, phone: validated.phone || null, city: validated.city || null });
+        setProfile({ 
+          ...profile, 
+          name: validated.name, 
+          phone: validated.phone || null, 
+          city: validated.city || null,
+          monitoring_frequency: monitoringData.frequency || null,
+          monitoring_day_of_week: monitoringData.dayOfWeek ? parseInt(monitoringData.dayOfWeek) : null,
+          monitoring_time: monitoringData.time || null,
+        });
       }
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -543,6 +568,67 @@ const Profile = () => {
                   {errors.city && (
                     <p className="text-sm text-destructive">{errors.city}</p>
                   )}
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-border space-y-4">
+                <h3 className="text-lg font-medium">Configuração de Monitorias</h3>
+                <p className="text-sm text-muted-foreground">
+                  Configure sua agenda padrão para monitorias recorrentes
+                </p>
+
+                <div className="space-y-2">
+                  <Label htmlFor="frequency">Frequência das Monitorias</Label>
+                  <Select
+                    value={monitoringData.frequency}
+                    onValueChange={(value) =>
+                      setMonitoringData({ ...monitoringData, frequency: value })
+                    }
+                  >
+                    <SelectTrigger id="frequency">
+                      <SelectValue placeholder="Selecione a frequência" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="weekly">Semanal</SelectItem>
+                      <SelectItem value="biweekly">Quinzenal</SelectItem>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dayOfWeek">Dia da Semana</Label>
+                  <Select
+                    value={monitoringData.dayOfWeek}
+                    onValueChange={(value) =>
+                      setMonitoringData({ ...monitoringData, dayOfWeek: value })
+                    }
+                  >
+                    <SelectTrigger id="dayOfWeek">
+                      <SelectValue placeholder="Selecione o dia" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Domingo</SelectItem>
+                      <SelectItem value="1">Segunda-feira</SelectItem>
+                      <SelectItem value="2">Terça-feira</SelectItem>
+                      <SelectItem value="3">Quarta-feira</SelectItem>
+                      <SelectItem value="4">Quinta-feira</SelectItem>
+                      <SelectItem value="5">Sexta-feira</SelectItem>
+                      <SelectItem value="6">Sábado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="time">Horário</Label>
+                  <Input
+                    id="time"
+                    type="time"
+                    value={monitoringData.time}
+                    onChange={(e) =>
+                      setMonitoringData({ ...monitoringData, time: e.target.value })
+                    }
+                  />
                 </div>
               </div>
 
