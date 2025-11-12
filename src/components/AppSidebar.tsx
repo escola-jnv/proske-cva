@@ -20,7 +20,8 @@ import {
   Hash,
   BookOpen,
   Settings,
-  GraduationCap
+  GraduationCap,
+  Calendar
 } from "lucide-react";
 
 type Community = {
@@ -212,6 +213,15 @@ export function AppSidebar() {
               >
                 <Home className="h-4 w-4" />
                 {!isCollapsed && <span>Início</span>}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => navigate("/events")}
+                isActive={location.pathname === "/events"}
+              >
+                <Calendar className="h-4 w-4" />
+                {!isCollapsed && <span>Agenda</span>}
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

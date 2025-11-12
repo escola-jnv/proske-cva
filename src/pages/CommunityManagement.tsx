@@ -17,10 +17,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Users, Mail, Phone, BookOpen, GraduationCap, Edit } from "lucide-react";
+import { ArrowLeft, Plus, Users, Mail, Phone, BookOpen, GraduationCap, Edit, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 import { z } from "zod";
+import { CreateEventDialog } from "@/components/CreateEventDialog";
 
 const groupSchema = z.object({
   name: z.string().trim().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
@@ -69,6 +70,7 @@ const CommunityManagement = () => {
   const [loading, setLoading] = useState(true);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [createEventOpen, setCreateEventOpen] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [groupForm, setGroupForm] = useState({ 
     name: "", 
@@ -455,6 +457,36 @@ const CommunityManagement = () => {
             </div>
           </div>
 
+          {/* Events Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-medium">Eventos</h2>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => navigate("/events")}
+                >
+                  <Calendar className="h-4 w-4" />
+                  Ver Agenda
+                </Button>
+                <Button 
+                  className="gap-2"
+                  onClick={() => setCreateEventOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Criar Evento
+                </Button>
+              </div>
+            </div>
+
+            <Card className="p-6 border-2 border-dashed">
+              <p className="text-muted-foreground text-center">
+                Crie eventos e convide grupos para participar. Os eventos criados aparecerão na página de Agenda.
+              </p>
+            </Card>
+          </div>
+
           {/* Groups Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -682,6 +714,17 @@ const CommunityManagement = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Create Event Dialog */}
+      <CreateEventDialog
+        open={createEventOpen}
+        onOpenChange={setCreateEventOpen}
+        communityId={communityId || ""}
+        userId={user?.id || ""}
+        onSuccess={() => {
+          toast.success("Use a página Agenda para visualizar o evento criado");
+        }}
+      />
     </div>
   );
 };

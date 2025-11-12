@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ProfileModal } from "@/components/ProfileModal";
 import { GroupInfoModal } from "@/components/GroupInfoModal";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
-import { Send, Menu, Users, Settings, LogOut } from "lucide-react";
+import { Send, Menu, Users, Settings, LogOut, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -287,6 +287,18 @@ const GroupChat = () => {
                 >
                   <Users className="h-5 w-5" />
                   Informações do Grupo
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-3"
+                  onClick={() => {
+                    navigate("/events");
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Calendar className="h-5 w-5" />
+                  Agenda
                 </Button>
 
                 <Button
