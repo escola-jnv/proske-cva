@@ -586,6 +586,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_view_event: {
+        Args: { _event_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
