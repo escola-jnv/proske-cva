@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfileModal } from "@/components/ProfileModal";
+import { GroupInfoModal } from "@/components/GroupInfoModal";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { z } from "zod";
 
 const messageSchema = z.object({
@@ -52,6 +54,9 @@ const GroupChat = () => {
     city: string | null;
   } | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [groupInfoModalOpen, setGroupInfoModalOpen] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const presenceChannelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
     const {
@@ -80,10 +85,10 @@ const GroupChat = () => {
   }, [navigate, groupId]);
 
   useEffect(() => {
-    if (!groupId) return;
+    if (!groupId || !user) return;
 
     // Subscribe to new messages
-    const channel = supabase
+    const messagesChannel = supabase
       .channel(`group-messages-${groupId}`)
       .on(
         "postgres_changes",
@@ -113,10 +118,53 @@ const GroupChat = () => {
       )
       .subscribe();
 
+    // Subscribe to presence
+    const presenceChannel = supabase.channel(`group-presence-${groupId}`, {
+      config: {
+        presence: {
+          key: user.id,
+        },
+      },
+    });
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        const users = new Set<string>();
+        Object.values(state).forEach((presences: any) => {
+          presences.forEach((presence: any) => {
+            if (presence.user_id) {
+              users.add(presence.user_id);
+            }
+          });
+        });
+        setOnlineUsers(users);
+      })
+      .on('presence', { event: 'join' }, ({ newPresences }) => {
+        console.log('User joined:', newPresences);
+      })
+      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        console.log('User left:', leftPresences);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({
+            user_id: user.id,
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    presenceChannelRef.current = presenceChannel;
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(messagesChannel);
+      if (presenceChannelRef.current) {
+        presenceChannelRef.current.untrack();
+        supabase.removeChannel(presenceChannelRef.current);
+      }
     };
-  }, [groupId]);
+  }, [groupId, user]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -233,12 +281,15 @@ const GroupChat = () => {
       {/* Header */}
       <header className="border-b border-border bg-card z-10">
         <div className="px-4 py-3 flex items-center gap-3">
-          <Avatar className="h-10 w-10">
+          <Avatar 
+            className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+            onClick={() => setGroupInfoModalOpen(true)}
+          >
             <AvatarFallback className="bg-primary text-primary-foreground">
               {group?.name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1">
+          <div className="flex-1 cursor-pointer" onClick={() => setGroupInfoModalOpen(true)}>
             <h1 className="font-semibold">{group?.name}</h1>
             {group?.description && (
               <p className="text-xs text-muted-foreground">{group.description}</p>
@@ -343,6 +394,13 @@ const GroupChat = () => {
         open={profileModalOpen}
         onOpenChange={setProfileModalOpen}
         profile={selectedProfile}
+      />
+
+      <GroupInfoModal
+        open={groupInfoModalOpen}
+        onOpenChange={setGroupInfoModalOpen}
+        group={group}
+        onlineUsers={onlineUsers}
       />
     </div>
   );
