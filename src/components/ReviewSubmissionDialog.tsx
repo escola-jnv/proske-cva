@@ -153,19 +153,23 @@ export const ReviewSubmissionDialog = ({
           </div>
 
           {/* Submission Time Info */}
-          <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg border border-border">
-            <Badge variant="outline" className="gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
-              Enviado em: {new Date(submission.created_at).toLocaleDateString("pt-BR")} às{" "}
-              {new Date(submission.created_at).toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </Badge>
-            <Badge variant="secondary" className="gap-1.5">
-              <Clock className="h-3.5 w-3.5" />
-              Aguardando {timeAgo.replace("há ", "")}
-            </Badge>
+          <div className="flex flex-wrap gap-2 p-4 bg-primary/5 rounded-lg border border-primary/20">
+            <div className="flex items-center gap-1.5 text-sm">
+              <Calendar className="h-4 w-4 text-primary" />
+              <span className="font-medium text-foreground">
+                Enviado em: {new Date(submission.created_at).toLocaleDateString("pt-BR")} às{" "}
+                {new Date(submission.created_at).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm">
+              <Clock className="h-4 w-4 text-destructive" />
+              <span className="font-semibold text-destructive">
+                Aguardando {timeAgo.replace("há ", "")}
+              </span>
+            </div>
           </div>
 
           {/* Task Info */}
