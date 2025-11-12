@@ -112,7 +112,7 @@ export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
   const fetchUserCommunities = async (userId: string) => {
     try {
       const { data: memberData, error: memberError } = await supabase
-        .from("community_members" as any)
+        .from("community_members")
         .select("community_id")
         .eq("user_id", userId);
 
@@ -140,7 +140,7 @@ export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
   const fetchUserGroups = async (userId: string) => {
     try {
       const { data: memberData, error: memberError } = await supabase
-        .from("group_members" as any)
+        .from("group_members")
         .select("group_id")
         .eq("user_id", userId);
 
@@ -154,7 +154,7 @@ export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
       }
 
       const { data: groupsData, error: groupsError } = await supabase
-        .from("conversation_groups" as any)
+        .from("conversation_groups")
         .select(`
           id,
           name,

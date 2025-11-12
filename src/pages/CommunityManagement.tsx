@@ -120,7 +120,7 @@ const CommunityManagement = () => {
   const fetchGroups = async (commId: string) => {
     try {
       const { data: groupsData, error: groupsError } = await supabase
-        .from("conversation_groups" as any)
+        .from("conversation_groups")
         .select("*")
         .eq("community_id", commId)
         .order("created_at", { ascending: false });
@@ -130,7 +130,7 @@ const CommunityManagement = () => {
       const groupsWithCounts = await Promise.all(
         (groupsData || []).map(async (group: any) => {
           const { count } = await supabase
-            .from("group_members" as any)
+            .from("group_members")
             .select("*", { count: "exact", head: true })
             .eq("group_id", group.id);
 
@@ -157,7 +157,7 @@ const CommunityManagement = () => {
       setCreating(true);
 
       const { error } = await supabase
-        .from("conversation_groups" as any)
+        .from("conversation_groups")
         .insert({
           community_id: communityId,
           name: validated.name,
@@ -227,7 +227,7 @@ const CommunityManagement = () => {
 
       // Add user to group
       const { error } = await supabase
-        .from("group_members" as any)
+        .from("group_members")
         .insert({
           group_id: selectedGroupId,
           user_id: userId,

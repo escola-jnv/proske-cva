@@ -143,7 +143,7 @@ const Profile = () => {
   const fetchUserCommunities = async (userId: string) => {
     try {
       const { data: memberData, error: memberError } = await supabase
-        .from("community_members" as any)
+        .from("community_members")
         .select("community_id")
         .eq("user_id", userId);
 
@@ -171,7 +171,7 @@ const Profile = () => {
   const fetchUserGroups = async (userId: string) => {
     try {
       const { data: memberData, error: memberError } = await supabase
-        .from("group_members" as any)
+        .from("group_members")
         .select("group_id")
         .eq("user_id", userId);
 
@@ -185,7 +185,7 @@ const Profile = () => {
       }
 
       const { data: groupsData, error: groupsError } = await supabase
-        .from("conversation_groups" as any)
+        .from("conversation_groups")
         .select(`
           id,
           name,

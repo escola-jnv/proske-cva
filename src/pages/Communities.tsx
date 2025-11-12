@@ -135,7 +135,7 @@ const Communities = () => {
 
       // Get groups where the user is a member
       const { data: membershipData, error: membershipError } = await supabase
-        .from("group_members" as any)
+        .from("group_members")
         .select("group_id")
         .eq("user_id", user.id);
 
@@ -150,7 +150,7 @@ const Communities = () => {
 
       // Get group details with community info
       const { data: groupsData, error: groupsError } = await supabase
-        .from("conversation_groups" as any)
+        .from("conversation_groups")
         .select(`
           *,
           communities:community_id (
@@ -167,7 +167,7 @@ const Communities = () => {
       const groupsWithCounts = await Promise.all(
         (groupsData || []).map(async (group: any) => {
           const { count: memberCount } = await supabase
-            .from("group_members" as any)
+            .from("group_members")
             .select("*", { count: "exact", head: true })
             .eq("group_id", group.id);
 
@@ -218,13 +218,13 @@ const Communities = () => {
         (communitiesData || []).map(async (community) => {
           // Count groups
           const { count: groupCount } = await supabase
-            .from("conversation_groups" as any)
+            .from("conversation_groups")
             .select("*", { count: "exact", head: true })
             .eq("community_id", community.id);
 
           // Get all group IDs for this community
           const { data: groupsData } = await supabase
-            .from("conversation_groups" as any)
+            .from("conversation_groups")
             .select("id")
             .eq("community_id", community.id);
 
@@ -236,7 +236,7 @@ const Communities = () => {
           if (groupIds.length > 0) {
             // Count unique students across all groups
             const { data: membersData } = await supabase
-              .from("group_members" as any)
+              .from("group_members")
               .select("user_id")
               .in("group_id", groupIds);
 
