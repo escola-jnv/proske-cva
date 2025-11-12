@@ -28,6 +28,7 @@ type Message = {
     avatar_url: string | null;
     city: string | null;
   };
+  user_role?: string;
 };
 
 type Group = {
@@ -111,9 +112,17 @@ const GroupChat = () => {
             .eq("id", payload.new.user_id)
             .single();
 
+          // Fetch the role data for the new message
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", payload.new.user_id)
+            .single();
+
           const newMsg = {
             ...payload.new,
             profiles: profileData || { name: "Usuário", avatar_url: null, city: null },
+            user_role: roleData?.role || "student",
           } as Message;
 
           setMessages((prev) => [...prev, newMsg]);
@@ -170,15 +179,26 @@ const GroupChat = () => {
         .select("id, name, avatar_url, city")
         .in("id", userIds);
 
-      // Map profiles to messages
-      const messagesWithProfiles = messagesData?.map((msg) => ({
-        ...msg,
-        profiles: profilesData?.find((p) => p.id === msg.user_id) || {
-          name: "Usuário",
-          avatar_url: null,
-          city: null,
-        },
-      }));
+      // Fetch roles for all unique user_ids
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("user_id", userIds);
+
+      // Map profiles and roles to messages
+      const messagesWithProfiles = messagesData?.map((msg) => {
+        const userRole = rolesData?.find((r) => r.user_id === msg.user_id)?.role;
+        
+        return {
+          ...msg,
+          profiles: profilesData?.find((p) => p.id === msg.user_id) || {
+            name: "Usuário",
+            avatar_url: null,
+            city: null,
+          },
+          user_role: userRole || "student",
+        };
+      });
 
       setMessages(messagesWithProfiles as Message[]);
     } catch (error: any) {
@@ -348,6 +368,9 @@ const GroupChat = () => {
             const isOwn = message.user_id === user?.id;
             const prevMessage = index > 0 ? messages[index - 1] : null;
             const isFirstInGroup = !prevMessage || prevMessage.user_id !== message.user_id;
+            const isTeacher = message.user_role === "teacher";
+            const isAdmin = message.user_role === "admin";
+            const isSpecialRole = isTeacher || isAdmin;
             
             return (
               <div
@@ -360,7 +383,13 @@ const GroupChat = () => {
                 <div className="w-10 flex-shrink-0">
                   {isFirstInGroup && (
                     <Avatar 
-                      className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                      className={`h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all ${
+                        isAdmin 
+                          ? "ring-2 ring-destructive ring-offset-2 ring-offset-background" 
+                          : isTeacher 
+                          ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
+                          : ""
+                      }`}
                       onClick={() => handleAvatarClick(message.profiles)}
                     >
                       <AvatarImage src={message.profiles?.avatar_url || undefined} />
@@ -392,9 +421,13 @@ const GroupChat = () => {
                       isFirstInGroup
                         ? isOwn ? "rounded-tr-sm" : "rounded-tl-sm"
                         : ""
+                    } ${
+                      isSpecialRole && !isOwn ? "shadow-lg" : ""
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap break-words">
+                    <p className={`whitespace-pre-wrap break-words ${
+                      isAdmin && !isOwn ? "text-[15px] font-bold" : "text-sm"
+                    }`}>
                       {message.content}
                     </p>
                     <span
