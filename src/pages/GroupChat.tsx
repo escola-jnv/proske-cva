@@ -125,20 +125,6 @@ const GroupChat = () => {
 
       if (groupError) throw groupError;
 
-      // Check if user is member
-      const { data: memberData, error: memberError } = await supabase
-        .from("group_members")
-        .select("*")
-        .eq("group_id", grpId)
-        .eq("user_id", userId)
-        .single();
-
-      if (memberError || !memberData) {
-        toast.error("Você não faz parte deste grupo");
-        navigate("/communities");
-        return;
-      }
-
       setGroup(groupData);
 
       // Fetch messages
