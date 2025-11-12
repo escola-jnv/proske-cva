@@ -12,6 +12,7 @@ import { ArrowLeft, Moon, Sun, Save, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 import { z } from "zod";
+import { formatName } from "@/lib/formatName";
 
 const profileSchema = z.object({
   name: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
@@ -261,12 +262,16 @@ const Profile = () => {
       const validated = profileSchema.parse(formData);
       setSaving(true);
 
+      // Format name before saving
+      const formattedName = formatName(validated.name);
+      const formattedCity = validated.city ? formatName(validated.city) : null;
+
       const { error } = await supabase
         .from("profiles")
         .update({
-          name: validated.name,
+          name: formattedName,
           phone: validated.phone || null,
-          city: validated.city || null,
+          city: formattedCity,
           monitoring_frequency: monitoringData.frequency || null,
           monitoring_day_of_week: monitoringData.dayOfWeek ? parseInt(monitoringData.dayOfWeek) : null,
           monitoring_time: monitoringData.time || null,
@@ -279,14 +284,16 @@ const Profile = () => {
       if (profile) {
         setProfile({ 
           ...profile, 
-          name: validated.name, 
+          name: formattedName, 
           phone: validated.phone || null, 
-          city: validated.city || null,
+          city: formattedCity,
           monitoring_frequency: monitoringData.frequency || null,
           monitoring_day_of_week: monitoringData.dayOfWeek ? parseInt(monitoringData.dayOfWeek) : null,
           monitoring_time: monitoringData.time || null,
         });
       }
+      // Update form data with formatted values
+      setFormData({ ...formData, name: formattedName, city: formattedCity || "" });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         const fieldErrors: { name?: string; phone?: string; city?: string } = {};
