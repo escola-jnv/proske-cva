@@ -20,6 +20,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -31,6 +38,7 @@ type Profile = {
   email?: string;
   phone?: string;
   bio?: string;
+  role?: string;
 };
 
 type Community = {
@@ -108,7 +116,26 @@ export default function DevTools() {
         supabase.from("conversation_groups").select("*").order("name"),
       ]);
 
-      if (profilesRes.data) setProfiles(profilesRes.data);
+      // Fetch roles for each profile
+      if (profilesRes.data) {
+        const profilesWithRoles = await Promise.all(
+          profilesRes.data.map(async (profile) => {
+            const { data: roleData } = await supabase
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", profile.id)
+              .limit(1)
+              .single();
+            
+            return {
+              ...profile,
+              role: roleData?.role || "student",
+            };
+          })
+        );
+        setProfiles(profilesWithRoles);
+      }
+      
       if (communitiesRes.data) setCommunities(communitiesRes.data);
       if (groupsRes.data) setGroups(groupsRes.data);
     } catch (error) {
@@ -128,25 +155,46 @@ export default function DevTools() {
     if (!type || !data) return;
 
     try {
-      let table: string = "";
-      switch (type) {
-        case "profile":
-          table = "profiles";
-          break;
-        case "community":
-          table = "communities";
-          break;
-        case "group":
-          table = "conversation_groups";
-          break;
+      if (type === "profile") {
+        // Update profile
+        const { role, ...profileData } = data;
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update(profileData)
+          .eq("id", data.id);
+
+        if (profileError) throw profileError;
+
+        // Update role
+        if (role) {
+          // Delete existing role
+          await supabase.from("user_roles").delete().eq("user_id", data.id);
+          
+          // Insert new role
+          const { error: roleError } = await supabase
+            .from("user_roles")
+            .insert({ user_id: data.id, role });
+
+          if (roleError) throw roleError;
+        }
+      } else {
+        let table: string = "";
+        switch (type) {
+          case "community":
+            table = "communities";
+            break;
+          case "group":
+            table = "conversation_groups";
+            break;
+        }
+
+        const { error } = await supabase
+          .from(table as any)
+          .update(data)
+          .eq("id", data.id);
+
+        if (error) throw error;
       }
-
-      const { error } = await supabase
-        .from(table as any)
-        .update(data)
-        .eq("id", data.id);
-
-      if (error) throw error;
 
       toast.success("Atualizado com sucesso!");
       setEditDialog({ open: false, type: null, data: null });
@@ -224,6 +272,7 @@ export default function DevTools() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
+                    <TableHead>Tipo</TableHead>
                     <TableHead>Telefone</TableHead>
                     <TableHead>Cidade</TableHead>
                     <TableHead className="w-[100px]">Ações</TableHead>
@@ -233,6 +282,11 @@ export default function DevTools() {
                   {profiles.map((profile) => (
                     <TableRow key={profile.id}>
                       <TableCell>{profile.name}</TableCell>
+                      <TableCell>
+                        {profile.role === "admin" && "Admin"}
+                        {profile.role === "teacher" && "Professor"}
+                        {profile.role === "student" && "Aluno"}
+                      </TableCell>
                       <TableCell>{profile.phone || "-"}</TableCell>
                       <TableCell>{profile.bio || "-"}</TableCell>
                       <TableCell>
@@ -377,6 +431,22 @@ export default function DevTools() {
                     value={editDialog.data.name || ""}
                     onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), name: e.target.value } }))}
                   />
+                </div>
+                <div>
+                  <Label htmlFor="role">Tipo de Usuário</Label>
+                  <Select
+                    value={editDialog.data.role || "student"}
+                    onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), role: value } }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="student">Aluno</SelectItem>
+                      <SelectItem value="teacher">Professor</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="phone">Telefone</Label>
