@@ -128,7 +128,6 @@ export const CreateEventDialog = ({
           duration_minutes: 60, // Fixed duration
           created_by: userId,
           community_id: communityId,
-          google_calendar_invited: false,
         })
         .select()
         .single();
