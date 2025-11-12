@@ -408,7 +408,14 @@ const GroupChat = () => {
                   {/* Name - only show for first message in group */}
                   {isFirstInGroup && (
                     <span className="text-xs font-medium mb-1 px-1" style={{ color: isOwn ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>
-                      {isOwn ? "Você" : message.profiles?.name || "Usuário"}
+                      {isOwn 
+                        ? "Você" 
+                        : isAdmin 
+                        ? `${message.profiles?.name || "Usuário"} (admin)`
+                        : isTeacher
+                        ? `Professor ${message.profiles?.name || "Usuário"}`
+                        : message.profiles?.name || "Usuário"
+                      }
                     </span>
                   )}
                   
