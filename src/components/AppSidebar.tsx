@@ -22,7 +22,8 @@ import {
   ChevronRight,
   Hash,
   BookOpen,
-  Settings
+  Settings,
+  GraduationCap
 } from "lucide-react";
 import {
   Collapsible,
@@ -42,12 +43,19 @@ type Group = {
   community_id: string;
 };
 
+type Course = {
+  id: string;
+  name: string;
+  community_id: string;
+};
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
   const [communities, setCommunities] = useState<Community[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [openCommunities, setOpenCommunities] = useState<Set<string>>(new Set());
   const [isAdmin, setIsAdmin] = useState(false);
@@ -79,7 +87,7 @@ export function AppSidebar() {
       let groupsData;
 
       if (isTeacherOrAdmin) {
-        // Teachers and admins see all groups
+        // Teachers and admins see all groups and courses
         const { data } = await supabase
           .from("conversation_groups")
           .select(`
@@ -94,6 +102,13 @@ export function AppSidebar() {
           `)
           .order("created_at", { ascending: false });
         groupsData = data;
+
+        // Fetch all courses
+        const { data: coursesData } = await supabase
+          .from("courses")
+          .select("id, name, community_id")
+          .order("created_at", { ascending: false });
+        setCourses(coursesData || []);
       } else {
         // Students see only their groups
         const { data: membershipData } = await supabase
@@ -124,6 +139,20 @@ export function AppSidebar() {
           `)
           .in("id", groupIds);
         groupsData = data;
+
+        // Students see all courses in their communities
+        const communityIds = data?.map((g: any) => {
+          const comm = Array.isArray(g.communities) ? g.communities[0] : g.communities;
+          return comm?.id;
+        }).filter(Boolean) || [];
+
+        if (communityIds.length > 0) {
+          const { data: coursesData } = await supabase
+            .from("courses")
+            .select("id, name, community_id")
+            .in("community_id", communityIds);
+          setCourses(coursesData || []);
+        }
       }
 
       if (groupsData) {
@@ -183,6 +212,10 @@ export function AppSidebar() {
     return location.pathname.includes(`/groups/${groupId}`);
   };
 
+  const isActiveCourse = (courseId: string) => {
+    return location.pathname.includes(`/courses/${courseId}`);
+  };
+
   if (loading) {
     return (
       <Sidebar className={isCollapsed ? "w-14" : "w-64"}>
@@ -224,6 +257,9 @@ export function AppSidebar() {
                 const communityGroups = groups.filter(
                   (g) => g.community_id === community.id
                 );
+                const communityCourses = courses.filter(
+                  (c) => c.community_id === community.id
+                );
                 const isOpen = openCommunities.has(community.id);
 
                 return (
@@ -256,6 +292,20 @@ export function AppSidebar() {
                       {!isCollapsed && (
                         <CollapsibleContent>
                           <SidebarMenuSub>
+                            {/* Courses */}
+                            {communityCourses.map((course) => (
+                              <SidebarMenuSubItem key={course.id}>
+                                <SidebarMenuSubButton
+                                  onClick={() => navigate(`/courses/${course.id}`)}
+                                  isActive={isActiveCourse(course.id)}
+                                >
+                                  <GraduationCap className="h-3 w-3" />
+                                  <span className="truncate">{course.name}</span>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                            
+                            {/* Groups */}
                             {communityGroups.map((group) => (
                               <SidebarMenuSubItem key={group.id}>
                                 <SidebarMenuSubButton

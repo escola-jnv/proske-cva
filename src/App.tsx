@@ -12,6 +12,9 @@ import Profile from "./pages/Profile";
 import CommunityManagement from "./pages/CommunityManagement";
 import CommunityInvite from "./pages/CommunityInvite";
 import GroupChat from "./pages/GroupChat";
+import CourseView from "./pages/CourseView";
+import CourseManagement from "./pages/CourseManagement";
+import CreateCourse from "./pages/CreateCourse";
 import DevTools from "./pages/DevTools";
 import NotFound from "./pages/NotFound";
 
@@ -46,7 +49,10 @@ const AppContent = () => {
               <Route path="/communities" element={<Communities />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/communities/:communityId/manage" element={<CommunityManagement />} />
+              <Route path="/communities/:communityId/courses/new" element={<CreateCourse />} />
               <Route path="/groups/:groupId/chat" element={<GroupChat />} />
+              <Route path="/courses/:courseId" element={<CourseView />} />
+              <Route path="/courses/:courseId/manage" element={<CourseManagement />} />
               <Route path="/invite/:inviteCode" element={<CommunityInvite />} />
               <Route path="/dev-tools" element={<DevTools />} />
               <Route path="*" element={<NotFound />} />

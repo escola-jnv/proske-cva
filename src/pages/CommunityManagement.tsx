@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Users, Mail, Phone } from "lucide-react";
+import { ArrowLeft, Plus, Users, Mail, Phone, BookOpen, GraduationCap, Edit } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -50,6 +50,13 @@ type Group = {
   last_message_time?: string | null;
 };
 
+type Course = {
+  id: string;
+  name: string;
+  description: string | null;
+  lesson_count?: number;
+};
+
 const CommunityManagement = () => {
   const navigate = useNavigate();
   const { communityId } = useParams();
@@ -57,6 +64,7 @@ const CommunityManagement = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [community, setCommunity] = useState<Community | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -119,8 +127,9 @@ const CommunityManagement = () => {
 
       setCommunity(commData);
 
-      // Fetch groups
+      // Fetch groups and courses
       await fetchGroups(commId);
+      await fetchCourses(commId);
     } catch (error: any) {
       console.error("Error fetching community:", error);
       toast.error("Erro ao carregar comunidade");
@@ -168,6 +177,50 @@ const CommunityManagement = () => {
       setGroups(groupsWithCounts);
     } catch (error: any) {
       console.error("Error fetching groups:", error);
+    }
+  };
+
+  const fetchCourses = async (commId: string) => {
+    try {
+      const { data: coursesData, error: coursesError } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("community_id", commId)
+        .order("created_at", { ascending: false });
+
+      if (coursesError) throw coursesError;
+
+      const coursesWithCounts = await Promise.all(
+        (coursesData || []).map(async (course: any) => {
+          // Count total lessons across all modules
+          const { data: modulesData } = await supabase
+            .from("course_modules")
+            .select("id")
+            .eq("course_id", course.id);
+
+          const moduleIds = (modulesData || []).map(m => m.id);
+          
+          let lessonCount = 0;
+          if (moduleIds.length > 0) {
+            const { count } = await supabase
+              .from("course_lessons")
+              .select("*", { count: "exact", head: true })
+              .in("module_id", moduleIds);
+            lessonCount = count || 0;
+          }
+
+          return {
+            id: course.id,
+            name: course.name,
+            description: course.description,
+            lesson_count: lessonCount,
+          };
+        })
+      );
+
+      setCourses(coursesWithCounts);
+    } catch (error: any) {
+      console.error("Error fetching courses:", error);
     }
   };
 
@@ -313,6 +366,82 @@ const CommunityManagement = () => {
 
       <main className="container mx-auto px-6 py-12">
         <div className="max-w-4xl mx-auto space-y-8">
+          {/* Courses Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-medium">Cursos</h2>
+              <Button 
+                className="gap-2"
+                onClick={() => navigate(`/communities/${communityId}/courses/new`)}
+              >
+                <Plus className="h-4 w-4" />
+                Criar Curso
+              </Button>
+            </div>
+
+            {/* Courses List - WhatsApp Style */}
+            <div className="space-y-1">
+              {courses.map((course) => {
+                const initials = course.name
+                  .split(' ')
+                  .map(word => word[0])
+                  .join('')
+                  .toUpperCase()
+                  .slice(0, 2);
+
+                return (
+                  <Card 
+                    key={course.id} 
+                    className="p-4 cursor-pointer hover:bg-accent transition-colors border-0 border-b rounded-none first:rounded-t-lg last:rounded-b-lg"
+                    onClick={() => navigate(`/courses/${course.id}`)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          <GraduationCap className="h-6 w-6" />
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <h3 className="font-medium truncate">{course.name}</h3>
+                          <div className="flex gap-2 shrink-0">
+                            <Badge variant="secondary">
+                              {course.lesson_count || 0} aulas
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/courses/${course.id}/manage`);
+                              }}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {course.description || "Sem descrição"}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+
+              {courses.length === 0 && (
+                <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
+                  <GraduationCap className="h-12 w-12 mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground text-center">
+                    Nenhum curso criado ainda. Crie o primeiro curso!
+                  </p>
+                </Card>
+              )}
+            </div>
+          </div>
+
           {/* Groups Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
