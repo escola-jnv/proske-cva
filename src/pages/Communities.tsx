@@ -3,11 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Moon, Sun, Plus, User as UserIcon, Link as LinkIcon } from "lucide-react";
+import { LogOut, Moon, Sun, Plus, User as UserIcon, Link as LinkIcon, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 import { ProfileSheet } from "@/components/ProfileSheet";
 import { CreateCommunityDialog } from "@/components/CreateCommunityDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { z } from "zod";
 
 type ConversationGroup = {
   id: string;
@@ -40,6 +51,12 @@ type Profile = {
   bio: string | null;
 };
 
+const editCommunitySchema = z.object({
+  name: z.string().trim().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
+  description: z.string().trim().max(500, "Descrição muito longa").optional(),
+  subject: z.string().trim().min(2, "Matéria é obrigatória").max(100),
+});
+
 const Communities = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
@@ -52,6 +69,11 @@ const Communities = () => {
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>("student");
   const [generatingInvite, setGeneratingInvite] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingCommunity, setEditingCommunity] = useState<MyCommunity | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", description: "", subject: "", cover_image_url: "" });
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
@@ -304,6 +326,95 @@ const Communities = () => {
     }
   };
 
+  const handleEditCommunity = (community: MyCommunity) => {
+    setEditingCommunity(community);
+    setEditForm({
+      name: community.name,
+      description: community.description || "",
+      subject: community.subject,
+      cover_image_url: community.cover_image_url || "",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor, selecione uma imagem");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Imagem muito grande. Máximo 5MB");
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `community-covers/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      setEditForm({ ...editForm, cover_image_url: data.publicUrl });
+      toast.success("Imagem carregada!");
+    } catch (error: any) {
+      console.error("Error uploading image:", error);
+      toast.error("Erro ao fazer upload: " + error.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleUpdateCommunity = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!editingCommunity) return;
+
+    try {
+      const validated = editCommunitySchema.parse(editForm);
+      setUpdating(true);
+
+      const { error } = await supabase
+        .from("communities")
+        .update({
+          name: validated.name,
+          description: validated.description || null,
+          subject: validated.subject,
+          cover_image_url: editForm.cover_image_url || null,
+        })
+        .eq("id", editingCommunity.id);
+
+      if (error) throw error;
+
+      toast.success("Comunidade atualizada!");
+      setEditDialogOpen(false);
+      if (user) fetchMyCommunities(user.id);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0]?.message || "Erro de validação");
+      } else {
+        toast.error("Erro ao atualizar: " + error.message);
+      }
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -405,8 +516,22 @@ const Communities = () => {
                   return (
                     <Card 
                       key={community.id} 
-                      className="overflow-hidden transition-gentle hover:shadow-lg"
+                      className="overflow-hidden transition-gentle hover:shadow-lg cursor-pointer relative"
+                      onClick={() => navigate(`/communities/${community.id}/manage`)}
                     >
+                      {/* Edit Button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 z-10 bg-white/90 hover:bg-white shadow-sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditCommunity(community);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+
                       {/* Cover Image */}
                       <div 
                         className="h-32 bg-cover bg-center relative"
@@ -442,17 +567,14 @@ const Communities = () => {
                           <Button
                             variant="outline"
                             className="flex-1 gap-2"
-                            onClick={() => handleGenerateInvite(community.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleGenerateInvite(community.id);
+                            }}
                             disabled={generatingInvite === community.id}
                           >
                             <LinkIcon className="h-4 w-4" />
                             {generatingInvite === community.id ? "Gerando..." : "Convidar"}
-                          </Button>
-                          <Button
-                            className="flex-1"
-                            onClick={() => navigate(`/communities/${community.id}/manage`)}
-                          >
-                            Gerenciar
                           </Button>
                         </div>
                       </div>
@@ -523,6 +645,94 @@ const Communities = () => {
         onOpenChange={setProfileSheetOpen}
         user={user}
       />
+
+      {/* Edit Community Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Comunidade</DialogTitle>
+            <DialogDescription>
+              Atualize as informações da sua comunidade
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateCommunity} className="space-y-4">
+            {/* Cover Image Preview */}
+            {editForm.cover_image_url && (
+              <div className="relative w-full h-32 rounded-lg overflow-hidden">
+                <img
+                  src={editForm.cover_image_url}
+                  alt="Cover preview"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+
+            {/* Image Upload */}
+            <div className="space-y-2">
+              <Label htmlFor="cover-image">Imagem de Capa</Label>
+              <Input
+                id="cover-image"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploadingImage}
+              />
+              <p className="text-xs text-muted-foreground">
+                {uploadingImage ? "Carregando..." : "PNG, JPG até 5MB"}
+              </p>
+            </div>
+
+            {/* Name */}
+            <div className="space-y-2">
+              <Label htmlFor="community-name">Nome da Comunidade</Label>
+              <Input
+                id="community-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                placeholder="Ex: Matemática 3º Ano"
+              />
+            </div>
+
+            {/* Subject */}
+            <div className="space-y-2">
+              <Label htmlFor="community-subject">Matéria</Label>
+              <Input
+                id="community-subject"
+                value={editForm.subject}
+                onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })}
+                placeholder="Ex: Matemática"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="community-description">Descrição (opcional)</Label>
+              <Textarea
+                id="community-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                placeholder="Descreva sua comunidade"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditDialogOpen(false)}
+                disabled={updating}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={updating || uploadingImage}>
+                {updating ? "Atualizando..." : "Atualizar"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
