@@ -21,7 +21,8 @@ import {
   Users, 
   ChevronRight,
   Hash,
-  BookOpen
+  BookOpen,
+  Settings
 } from "lucide-react";
 import {
   Collapsible,
@@ -49,6 +50,7 @@ export function AppSidebar() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [openCommunities, setOpenCommunities] = useState<Set<string>>(new Set());
+  const [isAdmin, setIsAdmin] = useState(false);
   
   const isCollapsed = state === "collapsed";
 
@@ -70,6 +72,9 @@ export function AppSidebar() {
       const isTeacherOrAdmin = userRoles?.some(
         (r) => r.role === "teacher" || r.role === "admin"
       );
+
+      const admin = userRoles?.some((r) => r.role === "admin");
+      setIsAdmin(admin || false);
 
       let groupsData;
 
@@ -272,6 +277,23 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Dev Tools - Only for Admins */}
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => navigate("/dev-tools")}
+                  isActive={location.pathname === "/dev-tools"}
+                >
+                  <Settings className="h-4 w-4" />
+                  {!isCollapsed && <span>Dev Tools</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );

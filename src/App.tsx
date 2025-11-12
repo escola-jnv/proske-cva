@@ -12,6 +12,7 @@ import Profile from "./pages/Profile";
 import CommunityManagement from "./pages/CommunityManagement";
 import CommunityInvite from "./pages/CommunityInvite";
 import GroupChat from "./pages/GroupChat";
+import DevTools from "./pages/DevTools";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const AppContent = () => {
               <Route path="/communities/:communityId/manage" element={<CommunityManagement />} />
               <Route path="/groups/:groupId/chat" element={<GroupChat />} />
               <Route path="/invite/:inviteCode" element={<CommunityInvite />} />
+              <Route path="/dev-tools" element={<DevTools />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
