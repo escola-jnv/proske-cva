@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,8 @@ type Group = {
   name: string;
   description: string | null;
   member_count: number;
+  last_message?: string | null;
+  last_message_time?: string | null;
 };
 
 const CommunityManagement = () => {
@@ -142,11 +145,22 @@ const CommunityManagement = () => {
             .select("*", { count: "exact", head: true })
             .eq("group_id", group.id);
 
+          // Fetch last message
+          const { data: lastMessageData } = await supabase
+            .from("messages")
+            .select("content, created_at")
+            .eq("group_id", group.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+
           return {
             id: group.id,
             name: group.name,
             description: group.description,
             member_count: count || 0,
+            last_message: lastMessageData?.content || null,
+            last_message_time: lastMessageData?.created_at || null,
           };
         })
       );
@@ -396,43 +410,77 @@ const CommunityManagement = () => {
               </Dialog>
             </div>
 
-            {/* Groups List */}
-            <div className="grid gap-4 md:grid-cols-2">
-              {groups.map((group) => (
-                <Card 
-                  key={group.id} 
-                  className="p-6 space-y-4 cursor-pointer hover:shadow-lg transition-shadow"
-                  onClick={() => navigate(`/groups/${group.id}/chat`)}
-                >
-                  <div>
-                    <h3 className="text-xl font-medium">{group.name}</h3>
-                    {group.description && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {group.description}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>{group.member_count} membros</span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedGroupId(group.id);
-                      setInviteDialogOpen(true);
-                    }}
+            {/* Groups List - WhatsApp Style */}
+            <div className="space-y-1">
+              {groups.map((group) => {
+                const initials = group.name
+                  .split(' ')
+                  .map(word => word[0])
+                  .join('')
+                  .toUpperCase()
+                  .slice(0, 2);
+                
+                const formatTime = (timestamp: string | null) => {
+                  if (!timestamp) return "";
+                  const date = new Date(timestamp);
+                  const now = new Date();
+                  const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+                  
+                  if (diffInHours < 24) {
+                    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                  } else if (diffInHours < 168) {
+                    return date.toLocaleDateString('pt-BR', { weekday: 'short' });
+                  } else {
+                    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                  }
+                };
+
+                return (
+                  <Card 
+                    key={group.id} 
+                    className="p-4 cursor-pointer hover:bg-accent transition-colors border-0 border-b rounded-none first:rounded-t-lg last:rounded-b-lg"
+                    onClick={() => navigate(`/groups/${group.id}/chat`)}
                   >
-                    <Plus className="h-4 w-4" />
-                    Adicionar Alunos
-                  </Button>
-                </Card>
-              ))}
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <h3 className="font-medium truncate">{group.name}</h3>
+                          {group.last_message_time && (
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {formatTime(group.last_message_time)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {group.last_message || group.description || "Nenhuma mensagem ainda"}
+                        </p>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedGroupId(group.id);
+                          setInviteDialogOpen(true);
+                        }}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
 
               {groups.length === 0 && (
-                <Card className="p-12 col-span-2 flex flex-col items-center justify-center border-2 border-dashed">
+                <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
                   <p className="text-muted-foreground text-center">
                     Nenhum grupo criado ainda. Crie o primeiro grupo!
                   </p>
