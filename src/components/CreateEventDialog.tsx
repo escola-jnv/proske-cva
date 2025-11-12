@@ -12,6 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -37,6 +44,7 @@ type CreateEventDialogProps = {
   communityId: string;
   userId: string;
   onSuccess?: () => void;
+  isAdmin?: boolean;
 };
 
 export const CreateEventDialog = ({
@@ -45,8 +53,10 @@ export const CreateEventDialog = ({
   communityId,
   userId,
   onSuccess,
+  isAdmin = false,
 }: CreateEventDialogProps) => {
   const [groups, setGroups] = useState<Group[]>([]);
+  const [users, setUsers] = useState<Array<{ id: string; name: string; email?: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({
@@ -55,47 +65,77 @@ export const CreateEventDialog = ({
     event_date: "",
     event_time: "",
     group_ids: [] as string[],
+    created_by: userId,
   });
 
   useEffect(() => {
     if (open) {
       fetchGroups();
+      if (isAdmin) {
+        fetchUsers();
+      }
     }
-  }, [open, communityId, userId]);
+  }, [open, communityId, userId, isAdmin]);
 
   const fetchGroups = async () => {
     setLoading(true);
     try {
-      // First, get group IDs where user is a member
-      const { data: memberData, error: memberError } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", userId);
+      if (isAdmin) {
+        // Admin can see all groups in the community
+        const { data, error } = await supabase
+          .from("conversation_groups")
+          .select("id, name, description")
+          .eq("community_id", communityId);
 
-      if (memberError) throw memberError;
+        if (error) throw error;
+        setGroups(data || []);
+      } else {
+        // First, get group IDs where user is a member
+        const { data: memberData, error: memberError } = await supabase
+          .from("group_members")
+          .select("group_id")
+          .eq("user_id", userId);
 
-      const groupIds = memberData.map((m) => m.group_id);
+        if (memberError) throw memberError;
 
-      if (groupIds.length === 0) {
-        setGroups([]);
-        setLoading(false);
-        return;
+        const groupIds = memberData.map((m) => m.group_id);
+
+        if (groupIds.length === 0) {
+          setGroups([]);
+          setLoading(false);
+          return;
+        }
+
+        // Then fetch those groups that belong to this community
+        const { data, error } = await supabase
+          .from("conversation_groups")
+          .select("id, name, description")
+          .eq("community_id", communityId)
+          .in("id", groupIds);
+
+        if (error) throw error;
+        setGroups(data || []);
       }
-
-      // Then fetch those groups that belong to this community
-      const { data, error } = await supabase
-        .from("conversation_groups")
-        .select("id, name, description")
-        .eq("community_id", communityId)
-        .in("id", groupIds);
-
-      if (error) throw error;
-      setGroups(data || []);
     } catch (error: any) {
       console.error("Error fetching groups:", error);
       toast.error("Erro ao carregar grupos");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, name, email")
+        .order("name");
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error: any) {
+      console.error("Error fetching users:", error);
+      toast.error("Erro ao carregar usuários");
     }
   };
 
@@ -126,7 +166,7 @@ export const CreateEventDialog = ({
           description: validated.description || null,
           event_date: eventDateTime,
           duration_minutes: 60, // Fixed duration
-          created_by: userId,
+          created_by: form.created_by,
           community_id: communityId,
         })
         .select()
@@ -181,6 +221,7 @@ export const CreateEventDialog = ({
         event_date: "",
         event_time: "",
         group_ids: [],
+        created_by: userId,
       });
       onOpenChange(false);
       onSuccess?.();
@@ -206,6 +247,27 @@ export const CreateEventDialog = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isAdmin && (
+            <div className="space-y-2">
+              <Label htmlFor="created_by">Responsável pelo Evento *</Label>
+              <Select
+                value={form.created_by}
+                onValueChange={(value) => setForm({ ...form, created_by: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name} {user.email && `(${user.email})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="title">Título *</Label>
             <Input

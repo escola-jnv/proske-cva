@@ -44,6 +44,7 @@ import { toast } from "sonner";
 import { Loader2, Pencil, Trash2, Users, FolderOpen, MessageSquare, Calendar, Search, Upload, FileText } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import { CreateEventDialog } from "@/components/CreateEventDialog";
 
 type Profile = {
   id: string;
@@ -150,6 +151,9 @@ export default function DevTools() {
   const [importLoading, setImportLoading] = useState(false);
   const [usersCSV, setUsersCSV] = useState("");
   const [lessonsCSV, setLessonsCSV] = useState("");
+  
+  const [createEventOpen, setCreateEventOpen] = useState(false);
+  const [selectedCommunityForEvent, setSelectedCommunityForEvent] = useState<string>("");
   
   const activeTab = searchParams.get("tab") || "users";
 
@@ -1128,14 +1132,45 @@ export default function DevTools() {
                   <CardTitle>Eventos</CardTitle>
                   <CardDescription>Visualize e edite eventos</CardDescription>
                 </div>
-                <div className="relative w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar eventos..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
-                  />
+                <div className="flex items-center gap-3">
+                  <div className="w-64">
+                    <Select
+                      value={selectedCommunityForEvent}
+                      onValueChange={setSelectedCommunityForEvent}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma comunidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {communities.map((community) => (
+                          <SelectItem key={community.id} value={community.id}>
+                            {community.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      if (!selectedCommunityForEvent) {
+                        toast.error("Selecione uma comunidade primeiro");
+                        return;
+                      }
+                      setCreateEventOpen(true);
+                    }}
+                    size="sm"
+                  >
+                    Adicionar Evento
+                  </Button>
+                  <div className="relative w-64">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar eventos..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -1582,6 +1617,18 @@ export default function DevTools() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CreateEventDialog
+        open={createEventOpen}
+        onOpenChange={setCreateEventOpen}
+        communityId={selectedCommunityForEvent}
+        userId=""
+        isAdmin={true}
+        onSuccess={() => {
+          fetchAllData();
+          toast.success("Evento criado com sucesso!");
+        }}
+      />
     </div>
   );
 }
