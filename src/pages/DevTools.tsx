@@ -42,6 +42,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Pencil, Trash2, Users, FolderOpen, MessageSquare, Calendar, Search, Upload, FileText, Link2, Copy } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 
 type Profile = {
@@ -51,7 +52,21 @@ type Profile = {
   phone?: string;
   city?: string;
   bio?: string;
+  avatar_url?: string;
   role?: string;
+  subscription?: {
+    plan_name: string;
+    price: number;
+    end_date: string;
+    status: string;
+  };
+};
+
+type SubscriptionPlan = {
+  id: string;
+  name: string;
+  price: number;
+  description?: string;
 };
 
 type Community = {
@@ -95,6 +110,7 @@ export default function DevTools() {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   
   const [searchTerm, setSearchTerm] = useState("");
   
@@ -121,6 +137,13 @@ export default function DevTools() {
     userId: string | null;
     type: "communities" | "groups" | "courses" | null;
   }>({ open: false, userId: null, type: null });
+
+  const [subscriptionDialog, setSubscriptionDialog] = useState<{
+    open: boolean;
+    userId: string | null;
+    userName: string | null;
+    currentSubscription: any | null;
+  }>({ open: false, userId: null, userName: null, currentSubscription: null });
 
   const [userLinks, setUserLinks] = useState<{
     communities: string[];
@@ -178,7 +201,7 @@ export default function DevTools() {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [profilesRes, communitiesRes, groupsRes, eventsRes, coursesRes] = await Promise.all([
+      const [profilesRes, communitiesRes, groupsRes, eventsRes, coursesRes, plansRes] = await Promise.all([
         supabase.from("profiles").select("*").order("name"),
         supabase.from("communities").select("*").order("name"),
         supabase.from("conversation_groups").select(`
@@ -189,13 +212,15 @@ export default function DevTools() {
         `).order("name"),
         supabase.from("events").select("*").order("event_date", { ascending: false }),
         supabase.from("courses").select("id, name").order("name"),
+        supabase.from("subscription_plans").select("*").order("name"),
       ]);
 
       if (coursesRes.data) setAvailableCourses(coursesRes.data);
+      if (plansRes.data) setSubscriptionPlans(plansRes.data);
 
-      // Fetch roles for each profile
+      // Fetch roles and subscriptions for each profile
       if (profilesRes.data) {
-        const profilesWithRoles = await Promise.all(
+        const profilesWithRolesAndSubs = await Promise.all(
           profilesRes.data.map(async (profile) => {
             const { data: roleData } = await supabase
               .from("user_roles")
@@ -204,13 +229,36 @@ export default function DevTools() {
               .limit(1)
               .single();
             
+            // Fetch active subscription
+            const { data: subData } = await supabase
+              .from("user_subscriptions")
+              .select(`
+                end_date,
+                status,
+                subscription_plans (
+                  name,
+                  price
+                )
+              `)
+              .eq("user_id", profile.id)
+              .eq("status", "active")
+              .order("end_date", { ascending: false })
+              .limit(1)
+              .single();
+            
             return {
               ...profile,
               role: roleData?.role || "student",
+              subscription: subData ? {
+                plan_name: (subData.subscription_plans as any)?.name || "-",
+                price: (subData.subscription_plans as any)?.price || 0,
+                end_date: subData.end_date,
+                status: subData.status,
+              } : undefined,
             };
           })
         );
-        setProfiles(profilesWithRoles);
+        setProfiles(profilesWithRolesAndSubs);
       }
       
       if (communitiesRes.data) setCommunities(communitiesRes.data);
@@ -479,6 +527,66 @@ export default function DevTools() {
     } catch (error: any) {
       console.error("Error toggling link:", error);
       toast.error(error.message || "Erro ao atualizar vínculo");
+    }
+  };
+
+  const handleManageSubscription = async (userId: string, userName: string) => {
+    try {
+      // Fetch current subscription
+      const { data: currentSub } = await supabase
+        .from("user_subscriptions")
+        .select(`
+          *,
+          subscription_plans (
+            name,
+            price
+          )
+        `)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      setSubscriptionDialog({
+        open: true,
+        userId,
+        userName,
+        currentSubscription: currentSub,
+      });
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+      toast.error("Erro ao carregar assinatura");
+    }
+  };
+
+  const handleUpdateSubscription = async (planId: string, endDate: string) => {
+    const { userId } = subscriptionDialog;
+    if (!userId) return;
+
+    try {
+      // Cancel current subscription
+      if (subscriptionDialog.currentSubscription) {
+        await supabase
+          .from("user_subscriptions")
+          .update({ status: "cancelled" })
+          .eq("id", subscriptionDialog.currentSubscription.id);
+      }
+
+      // Create new subscription
+      await supabase.from("user_subscriptions").insert({
+        user_id: userId,
+        plan_id: planId,
+        end_date: endDate,
+        status: "active",
+      });
+
+      toast.success("Assinatura atualizada com sucesso!");
+      setSubscriptionDialog({ open: false, userId: null, userName: null, currentSubscription: null });
+      await fetchAllData();
+    } catch (error: any) {
+      console.error("Error updating subscription:", error);
+      toast.error(error.message || "Erro ao atualizar assinatura");
     }
   };
 
@@ -772,24 +880,31 @@ export default function DevTools() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Avatar</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Cidade</TableHead>
-                    <TableHead className="w-[150px]">Ações</TableHead>
+                    <TableHead>Plano</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead className="w-[200px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredProfiles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredProfiles.map((profile) => (
                       <TableRow key={profile.id}>
+                        <TableCell>
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={profile.avatar_url || ""} alt={profile.name} />
+                            <AvatarFallback>{profile.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                        </TableCell>
                         <TableCell className="font-medium">{profile.name}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{profile.email || "-"}</TableCell>
                         <TableCell>
@@ -803,8 +918,29 @@ export default function DevTools() {
                             {profile.role === "student" && "Aluno"}
                           </Badge>
                         </TableCell>
-                        <TableCell>{profile.phone || "-"}</TableCell>
-                        <TableCell>{profile.city || "-"}</TableCell>
+                        <TableCell>
+                          {profile.subscription ? (
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium">{profile.subscription.plan_name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                R$ {profile.subscription.price.toFixed(2)}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Sem plano</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {profile.subscription ? (
+                            <Badge variant={
+                              new Date(profile.subscription.end_date) > new Date() ? "default" : "destructive"
+                            }>
+                              {new Date(profile.subscription.end_date).toLocaleDateString("pt-BR")}
+                            </Badge>
+                          ) : (
+                            "-"
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button
@@ -814,6 +950,14 @@ export default function DevTools() {
                               title="Editar"
                             >
                               <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleManageSubscription(profile.id, profile.name)}
+                              title="Gerenciar Plano"
+                            >
+                              <Calendar className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -1444,6 +1588,51 @@ export default function DevTools() {
                 </Button>
               </div>
             ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={subscriptionDialog.open} onOpenChange={(open) => !open && setSubscriptionDialog({ open: false, userId: null, userName: null, currentSubscription: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gerenciar Assinatura</DialogTitle>
+            <DialogDescription>
+              Assinatura de {subscriptionDialog.userName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {subscriptionDialog.currentSubscription && (
+              <div className="p-3 border rounded-lg bg-muted/50">
+                <p className="text-sm font-medium">Assinatura Atual</p>
+                <p className="text-sm text-muted-foreground">
+                  {(subscriptionDialog.currentSubscription.subscription_plans as any)?.name} - R$ {(subscriptionDialog.currentSubscription.subscription_plans as any)?.price}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Vence em: {new Date(subscriptionDialog.currentSubscription.end_date).toLocaleDateString("pt-BR")}
+                </p>
+              </div>
+            )}
+            <div>
+              <Label>Novo Plano</Label>
+              <Select
+                onValueChange={(planId) => {
+                  const endDate = new Date();
+                  endDate.setMonth(endDate.getMonth() + 1);
+                  handleUpdateSubscription(planId, endDate.toISOString());
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um plano" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subscriptionPlans.map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name} - R$ {plan.price.toFixed(2)}/mês
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
