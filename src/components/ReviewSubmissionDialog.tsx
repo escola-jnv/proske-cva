@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -23,7 +25,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ExternalLink, Clock, Calendar } from "lucide-react";
 
 const formSchema = z.object({
   teacher_comments: z.string().min(10, "Comentários devem ter pelo menos 10 caracteres"),
@@ -41,6 +44,7 @@ interface ReviewSubmissionDialogProps {
     extra_notes?: string;
     student_id: string;
     community_id: string;
+    created_at: string;
   };
   studentName: string;
   studentAvatar?: string;
@@ -58,6 +62,7 @@ export const ReviewSubmissionDialog = ({
   onReviewComplete,
 }: ReviewSubmissionDialogProps) => {
   const [loading, setLoading] = useState(false);
+  const [timeAgo, setTimeAgo] = useState("");
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
@@ -67,6 +72,22 @@ export const ReviewSubmissionDialog = ({
       grade: 50,
     },
   });
+
+  // Update time ago every minute
+  useEffect(() => {
+    const updateTimeAgo = () => {
+      const time = formatDistanceToNow(new Date(submission.created_at), {
+        addSuffix: true,
+        locale: ptBR,
+      });
+      setTimeAgo(time);
+    };
+
+    updateTimeAgo();
+    const interval = setInterval(updateTimeAgo, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [submission.created_at]);
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
@@ -129,6 +150,22 @@ export const ReviewSubmissionDialog = ({
               <p className="font-medium">{studentName}</p>
               <p className="text-sm text-muted-foreground">Aluno</p>
             </div>
+          </div>
+
+          {/* Submission Time Info */}
+          <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg border border-border">
+            <Badge variant="outline" className="gap-1.5">
+              <Calendar className="h-3.5 w-3.5" />
+              Enviado em: {new Date(submission.created_at).toLocaleDateString("pt-BR")} às{" "}
+              {new Date(submission.created_at).toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Badge>
+            <Badge variant="secondary" className="gap-1.5">
+              <Clock className="h-3.5 w-3.5" />
+              Aguardando {timeAgo.replace("há ", "")}
+            </Badge>
           </div>
 
           {/* Task Info */}
