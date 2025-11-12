@@ -374,22 +374,22 @@ export default function DevTools() {
 
   const handleGenerateInvite = async (communityId: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Você precisa estar autenticado");
+      // Get community slug
+      const { data: community, error: communityError } = await supabase
+        .from("communities")
+        .select("slug")
+        .eq("id", communityId)
+        .single();
+
+      if (communityError || !community) {
+        toast.error("Erro ao buscar comunidade");
         return;
       }
-
-      const { data, error } = await supabase.functions.invoke('generate-invite', {
-        body: { communityId }
-      });
-
-      if (error) throw error;
 
       setInviteDialog({
         open: true,
         communityId,
-        inviteCode: data.inviteCode
+        inviteCode: community.slug
       });
 
       toast.success("Link de convite gerado com sucesso!");
@@ -400,7 +400,7 @@ export default function DevTools() {
 
   const copyInviteLink = () => {
     if (inviteDialog.inviteCode) {
-      const link = `${window.location.origin}/invite/${inviteDialog.inviteCode}`;
+      const link = `${window.location.origin}/${inviteDialog.inviteCode}`;
       navigator.clipboard.writeText(link);
       toast.success("Link copiado para a área de transferência!");
     }
@@ -1295,7 +1295,7 @@ export default function DevTools() {
               <input
                 type="text"
                 readOnly
-                value={inviteDialog.inviteCode ? `${window.location.origin}/invite/${inviteDialog.inviteCode}` : ""}
+                value={inviteDialog.inviteCode ? `${window.location.origin}/${inviteDialog.inviteCode}` : ""}
                 className="flex-1 px-3 py-2 border rounded-md bg-muted"
               />
               <Button onClick={copyInviteLink} variant="outline" size="icon">

@@ -26,7 +26,7 @@ const AppContent = () => {
   const location = useLocation();
   
   // Routes that should show the sidebar
-  const isInvitePage = location.pathname.startsWith("/invite/");
+  const isInvitePage = location.pathname !== "/" && location.pathname !== "/auth" && !location.pathname.startsWith("/communities");
   const showSidebar = !["/", "/auth"].includes(location.pathname) && !isInvitePage;
 
   if (!showSidebar) {
@@ -34,7 +34,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/invite/:inviteCode" element={<CommunityInvite />} />
+        <Route path="/:slug" element={<CommunityInvite />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     );

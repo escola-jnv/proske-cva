@@ -20,6 +20,7 @@ const communitySchema = z.object({
   name: z.string().trim().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
   subject: z.string().trim().min(2, "Disciplina deve ter pelo menos 2 caracteres").max(50),
   description: z.string().trim().max(500, "Descrição muito longa").optional(),
+  slug: z.string().trim().min(2, "Slug deve ter pelo menos 2 caracteres").max(50).regex(/^[a-z0-9-]+$/, "Slug deve conter apenas letras minúsculas, números e hífens"),
 });
 
 interface CreateCommunityDialogProps {
@@ -34,11 +35,13 @@ export function CreateCommunityDialog({ userId, onCommunityCreated }: CreateComm
     name: "",
     subject: "",
     description: "",
+    slug: "",
   });
   const [errors, setErrors] = useState<{
     name?: string;
     subject?: string;
     description?: string;
+    slug?: string;
   }>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,12 +62,13 @@ export function CreateCommunityDialog({ userId, onCommunityCreated }: CreateComm
         description: validated.description || null,
         cover_image_url: coverImageUrl,
         created_by: userId,
+        slug: validated.slug,
       });
 
       if (error) throw error;
 
       toast.success("Comunidade criada com sucesso!");
-      setFormData({ name: "", subject: "", description: "" });
+      setFormData({ name: "", subject: "", description: "", slug: "" });
       setOpen(false);
       onCommunityCreated();
     } catch (error: any) {
@@ -128,6 +132,29 @@ export function CreateCommunityDialog({ userId, onCommunityCreated }: CreateComm
             {errors.subject && (
               <p className="text-sm text-destructive">{errors.subject}</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="slug">Link Personalizado</Label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">.lovable.app/</span>
+              <Input
+                id="slug"
+                value={formData.slug}
+                onChange={(e) => {
+                  const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+                  setFormData({ ...formData, slug });
+                }}
+                placeholder="cva-convite"
+                className={errors.slug ? "border-destructive" : ""}
+              />
+            </div>
+            {errors.slug && (
+              <p className="text-sm text-destructive">{errors.slug}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Este será o link de cadastro da comunidade
+            </p>
           </div>
 
           <div className="space-y-2">

@@ -35,7 +35,7 @@ type InviteData = {
 
 const CommunityInvite = () => {
   const navigate = useNavigate();
-  const { inviteCode } = useParams();
+  const { slug } = useParams();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [inviteData, setInviteData] = useState<InviteData | null>(null);
@@ -68,57 +68,51 @@ const CommunityInvite = () => {
   }, []);
 
   useEffect(() => {
-    if (inviteCode) {
-      fetchInviteData(inviteCode);
+    if (slug) {
+      fetchInviteData(slug);
     }
-  }, [inviteCode]);
+  }, [slug]);
 
-  const fetchInviteData = async (code: string) => {
+  const fetchInviteData = async (communitySlug: string) => {
     try {
       setLoading(true);
 
-      const { data: invitation, error: inviteError } = await supabase
-        .from("community_invitations")
+      // Fetch community by slug
+      const { data: community, error: communityError } = await supabase
+        .from("communities")
         .select(`
           id,
-          community_id,
-          invited_by,
-          used_by,
-          communities (
-            id,
-            name,
-            subject,
-            description,
-            cover_image_url
-          ),
-          profiles!community_invitations_invited_by_fkey (
+          name,
+          subject,
+          description,
+          cover_image_url,
+          created_by,
+          profiles!communities_created_by_fkey (
             name,
             avatar_url
           )
         `)
-        .eq("invite_code", code)
+        .eq("slug", communitySlug)
         .single();
 
-      if (inviteError || !invitation) {
-        toast.error("Convite inválido ou expirado");
-        navigate("/");
-        return;
-      }
-
-      if (invitation.used_by) {
-        toast.error("Este convite já foi utilizado");
+      if (communityError || !community) {
+        toast.error("Comunidade não encontrada");
         navigate("/");
         return;
       }
 
       setInviteData({
-        community: Array.isArray(invitation.communities)
-          ? invitation.communities[0]
-          : invitation.communities,
-        inviter: Array.isArray(invitation.profiles)
-          ? invitation.profiles[0]
-          : invitation.profiles,
-        inviteId: invitation.id,
+        community: {
+          id: community.id,
+          name: community.name,
+          subject: community.subject,
+          description: community.description,
+          cover_image_url: community.cover_image_url,
+        },
+        inviter: Array.isArray(community.profiles)
+          ? community.profiles[0]
+          : community.profiles,
+        inviteId: community.id,
       });
     } catch (error: any) {
       console.error("Error fetching invite:", error);
@@ -148,18 +142,15 @@ const CommunityInvite = () => {
           user_id: user.id,
         });
 
-      if (memberError) throw memberError;
-
-      // Mark invitation as used
-      const { error: updateError } = await supabase
-        .from("community_invitations")
-        .update({
-          used_by: user.id,
-          used_at: new Date().toISOString(),
-        })
-        .eq("id", inviteData.inviteId);
-
-      if (updateError) throw updateError;
+      if (memberError) {
+        // Check if user is already a member
+        if (memberError.code === '23505') {
+          toast.info("Você já é membro desta comunidade!");
+          navigate("/communities");
+          return;
+        }
+        throw memberError;
+      }
 
       // Add user to all visible groups in the community
       const { data: visibleGroups, error: groupsError } = await supabase
@@ -180,7 +171,9 @@ const CommunityInvite = () => {
           .from("group_members")
           .insert(groupMemberships);
 
-        if (groupMemberError) throw groupMemberError;
+        if (groupMemberError && groupMemberError.code !== '23505') {
+          throw groupMemberError;
+        }
       }
 
       toast.success("Você entrou na comunidade e em todos os grupos visíveis!");
@@ -208,7 +201,7 @@ const CommunityInvite = () => {
           data: {
             name: validated.name,
           },
-          emailRedirectTo: `${window.location.origin}/invite/${inviteCode}`,
+          emailRedirectTo: `${window.location.origin}/communities`,
         },
       });
 
@@ -239,19 +232,8 @@ const CommunityInvite = () => {
           user_id: authData.user.id,
         });
 
-      if (memberError) throw memberError;
-
-      // Mark invitation as used
-      const { error: updateError } = await supabase
-        .from("community_invitations")
-        .update({
-          used_by: authData.user.id,
-          used_at: new Date().toISOString(),
-        })
-        .eq("id", inviteData?.inviteId);
-
-      if (updateError) {
-        console.error("Error updating invitation:", updateError);
+      if (memberError && memberError.code !== '23505') {
+        throw memberError;
       }
 
       // Add user to all visible groups in the community
@@ -273,7 +255,9 @@ const CommunityInvite = () => {
           .from("group_members")
           .insert(groupMemberships);
 
-        if (groupMemberError) throw groupMemberError;
+        if (groupMemberError && groupMemberError.code !== '23505') {
+          throw groupMemberError;
+        }
       }
 
       toast.success("Conta criada! Você já faz parte da comunidade e de todos os grupos visíveis.");
