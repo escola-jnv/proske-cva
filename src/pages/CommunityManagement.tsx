@@ -48,6 +48,7 @@ type Group = {
   member_count: number;
   last_message?: string | null;
   last_message_time?: string | null;
+  last_message_sender?: string | null;
 };
 
 type Course = {
@@ -157,11 +158,22 @@ const CommunityManagement = () => {
           // Fetch last message
           const { data: lastMessageData } = await supabase
             .from("messages")
-            .select("content, created_at")
+            .select("content, created_at, user_id")
             .eq("group_id", group.id)
             .order("created_at", { ascending: false })
             .limit(1)
             .single();
+
+          // Fetch sender profile if message exists
+          let senderName = null;
+          if (lastMessageData?.user_id) {
+            const { data: profileData } = await supabase
+              .from("profiles")
+              .select("name")
+              .eq("id", lastMessageData.user_id)
+              .single();
+            senderName = profileData?.name || null;
+          }
 
           return {
             id: group.id,
@@ -170,6 +182,7 @@ const CommunityManagement = () => {
             member_count: count || 0,
             last_message: lastMessageData?.content || null,
             last_message_time: lastMessageData?.created_at || null,
+            last_message_sender: senderName,
           };
         })
       );
@@ -587,7 +600,14 @@ const CommunityManagement = () => {
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground truncate">
-                          {group.last_message || group.description || "Nenhuma mensagem ainda"}
+                          {group.last_message ? (
+                            <>
+                              <span className="font-medium">{group.last_message_sender || "Usuário"}:</span>{" "}
+                              {group.last_message}
+                            </>
+                          ) : (
+                            group.description || "Nenhuma mensagem ainda"
+                          )}
                         </p>
                       </div>
 
