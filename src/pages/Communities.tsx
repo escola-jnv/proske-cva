@@ -7,11 +7,15 @@ import { LogOut, Moon, Sun, Plus } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 
-type Community = {
+type ConversationGroup = {
   id: string;
   name: string;
   description: string;
-  subject: string;
+  community_id: string;
+  community?: {
+    name: string;
+    subject: string;
+  };
   member_count?: number;
   message_count?: number;
 };
@@ -28,7 +32,7 @@ const Communities = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [communities, setCommunities] = useState<Community[]>([]);
+  const [groups, setGroups] = useState<ConversationGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
@@ -49,10 +53,10 @@ const Communities = () => {
       if (!currentSession?.user) {
         navigate("/auth");
       } else {
-        // Fetch profile and communities after auth change
+        // Fetch profile and groups after auth change
         setTimeout(() => {
           fetchProfile(currentSession.user.id);
-          fetchCommunities();
+          fetchUserGroups();
         }, 0);
       }
     });
@@ -66,7 +70,7 @@ const Communities = () => {
         navigate("/auth");
       } else {
         fetchProfile(currentSession.user.id);
-        fetchCommunities();
+        fetchUserGroups();
       }
       
       setLoading(false);
@@ -90,40 +94,71 @@ const Communities = () => {
     }
   };
 
-  const fetchCommunities = async () => {
+  const fetchUserGroups = async () => {
     try {
-      const { data, error } = await supabase
-        .from("communities")
-        .select("*")
+      if (!user?.id) return;
+
+      // Get groups where the user is a member
+      const { data: membershipData, error: membershipError } = await supabase
+        .from("group_members" as any)
+        .select("group_id")
+        .eq("user_id", user.id);
+
+      if (membershipError) throw membershipError;
+
+      const groupIds = membershipData?.map((m: any) => m.group_id) || [];
+
+      if (groupIds.length === 0) {
+        setGroups([]);
+        return;
+      }
+
+      // Get group details with community info
+      const { data: groupsData, error: groupsError } = await supabase
+        .from("conversation_groups" as any)
+        .select(`
+          *,
+          communities:community_id (
+            name,
+            subject
+          )
+        `)
+        .in("id", groupIds)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (groupsError) throw groupsError;
 
-      // Get member counts for each community
-      const communitiesWithCounts = await Promise.all(
-        (data || []).map(async (community) => {
+      // Get member and message counts
+      const groupsWithCounts = await Promise.all(
+        (groupsData || []).map(async (group: any) => {
           const { count: memberCount } = await supabase
-            .from("community_members")
+            .from("group_members" as any)
             .select("*", { count: "exact", head: true })
-            .eq("community_id", community.id);
+            .eq("group_id", group.id);
 
           const { count: messageCount } = await supabase
-            .from("messages")
+            .from("messages" as any)
             .select("*", { count: "exact", head: true })
-            .eq("community_id", community.id);
+            .eq("group_id", group.id);
 
           return {
-            ...community,
+            id: group.id,
+            name: group.name,
+            description: group.description,
+            community_id: group.community_id,
+            community: Array.isArray(group.communities) 
+              ? group.communities[0] 
+              : group.communities,
             member_count: memberCount || 0,
             message_count: messageCount || 0,
           };
         })
       );
 
-      setCommunities(communitiesWithCounts);
+      setGroups(groupsWithCounts);
     } catch (error: any) {
-      console.error("Error fetching communities:", error);
-      toast.error("Erro ao carregar comunidades");
+      console.error("Error fetching groups:", error);
+      toast.error("Erro ao carregar grupos");
     }
   };
 
@@ -192,16 +227,16 @@ const Communities = () => {
               Bem-vindo, {profile?.name || user?.user_metadata?.name || "estudante"}
             </h2>
             <p className="text-xl text-muted-foreground">
-              {communities.length > 0 
-                ? "Suas comunidades de aprendizado"
-                : "Nenhuma comunidade disponível ainda"}
+              {groups.length > 0 
+                ? "Seus grupos de conversa"
+                : "Você ainda não faz parte de nenhum grupo"}
             </p>
           </div>
 
-          {/* Communities Grid */}
+          {/* Groups Grid */}
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Real communities from database */}
-            {communities.map((community) => {
+            {/* User's conversation groups */}
+            {groups.map((group) => {
               const subjectEmojis: Record<string, string> = {
                 matemática: "📚",
                 redação: "✍️",
@@ -211,44 +246,36 @@ const Communities = () => {
                 inglês: "🌐",
               };
               
-              const emoji = subjectEmojis[community.subject.toLowerCase()] || "📚";
+              const emoji = subjectEmojis[group.community?.subject?.toLowerCase() || ""] || "💬";
               
               return (
-                <Card key={community.id} className="p-8 space-y-4 transition-gentle hover:shadow-lg">
+                <Card key={group.id} className="p-8 space-y-4 transition-gentle hover:shadow-lg">
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                     <span className="text-2xl">{emoji}</span>
                   </div>
-                  <h3 className="text-xl font-medium">{community.name}</h3>
+                  <div>
+                    <h3 className="text-xl font-medium">{group.name}</h3>
+                    {group.community && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {group.community.name}
+                      </p>
+                    )}
+                  </div>
                   <p className="text-muted-foreground">
-                    {community.description || "Uma comunidade de aprendizado"}
+                    {group.description || "Um grupo de aprendizado"}
                   </p>
                   <div className="flex items-center gap-2 text-sm text-caption">
-                    <span>{community.member_count || 0} membros</span>
+                    <span>{group.member_count || 0} membros</span>
                     <span>•</span>
-                    <span>{community.message_count || 0} mensagens</span>
+                    <span>{group.message_count || 0} mensagens</span>
                   </div>
                   <Button className="w-full transition-gentle bg-primary hover:bg-primary/90">
-                    Entrar na conversa
+                    Abrir conversa
                   </Button>
                 </Card>
               );
             })}
 
-            {/* Create New Community Card */}
-            <Card className="p-8 flex flex-col items-center justify-center space-y-4 border-2 border-dashed transition-gentle hover:shadow-lg hover:border-primary/50">
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                <Plus className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div className="text-center space-y-2">
-                <h3 className="text-xl font-medium">Criar nova comunidade</h3>
-                <p className="text-sm text-muted-foreground">
-                  Crie um espaço de troca gentil e produtiva
-                </p>
-              </div>
-              <Button variant="outline" className="transition-gentle">
-                Em breve
-              </Button>
-            </Card>
           </div>
 
           {/* Info Box */}
