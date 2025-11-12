@@ -80,18 +80,7 @@ const CommunityInvite = () => {
       // Fetch community by slug
       const { data: community, error: communityError } = await supabase
         .from("communities")
-        .select(`
-          id,
-          name,
-          subject,
-          description,
-          cover_image_url,
-          created_by,
-          profiles!communities_created_by_fkey (
-            name,
-            avatar_url
-          )
-        `)
+        .select("id, name, subject, description, cover_image_url, created_by")
         .eq("slug", communitySlug)
         .single();
 
@@ -99,6 +88,17 @@ const CommunityInvite = () => {
         toast.error("Comunidade não encontrada");
         navigate("/");
         return;
+      }
+
+      // Fetch creator profile
+      const { data: creatorProfile, error: profileError } = await supabase
+        .from("profiles")
+        .select("name, avatar_url")
+        .eq("id", community.created_by)
+        .single();
+
+      if (profileError) {
+        console.error("Error fetching creator profile:", profileError);
       }
 
       setInviteData({
@@ -109,9 +109,7 @@ const CommunityInvite = () => {
           description: community.description,
           cover_image_url: community.cover_image_url,
         },
-        inviter: Array.isArray(community.profiles)
-          ? community.profiles[0]
-          : community.profiles,
+        inviter: creatorProfile || { name: "Professor", avatar_url: null },
         inviteId: community.id,
       });
     } catch (error: any) {

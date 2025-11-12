@@ -25,9 +25,22 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const location = useLocation();
   
-  // Routes that should show the sidebar
-  const isInvitePage = location.pathname !== "/" && location.pathname !== "/auth" && !location.pathname.startsWith("/communities");
-  const showSidebar = !["/", "/auth"].includes(location.pathname) && !isInvitePage;
+  // List of known app routes (not invite pages)
+  const knownRoutes = [
+    "/",
+    "/auth",
+    "/communities",
+    "/profile",
+    "/events",
+    "/groups",
+    "/courses",
+    "/dev-tools",
+    "/financial"
+  ];
+  
+  // If pathname doesn't start with any known route, it's likely an invite page (slug)
+  const isInvitePage = !knownRoutes.some(route => location.pathname.startsWith(route));
+  const showSidebar = !isInvitePage && !["/", "/auth"].includes(location.pathname);
 
   if (!showSidebar) {
     return (
