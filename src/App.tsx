@@ -10,7 +10,6 @@ import Auth from "./pages/Auth";
 import Communities from "./pages/Communities";
 import Profile from "./pages/Profile";
 import CommunityManagement from "./pages/CommunityManagement";
-import CommunityInvite from "./pages/CommunityInvite";
 import GroupChat from "./pages/GroupChat";
 import CourseView from "./pages/CourseView";
 import CourseManagement from "./pages/CourseManagement";
@@ -25,29 +24,13 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const location = useLocation();
   
-  // List of known app routes (not invite pages)
-  const knownRoutes = [
-    "/",
-    "/auth",
-    "/communities",
-    "/profile",
-    "/events",
-    "/groups",
-    "/courses",
-    "/dev-tools",
-    "/financial"
-  ];
-  
-  // If pathname doesn't start with any known route, it's likely an invite page (slug)
-  const isInvitePage = !knownRoutes.some(route => location.pathname.startsWith(route));
-  const showSidebar = !isInvitePage && !["/", "/auth"].includes(location.pathname);
+  const showSidebar = !["/", "/auth"].includes(location.pathname);
 
   if (!showSidebar) {
     return (
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/:slug" element={<CommunityInvite />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     );
