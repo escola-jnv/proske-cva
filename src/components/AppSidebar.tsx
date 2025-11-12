@@ -235,7 +235,11 @@ export function AppSidebar() {
                 return (
                   <div key={community.id}>
                     <SidebarMenuItem>
-                      <SidebarMenuButton className="w-full cursor-default hover:bg-transparent">
+                      <SidebarMenuButton 
+                        className="w-full cursor-pointer"
+                        onClick={() => navigate(`/communities/${community.id}/manage`)}
+                        isActive={location.pathname.includes(`/communities/${community.id}/manage`)}
+                      >
                         <div className="flex items-center gap-2 flex-1">
                           <BookOpen className="h-4 w-4 flex-shrink-0" />
                           {!isCollapsed && (
