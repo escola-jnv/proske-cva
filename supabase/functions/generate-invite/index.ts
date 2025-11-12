@@ -12,17 +12,30 @@ serve(async (req) => {
   }
 
   try {
+    // Get JWT token from Authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Token de autorização ausente" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Create authenticated client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       {
         global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
+          headers: { Authorization: authHeader },
         },
       }
     );
 
-    // Get user
+    // Get user from token
     const {
       data: { user },
       error: userError,
@@ -38,6 +51,8 @@ serve(async (req) => {
         }
       );
     }
+
+    console.log("User authenticated:", user.id);
 
     const { communityId } = await req.json();
 
