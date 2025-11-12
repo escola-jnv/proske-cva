@@ -116,6 +116,20 @@ export default function DevTools() {
     inviteCode: string | null;
   }>({ open: false, communityId: null, inviteCode: null });
 
+  const [linkDialog, setLinkDialog] = useState<{
+    open: boolean;
+    userId: string | null;
+    type: "communities" | "groups" | "courses" | null;
+  }>({ open: false, userId: null, type: null });
+
+  const [userLinks, setUserLinks] = useState<{
+    communities: string[];
+    groups: string[];
+    courses: string[];
+  }>({ communities: [], groups: [], courses: [] });
+
+  const [availableCourses, setAvailableCourses] = useState<Array<{ id: string; name: string }>>([]);
+
   const [importLoading, setImportLoading] = useState(false);
   const [usersCSV, setUsersCSV] = useState("");
   const [lessonsCSV, setLessonsCSV] = useState("");
@@ -164,7 +178,7 @@ export default function DevTools() {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [profilesRes, communitiesRes, groupsRes, eventsRes] = await Promise.all([
+      const [profilesRes, communitiesRes, groupsRes, eventsRes, coursesRes] = await Promise.all([
         supabase.from("profiles").select("*").order("name"),
         supabase.from("communities").select("*").order("name"),
         supabase.from("conversation_groups").select(`
@@ -174,7 +188,10 @@ export default function DevTools() {
           )
         `).order("name"),
         supabase.from("events").select("*").order("event_date", { ascending: false }),
+        supabase.from("courses").select("id, name").order("name"),
       ]);
+
+      if (coursesRes.data) setAvailableCourses(coursesRes.data);
 
       // Fetch roles for each profile
       if (profilesRes.data) {
@@ -406,9 +423,69 @@ export default function DevTools() {
     }
   };
 
+  const handleLinkUser = async (userId: string, type: "communities" | "groups" | "courses") => {
+    try {
+      // Fetch current links
+      if (type === "communities") {
+        const { data } = await supabase
+          .from("community_members")
+          .select("community_id")
+          .eq("user_id", userId);
+        setUserLinks(prev => ({ ...prev, communities: data?.map(d => d.community_id) || [] }));
+      } else if (type === "groups") {
+        const { data } = await supabase
+          .from("group_members")
+          .select("group_id")
+          .eq("user_id", userId);
+        setUserLinks(prev => ({ ...prev, groups: data?.map(d => d.group_id) || [] }));
+      }
+      
+      setLinkDialog({ open: true, userId, type });
+    } catch (error) {
+      console.error("Error fetching user links:", error);
+      toast.error("Erro ao carregar vínculos");
+    }
+  };
+
+  const handleToggleLink = async (itemId: string) => {
+    const { userId, type } = linkDialog;
+    if (!userId || !type) return;
+
+    try {
+      const currentLinks = userLinks[type];
+      const isLinked = currentLinks.includes(itemId);
+
+      if (type === "communities") {
+        if (isLinked) {
+          await supabase.from("community_members").delete().eq("user_id", userId).eq("community_id", itemId);
+          setUserLinks(prev => ({ ...prev, communities: prev.communities.filter(id => id !== itemId) }));
+          toast.success("Usuário removido da comunidade");
+        } else {
+          await supabase.from("community_members").insert({ user_id: userId, community_id: itemId });
+          setUserLinks(prev => ({ ...prev, communities: [...prev.communities, itemId] }));
+          toast.success("Usuário adicionado à comunidade");
+        }
+      } else if (type === "groups") {
+        if (isLinked) {
+          await supabase.from("group_members").delete().eq("user_id", userId).eq("group_id", itemId);
+          setUserLinks(prev => ({ ...prev, groups: prev.groups.filter(id => id !== itemId) }));
+          toast.success("Usuário removido do grupo");
+        } else {
+          await supabase.from("group_members").insert({ user_id: userId, group_id: itemId });
+          setUserLinks(prev => ({ ...prev, groups: [...prev.groups, itemId] }));
+          toast.success("Usuário adicionado ao grupo");
+        }
+      }
+    } catch (error: any) {
+      console.error("Error toggling link:", error);
+      toast.error(error.message || "Erro ao atualizar vínculo");
+    }
+  };
+
   // Filter data based on search
   const filteredProfiles = profiles.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.phone?.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
@@ -696,16 +773,17 @@ export default function DevTools() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Telefone</TableHead>
                     <TableHead>Cidade</TableHead>
-                    <TableHead className="w-[100px]">Ações</TableHead>
+                    <TableHead className="w-[150px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredProfiles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>
@@ -713,6 +791,7 @@ export default function DevTools() {
                     filteredProfiles.map((profile) => (
                       <TableRow key={profile.id}>
                         <TableCell className="font-medium">{profile.name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{profile.email || "-"}</TableCell>
                         <TableCell>
                           <Badge variant={
                             profile.role === "admin" ? "default" : 
@@ -727,18 +806,36 @@ export default function DevTools() {
                         <TableCell>{profile.phone || "-"}</TableCell>
                         <TableCell>{profile.city || "-"}</TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => handleEdit("profile", profile)}
+                              title="Editar"
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => handleLinkUser(profile.id, "communities")}
+                              title="Vincular Comunidades"
+                            >
+                              <FolderOpen className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleLinkUser(profile.id, "groups")}
+                              title="Vincular Grupos"
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => handleDelete("profile", profile.id)}
+                              title="Deletar"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1302,6 +1399,51 @@ export default function DevTools() {
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={linkDialog.open} onOpenChange={(open) => !open && setLinkDialog({ open: false, userId: null, type: null })}>
+        <DialogContent className="max-w-2xl max-h-[600px] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Vincular {linkDialog.type === "communities" ? "Comunidades" : linkDialog.type === "groups" ? "Grupos" : "Cursos"}
+            </DialogTitle>
+            <DialogDescription>
+              Selecione os itens para vincular ou desvincular o usuário
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {linkDialog.type === "communities" && communities.map((community) => (
+              <div key={community.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <p className="font-medium">{community.name}</p>
+                  <p className="text-sm text-muted-foreground">{community.subject}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant={userLinks.communities.includes(community.id) ? "default" : "outline"}
+                  onClick={() => handleToggleLink(community.id)}
+                >
+                  {userLinks.communities.includes(community.id) ? "Remover" : "Adicionar"}
+                </Button>
+              </div>
+            ))}
+            {linkDialog.type === "groups" && groups.map((group) => (
+              <div key={group.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <p className="font-medium">{group.name}</p>
+                  <p className="text-sm text-muted-foreground">{group.community_name}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant={userLinks.groups.includes(group.id) ? "default" : "outline"}
+                  onClick={() => handleToggleLink(group.id)}
+                >
+                  {userLinks.groups.includes(group.id) ? "Remover" : "Adicionar"}
+                </Button>
+              </div>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
