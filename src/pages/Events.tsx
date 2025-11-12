@@ -17,6 +17,8 @@ type Event = {
   duration_minutes: number;
   my_status: string;
   group_names: string[];
+  created_by: string;
+  community_id: string;
 };
 
 const Events = () => {
@@ -24,6 +26,7 @@ const Events = () => {
   const [user, setUser] = useState<User | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
 
   useEffect(() => {
     const {
@@ -53,6 +56,14 @@ const Events = () => {
 
   const fetchEvents = async (userId: string) => {
     try {
+      // Fetch user roles
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+      
+      setUserRoles(rolesData?.map(r => r.role) || []);
+
       // Fetch events where user is a participant
       const { data: eventsData, error } = await supabase
         .from("events")
@@ -62,6 +73,8 @@ const Events = () => {
           description,
           event_date,
           duration_minutes,
+          created_by,
+          community_id,
           event_participants!inner(status),
           event_groups(
             conversation_groups(name)
@@ -79,6 +92,8 @@ const Events = () => {
         description: event.description,
         event_date: event.event_date,
         duration_minutes: event.duration_minutes,
+        created_by: event.created_by,
+        community_id: event.community_id,
         my_status: event.event_participants[0]?.status || "pending",
         group_names: event.event_groups?.map((eg: any) => eg.conversation_groups?.name).filter(Boolean) || [],
       }));
@@ -148,6 +163,7 @@ const Events = () => {
                     key={event.id}
                     event={event}
                     userId={user?.id || ""}
+                    userRoles={userRoles}
                     onUpdate={() => fetchEvents(user?.id || "")}
                   />
                 ))
@@ -169,6 +185,7 @@ const Events = () => {
                     key={event.id}
                     event={event}
                     userId={user?.id || ""}
+                    userRoles={userRoles}
                     onUpdate={() => fetchEvents(user?.id || "")}
                   />
                 ))

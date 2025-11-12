@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Calendar, Clock, Check, X } from "lucide-react";
+import { Calendar, Clock, Check, X, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { format, isPast, isToday, isTomorrow, isThisWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { EditEventDialog } from "./EditEventDialog";
 
 type EventCardProps = {
   event: {
@@ -16,14 +18,24 @@ type EventCardProps = {
     duration_minutes: number;
     group_names?: string[];
     my_status?: string;
+    created_by?: string;
+    community_id?: string;
   };
   userId: string;
+  userRoles?: string[];
   onUpdate?: () => void;
 };
 
-export const EventCard = ({ event, userId, onUpdate }: EventCardProps) => {
+export const EventCard = ({ event, userId, userRoles = [], onUpdate }: EventCardProps) => {
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const eventDate = new Date(event.event_date);
   const isPastEvent = isPast(eventDate);
+  
+  const canEdit = !isPastEvent && (
+    event.created_by === userId || 
+    userRoles.includes('teacher') || 
+    userRoles.includes('admin')
+  );
 
   const getDateLabel = () => {
     if (isToday(eventDate)) return "Hoje";
@@ -69,19 +81,31 @@ export const EventCard = ({ event, userId, onUpdate }: EventCardProps) => {
   };
 
   return (
-    <Card className="p-4 hover:bg-accent/50 transition-colors">
-      <div className="space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1">
-            <h3 className="font-semibold text-lg">{event.title}</h3>
-            {event.description && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {event.description}
-              </p>
-            )}
+    <>
+      <Card className="p-4 hover:bg-accent/50 transition-colors">
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg">{event.title}</h3>
+              {event.description && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  {event.description}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {canEdit && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditDialogOpen(true)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              )}
+              {getStatusBadge()}
+            </div>
           </div>
-          {getStatusBadge()}
-        </div>
 
         <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
           <div className="flex items-center gap-1.5">
@@ -128,7 +152,19 @@ export const EventCard = ({ event, userId, onUpdate }: EventCardProps) => {
             </Button>
           </div>
         )}
-      </div>
-    </Card>
+        </div>
+      </Card>
+
+      {canEdit && event.community_id && (
+        <EditEventDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          eventId={event.id}
+          communityId={event.community_id}
+          userId={userId}
+          onSuccess={onUpdate}
+        />
+      )}
+    </>
   );
 };
