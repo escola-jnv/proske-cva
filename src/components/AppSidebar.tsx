@@ -22,7 +22,11 @@ import {
   Settings,
   GraduationCap,
   Calendar,
-  DollarSign
+  DollarSign,
+  Users,
+  MessageSquare,
+  CalendarDays,
+  Upload
 } from "lucide-react";
 
 type Community = {
@@ -311,6 +315,7 @@ export function AppSidebar() {
                   {!isCollapsed && <span>Financeiro</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => navigate("/dev-tools")}
@@ -320,6 +325,60 @@ export function AppSidebar() {
                   {!isCollapsed && <span>Dev Tools</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              
+              {!isCollapsed && (
+                <SidebarMenuSub>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      onClick={() => navigate("/dev-tools?tab=users")}
+                      isActive={location.pathname === "/dev-tools" && location.search.includes("tab=users")}
+                    >
+                      <Users className="h-3 w-3" />
+                      <span>Usuários</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      onClick={() => navigate("/dev-tools?tab=communities")}
+                      isActive={location.pathname === "/dev-tools" && location.search.includes("tab=communities")}
+                    >
+                      <BookOpen className="h-3 w-3" />
+                      <span>Comunidades</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      onClick={() => navigate("/dev-tools?tab=groups")}
+                      isActive={location.pathname === "/dev-tools" && location.search.includes("tab=groups")}
+                    >
+                      <MessageSquare className="h-3 w-3" />
+                      <span>Grupos</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      onClick={() => navigate("/dev-tools?tab=events")}
+                      isActive={location.pathname === "/dev-tools" && location.search.includes("tab=events")}
+                    >
+                      <CalendarDays className="h-3 w-3" />
+                      <span>Eventos</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      onClick={() => navigate("/dev-tools?tab=import")}
+                      isActive={location.pathname === "/dev-tools" && location.search.includes("tab=import")}
+                    >
+                      <Upload className="h-3 w-3" />
+                      <span>Importação</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              )}
             </SidebarMenu>
           </SidebarGroup>
         )}

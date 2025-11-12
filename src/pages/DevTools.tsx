@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,6 +83,7 @@ type Event = {
 
 export default function DevTools() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   
@@ -108,6 +109,13 @@ export default function DevTools() {
   const [importLoading, setImportLoading] = useState(false);
   const [usersCSV, setUsersCSV] = useState("");
   const [lessonsCSV, setLessonsCSV] = useState("");
+  
+  const activeTab = searchParams.get("tab") || "users";
+
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value });
+    setSearchTerm("");
+  };
 
   useEffect(() => {
     checkAdminAndFetchData();
@@ -542,16 +550,16 @@ export default function DevTools() {
         </Card>
       </div>
 
-      <Tabs defaultValue="profiles" className="space-y-4" onValueChange={() => setSearchTerm("")}>
+      <Tabs value={activeTab} className="space-y-4" onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="profiles">Usuários</TabsTrigger>
+          <TabsTrigger value="users">Usuários</TabsTrigger>
           <TabsTrigger value="communities">Comunidades</TabsTrigger>
           <TabsTrigger value="groups">Grupos</TabsTrigger>
           <TabsTrigger value="events">Eventos</TabsTrigger>
           <TabsTrigger value="import">Importação CSV</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="profiles" className="space-y-4">
+        <TabsContent value="users" className="space-y-4">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
