@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Communities from "./pages/Communities";
 import Profile from "./pages/Profile";
 import CommunityManagement from "./pages/CommunityManagement";
+import CommunityInvite from "./pages/CommunityInvite";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/communities" element={<Communities />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/communities/:communityId/manage" element={<CommunityManagement />} />
+          <Route path="/invite/:inviteCode" element={<CommunityInvite />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

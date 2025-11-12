@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Moon, Sun, Plus, User as UserIcon } from "lucide-react";
+import { LogOut, Moon, Sun, Plus, User as UserIcon, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 import { ProfileSheet } from "@/components/ProfileSheet";
@@ -51,6 +51,7 @@ const Communities = () => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>("student");
+  const [generatingInvite, setGeneratingInvite] = useState<string | null>(null);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
@@ -281,6 +282,28 @@ const Communities = () => {
     }
   };
 
+  const handleGenerateInvite = async (communityId: string) => {
+    try {
+      setGeneratingInvite(communityId);
+
+      const { data, error } = await supabase.functions.invoke("generate-invite", {
+        body: { communityId },
+      });
+
+      if (error) throw error;
+
+      const inviteUrl = `${window.location.origin}/invite/${data.inviteCode}`;
+      
+      await navigator.clipboard.writeText(inviteUrl);
+      toast.success("Link copiado para área de transferência!");
+    } catch (error: any) {
+      console.error("Error generating invite:", error);
+      toast.error("Erro ao gerar convite: " + error.message);
+    } finally {
+      setGeneratingInvite(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -415,12 +438,23 @@ const Communities = () => {
                           <span>•</span>
                           <span>{community.message_count} conversas</span>
                         </div>
-                        <Button
-                          className="w-full"
-                          onClick={() => navigate(`/communities/${community.id}/manage`)}
-                        >
-                          Gerenciar
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1 gap-2"
+                            onClick={() => handleGenerateInvite(community.id)}
+                            disabled={generatingInvite === community.id}
+                          >
+                            <LinkIcon className="h-4 w-4" />
+                            {generatingInvite === community.id ? "Gerando..." : "Convidar"}
+                          </Button>
+                          <Button
+                            className="flex-1"
+                            onClick={() => navigate(`/communities/${community.id}/manage`)}
+                          >
+                            Gerenciar
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   );
