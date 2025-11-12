@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { LogOut, Moon, Sun, Plus, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
+import { ProfileSheet } from "@/components/ProfileSheet";
+import { CreateCommunityDialog } from "@/components/CreateCommunityDialog";
 
 type ConversationGroup = {
   id: string;
@@ -18,6 +20,14 @@ type ConversationGroup = {
   };
   member_count?: number;
   message_count?: number;
+};
+
+type MyCommunity = {
+  id: string;
+  name: string;
+  subject: string;
+  description: string | null;
+  group_count: number;
 };
 
 type Profile = {
@@ -33,8 +43,11 @@ const Communities = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [groups, setGroups] = useState<ConversationGroup[]>([]);
+  const [myCommunities, setMyCommunities] = useState<MyCommunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string>("student");
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
@@ -56,7 +69,9 @@ const Communities = () => {
         // Fetch profile and groups after auth change
         setTimeout(() => {
           fetchProfile(currentSession.user.id);
+          fetchUserRole(currentSession.user.id);
           fetchUserGroups();
+          fetchMyCommunities(currentSession.user.id);
         }, 0);
       }
     });
@@ -70,7 +85,9 @@ const Communities = () => {
         navigate("/auth");
       } else {
         fetchProfile(currentSession.user.id);
+        fetchUserRole(currentSession.user.id);
         fetchUserGroups();
+        fetchMyCommunities(currentSession.user.id);
       }
       
       setLoading(false);
@@ -78,6 +95,21 @@ const Communities = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const fetchUserRole = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .single();
+
+      if (error) throw error;
+      setUserRole(data?.role || "student");
+    } catch (error: any) {
+      console.error("Error fetching role:", error);
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -169,6 +201,39 @@ const Communities = () => {
     document.documentElement.classList.toggle("dark", newTheme === "dark");
   };
 
+  const fetchMyCommunities = async (userId: string) => {
+    try {
+      const { data: communitiesData, error } = await supabase
+        .from("communities")
+        .select("*")
+        .eq("created_by", userId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const communitiesWithCounts = await Promise.all(
+        (communitiesData || []).map(async (community) => {
+          const { count } = await supabase
+            .from("conversation_groups" as any)
+            .select("*", { count: "exact", head: true })
+            .eq("community_id", community.id);
+
+          return {
+            id: community.id,
+            name: community.name,
+            subject: community.subject,
+            description: community.description,
+            group_count: count || 0,
+          };
+        })
+      );
+
+      setMyCommunities(communitiesWithCounts);
+    } catch (error: any) {
+      console.error("Error fetching my communities:", error);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -209,7 +274,7 @@ const Communities = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/profile")}
+              onClick={() => setProfileSheetOpen(true)}
               className="transition-gentle"
             >
               <UserIcon className="h-5 w-5" />
@@ -230,16 +295,72 @@ const Communities = () => {
       <main className="container mx-auto px-6 py-12">
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Welcome Section */}
-          <div className="space-y-4">
-            <h2 className="text-4xl font-medium">
-              Bem-vindo, {profile?.name || user?.user_metadata?.name || "estudante"}
-            </h2>
-            <p className="text-xl text-muted-foreground">
-              {groups.length > 0 
-                ? "Seus grupos de conversa"
-                : "Você ainda não faz parte de nenhum grupo"}
-            </p>
+          <div className="flex items-center justify-between">
+            <div className="space-y-4">
+              <h2 className="text-4xl font-medium">
+                Bem-vindo, {profile?.name || user?.user_metadata?.name || "estudante"}
+              </h2>
+              <p className="text-xl text-muted-foreground">
+                {groups.length > 0 
+                  ? "Seus grupos de conversa"
+                  : "Você ainda não faz parte de nenhum grupo"}
+              </p>
+            </div>
+            {(userRole === "teacher" || userRole === "admin") && user && (
+              <CreateCommunityDialog
+                userId={user.id}
+                onCommunityCreated={() => {
+                  fetchUserGroups();
+                  fetchMyCommunities(user.id);
+                }}
+              />
+            )}
           </div>
+
+          {/* My Communities (for teachers/admins) */}
+          {(userRole === "teacher" || userRole === "admin") && myCommunities.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-2xl font-medium">Minhas Comunidades</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                {myCommunities.map((community) => {
+                  const subjectEmojis: Record<string, string> = {
+                    matemática: "📚",
+                    redação: "✍️",
+                    história: "🌍",
+                    ciências: "🔬",
+                    português: "📖",
+                    inglês: "🌐",
+                  };
+                  
+                  const emoji = subjectEmojis[community.subject.toLowerCase()] || "📚";
+                  
+                  return (
+                    <Card key={community.id} className="p-6 space-y-4">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-2xl">{emoji}</span>
+                      </div>
+                      <div>
+                        <h4 className="text-xl font-medium">{community.name}</h4>
+                        <p className="text-sm text-muted-foreground">{community.subject}</p>
+                      </div>
+                      {community.description && (
+                        <p className="text-sm text-muted-foreground">{community.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 text-sm text-caption">
+                        <span>{community.group_count} grupos</span>
+                      </div>
+                      <Button
+                        className="w-full"
+                        onClick={() => navigate(`/communities/${community.id}/manage`)}
+                      >
+                        Gerenciar
+                      </Button>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Groups Grid */}
           <div className="grid gap-6 md:grid-cols-2">
@@ -294,6 +415,13 @@ const Communities = () => {
           </Card>
         </div>
       </main>
+
+      {/* Profile Sheet */}
+      <ProfileSheet
+        open={profileSheetOpen}
+        onOpenChange={setProfileSheetOpen}
+        user={user}
+      />
     </div>
   );
 };
