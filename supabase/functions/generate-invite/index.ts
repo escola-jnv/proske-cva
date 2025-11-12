@@ -12,7 +12,19 @@ serve(async (req) => {
   }
 
   try {
-    // Get JWT token from Authorization header
+    // Create client with service role for admin operations
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
+    // Create client with anon key for user authentication
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -24,7 +36,6 @@ serve(async (req) => {
       );
     }
 
-    // Create authenticated client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -32,14 +43,19 @@ serve(async (req) => {
         global: {
           headers: { Authorization: authHeader },
         },
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
       }
     );
 
-    // Get user from token
+    // Get user from JWT
+    const token = authHeader.replace("Bearer ", "");
     const {
       data: { user },
       error: userError,
-    } = await supabaseClient.auth.getUser();
+    } = await supabaseClient.auth.getUser(token);
 
     if (userError || !user) {
       console.error("Auth error:", userError);
@@ -67,7 +83,7 @@ serve(async (req) => {
     }
 
     // Verify user is the creator or has teacher/admin role
-    const { data: community, error: communityError } = await supabaseClient
+    const { data: community, error: communityError } = await supabaseAdmin
       .from("communities")
       .select("created_by")
       .eq("id", communityId)
@@ -85,7 +101,7 @@ serve(async (req) => {
     }
 
     // Check if user has permission
-    const { data: userRoles } = await supabaseClient
+    const { data: userRoles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id);
@@ -107,8 +123,8 @@ serve(async (req) => {
     // Generate unique invite code
     const inviteCode = crypto.randomUUID().split("-")[0];
 
-    // Save invitation
-    const { data: invitation, error: inviteError } = await supabaseClient
+    // Save invitation using admin client
+    const { data: invitation, error: inviteError } = await supabaseAdmin
       .from("community_invitations")
       .insert({
         community_id: communityId,
