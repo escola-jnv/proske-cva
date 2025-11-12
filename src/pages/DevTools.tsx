@@ -41,7 +41,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Pencil, Trash2, Users, FolderOpen, MessageSquare, Calendar, Search, Upload, FileText } from "lucide-react";
+import { Loader2, Pencil, Trash2, Users, FolderOpen, MessageSquare, Calendar, Search, Upload, FileText, Link2, Copy } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 type Profile = {
@@ -109,6 +109,12 @@ export default function DevTools() {
     type: "profile" | "community" | "group" | "event" | null;
     id: string | null;
   }>({ open: false, type: null, id: null });
+
+  const [inviteDialog, setInviteDialog] = useState<{
+    open: boolean;
+    communityId: string | null;
+    inviteCode: string | null;
+  }>({ open: false, communityId: null, inviteCode: null });
 
   const [importLoading, setImportLoading] = useState(false);
   const [usersCSV, setUsersCSV] = useState("");
@@ -363,6 +369,40 @@ export default function DevTools() {
     } catch (error: any) {
       console.error("Error deleting:", error);
       toast.error(error.message || "Erro ao deletar");
+    }
+  };
+
+  const handleGenerateInvite = async (communityId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Você precisa estar autenticado");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('generate-invite', {
+        body: { communityId }
+      });
+
+      if (error) throw error;
+
+      setInviteDialog({
+        open: true,
+        communityId,
+        inviteCode: data.inviteCode
+      });
+
+      toast.success("Link de convite gerado com sucesso!");
+    } catch (error: any) {
+      toast.error(`Erro ao gerar convite: ${error.message}`);
+    }
+  };
+
+  const copyInviteLink = () => {
+    if (inviteDialog.inviteCode) {
+      const link = `${window.location.origin}/invite/${inviteDialog.inviteCode}`;
+      navigator.clipboard.writeText(link);
+      toast.success("Link copiado para a área de transferência!");
     }
   };
 
@@ -739,13 +779,14 @@ export default function DevTools() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Matéria</TableHead>
                     <TableHead>Descrição</TableHead>
+                    <TableHead>Convite</TableHead>
                     <TableHead className="w-[100px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCommunities.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
                         Nenhuma comunidade encontrada
                       </TableCell>
                     </TableRow>
@@ -757,6 +798,16 @@ export default function DevTools() {
                           <Badge variant="secondary">{community.subject}</Badge>
                         </TableCell>
                         <TableCell>{community.description || "-"}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleGenerateInvite(community.id)}
+                          >
+                            <Link2 className="h-4 w-4 mr-2" />
+                            Gerar Link
+                          </Button>
+                        </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             <Button
@@ -1228,6 +1279,30 @@ export default function DevTools() {
             </Button>
             <Button onClick={handleSave}>Salvar</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={inviteDialog.open} onOpenChange={(open) => setInviteDialog({ open, communityId: null, inviteCode: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link de Convite Gerado</DialogTitle>
+            <DialogDescription>
+              Compartilhe este link para que novos usuários possam se cadastrar e entrar automaticamente na comunidade e em todos os grupos visíveis:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={inviteDialog.inviteCode ? `${window.location.origin}/invite/${inviteDialog.inviteCode}` : ""}
+                className="flex-1 px-3 py-2 border rounded-md bg-muted"
+              />
+              <Button onClick={copyInviteLink} variant="outline" size="icon">
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

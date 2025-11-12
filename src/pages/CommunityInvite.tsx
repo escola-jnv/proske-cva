@@ -140,6 +140,16 @@ const CommunityInvite = () => {
     try {
       setAccepting(true);
 
+      // Add user to community
+      const { error: memberError } = await supabase
+        .from("community_members")
+        .insert({
+          community_id: inviteData.community.id,
+          user_id: user.id,
+        });
+
+      if (memberError) throw memberError;
+
       // Mark invitation as used
       const { error: updateError } = await supabase
         .from("community_invitations")
@@ -151,7 +161,29 @@ const CommunityInvite = () => {
 
       if (updateError) throw updateError;
 
-      toast.success("Convite aceito com sucesso!");
+      // Add user to all visible groups in the community
+      const { data: visibleGroups, error: groupsError } = await supabase
+        .from("conversation_groups")
+        .select("id")
+        .eq("community_id", inviteData.community.id)
+        .eq("is_visible", true);
+
+      if (groupsError) throw groupsError;
+
+      if (visibleGroups && visibleGroups.length > 0) {
+        const groupMemberships = visibleGroups.map(group => ({
+          group_id: group.id,
+          user_id: user.id
+        }));
+
+        const { error: groupMemberError } = await supabase
+          .from("group_members")
+          .insert(groupMemberships);
+
+        if (groupMemberError) throw groupMemberError;
+      }
+
+      toast.success("Você entrou na comunidade e em todos os grupos visíveis!");
       navigate("/communities");
     } catch (error: any) {
       console.error("Error accepting invite:", error);
@@ -191,13 +223,23 @@ const CommunityInvite = () => {
         .from("profiles")
         .update({
           phone: validated.phone,
-          bio: validated.city,
+          city: validated.city,
         })
         .eq("id", authData.user.id);
 
       if (profileError) {
         console.error("Error updating profile:", profileError);
       }
+
+      // Add user to community
+      const { error: memberError } = await supabase
+        .from("community_members")
+        .insert({
+          community_id: inviteData?.community.id,
+          user_id: authData.user.id,
+        });
+
+      if (memberError) throw memberError;
 
       // Mark invitation as used
       const { error: updateError } = await supabase
@@ -212,7 +254,29 @@ const CommunityInvite = () => {
         console.error("Error updating invitation:", updateError);
       }
 
-      toast.success("Conta criada com sucesso!");
+      // Add user to all visible groups in the community
+      const { data: visibleGroups, error: groupsError } = await supabase
+        .from("conversation_groups")
+        .select("id")
+        .eq("community_id", inviteData?.community.id)
+        .eq("is_visible", true);
+
+      if (groupsError) throw groupsError;
+
+      if (visibleGroups && visibleGroups.length > 0) {
+        const groupMemberships = visibleGroups.map(group => ({
+          group_id: group.id,
+          user_id: authData.user.id
+        }));
+
+        const { error: groupMemberError } = await supabase
+          .from("group_members")
+          .insert(groupMemberships);
+
+        if (groupMemberError) throw groupMemberError;
+      }
+
+      toast.success("Conta criada! Você já faz parte da comunidade e de todos os grupos visíveis.");
       navigate("/communities");
     } catch (error: any) {
       if (error instanceof z.ZodError) {
