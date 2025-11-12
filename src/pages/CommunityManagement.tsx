@@ -299,13 +299,6 @@ const CommunityManagement = () => {
 
       <main className="container mx-auto px-6 py-12">
         <div className="max-w-4xl mx-auto space-y-8">
-          {/* Community Info */}
-          {community?.description && (
-            <Card className="p-6">
-              <p className="text-muted-foreground">{community.description}</p>
-            </Card>
-          )}
-
           {/* Groups Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
