@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { NotificationBar } from "@/components/NotificationBar";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Communities from "./pages/Communities";
@@ -41,6 +42,7 @@ const AppContent = () => {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
+          <NotificationBar />
           <main className="flex-1">
             <Routes>
               <Route path="/communities" element={<Communities />} />
