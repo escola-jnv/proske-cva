@@ -154,8 +154,10 @@ export const CreateEventDialog = ({
 
       if (membersError) throw membersError;
 
-      // Create participants (unique users only)
+      // Get unique user IDs (remove duplicates from multiple groups)
       const uniqueUserIds = [...new Set(members.map((m) => m.user_id))];
+      
+      // Create participants (upsert to avoid duplicates)
       const participants = uniqueUserIds.map((uid) => ({
         event_id: event.id,
         user_id: uid,
@@ -165,7 +167,10 @@ export const CreateEventDialog = ({
 
       const { error: participantsError } = await supabase
         .from("event_participants")
-        .insert(participants);
+        .upsert(participants, {
+          onConflict: "event_id,user_id",
+          ignoreDuplicates: false,
+        });
 
       if (participantsError) throw participantsError;
 

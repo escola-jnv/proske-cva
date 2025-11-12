@@ -183,14 +183,6 @@ export const EditEventDialog = ({
 
       if (egError) throw egError;
 
-      // Delete old participants
-      const { error: deleteParticipantsError } = await supabase
-        .from("event_participants")
-        .delete()
-        .eq("event_id", eventId);
-
-      if (deleteParticipantsError) throw deleteParticipantsError;
-
       // Get all members from selected groups
       const { data: members, error: membersError } = await supabase
         .from("group_members")
@@ -199,8 +191,10 @@ export const EditEventDialog = ({
 
       if (membersError) throw membersError;
 
-      // Create new participants
+      // Get unique user IDs (remove duplicates from multiple groups)
       const uniqueUserIds = [...new Set(members.map((m) => m.user_id))];
+      
+      // Upsert participants (insert or ignore if already exists)
       const participants = uniqueUserIds.map((uid) => ({
         event_id: eventId,
         user_id: uid,
@@ -210,7 +204,10 @@ export const EditEventDialog = ({
 
       const { error: participantsError } = await supabase
         .from("event_participants")
-        .insert(participants);
+        .upsert(participants, {
+          onConflict: "event_id,user_id",
+          ignoreDuplicates: false,
+        });
 
       if (participantsError) throw participantsError;
 
