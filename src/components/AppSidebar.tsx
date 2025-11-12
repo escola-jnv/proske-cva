@@ -17,19 +17,11 @@ import {
 } from "@/components/ui/sidebar";
 import { 
   Home, 
-  MessageSquare, 
-  Users, 
-  ChevronRight,
   Hash,
   BookOpen,
   Settings,
   GraduationCap
 } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 
 type Community = {
   id: string;
@@ -57,7 +49,6 @@ export function AppSidebar() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openCommunities, setOpenCommunities] = useState<Set<string>>(new Set());
   const [isAdmin, setIsAdmin] = useState(false);
   
   const isCollapsed = state === "collapsed";
@@ -150,7 +141,8 @@ export function AppSidebar() {
           const { data: coursesData } = await supabase
             .from("courses")
             .select("id, name, community_id")
-            .in("community_id", communityIds);
+            .in("community_id", communityIds)
+            .order("created_at", { ascending: false });
           setCourses(coursesData || []);
         }
       }
@@ -178,15 +170,6 @@ export function AppSidebar() {
 
         setGroups(groupsList);
         setCommunities(Array.from(communitiesMap.values()));
-        
-        // Open current community by default
-        const currentGroupId = location.pathname.split("/groups/")[1]?.split("/")[0];
-        if (currentGroupId) {
-          const currentGroup = groupsList.find((g) => g.id === currentGroupId);
-          if (currentGroup) {
-            setOpenCommunities(new Set([currentGroup.community_id]));
-          }
-        }
       }
 
       setLoading(false);
@@ -194,18 +177,6 @@ export function AppSidebar() {
       console.error("Error fetching sidebar data:", error);
       setLoading(false);
     }
-  };
-
-  const toggleCommunity = (communityId: string) => {
-    setOpenCommunities((prev) => {
-      const next = new Set(prev);
-      if (next.has(communityId)) {
-        next.delete(communityId);
-      } else {
-        next.add(communityId);
-      }
-      return next;
-    });
   };
 
   const isActiveGroup = (groupId: string) => {
@@ -260,68 +231,52 @@ export function AppSidebar() {
                 const communityCourses = courses.filter(
                   (c) => c.community_id === community.id
                 );
-                const isOpen = openCommunities.has(community.id);
 
                 return (
-                  <Collapsible
-                    key={community.id}
-                    open={isOpen}
-                    onOpenChange={() => toggleCommunity(community.id)}
-                  >
+                  <div key={community.id}>
                     <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className="w-full">
-                          <div className="flex items-center gap-2 flex-1">
-                            <BookOpen className="h-4 w-4 flex-shrink-0" />
-                            {!isCollapsed && (
-                              <>
-                                <span className="flex-1 truncate text-left">
-                                  {community.name}
-                                </span>
-                                <ChevronRight
-                                  className={`h-4 w-4 transition-transform ${
-                                    isOpen ? "rotate-90" : ""
-                                  }`}
-                                />
-                              </>
-                            )}
-                          </div>
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      
-                      {!isCollapsed && (
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {/* Courses */}
-                            {communityCourses.map((course) => (
-                              <SidebarMenuSubItem key={course.id}>
-                                <SidebarMenuSubButton
-                                  onClick={() => navigate(`/courses/${course.id}`)}
-                                  isActive={isActiveCourse(course.id)}
-                                >
-                                  <GraduationCap className="h-3 w-3" />
-                                  <span className="truncate">{course.name}</span>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
-                            
-                            {/* Groups */}
-                            {communityGroups.map((group) => (
-                              <SidebarMenuSubItem key={group.id}>
-                                <SidebarMenuSubButton
-                                  onClick={() => navigate(`/groups/${group.id}/chat`)}
-                                  isActive={isActiveGroup(group.id)}
-                                >
-                                  <Hash className="h-3 w-3" />
-                                  <span className="truncate">{group.name}</span>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      )}
+                      <SidebarMenuButton className="w-full cursor-default hover:bg-transparent">
+                        <div className="flex items-center gap-2 flex-1">
+                          <BookOpen className="h-4 w-4 flex-shrink-0" />
+                          {!isCollapsed && (
+                            <span className="flex-1 truncate text-left font-semibold">
+                              {community.name}
+                            </span>
+                          )}
+                        </div>
+                      </SidebarMenuButton>
                     </SidebarMenuItem>
-                  </Collapsible>
+                    
+                    {!isCollapsed && (
+                      <SidebarMenuSub>
+                        {/* Courses */}
+                        {communityCourses.map((course) => (
+                          <SidebarMenuSubItem key={course.id}>
+                            <SidebarMenuSubButton
+                              onClick={() => navigate(`/courses/${course.id}`)}
+                              isActive={isActiveCourse(course.id)}
+                            >
+                              <GraduationCap className="h-3 w-3" />
+                              <span className="truncate">{course.name}</span>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                        
+                        {/* Groups */}
+                        {communityGroups.map((group) => (
+                          <SidebarMenuSubItem key={group.id}>
+                            <SidebarMenuSubButton
+                              onClick={() => navigate(`/groups/${group.id}/chat`)}
+                              isActive={isActiveGroup(group.id)}
+                            >
+                              <Hash className="h-3 w-3" />
+                              <span className="truncate">{group.name}</span>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    )}
+                  </div>
                 );
               })}
             </SidebarMenu>
