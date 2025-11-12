@@ -21,7 +21,8 @@ import {
   BookOpen,
   Settings,
   GraduationCap,
-  Calendar
+  Calendar,
+  DollarSign
 } from "lucide-react";
 
 type Community = {
@@ -297,10 +298,19 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Dev Tools - Only for Admins */}
+        {/* Admin Tools */}
         {isAdmin && (
           <SidebarGroup>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => navigate("/financial")}
+                  isActive={location.pathname === "/financial"}
+                >
+                  <DollarSign className="h-4 w-4" />
+                  {!isCollapsed && <span>Financeiro</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => navigate("/dev-tools")}

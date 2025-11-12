@@ -41,7 +41,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Pencil, Trash2, Users, FolderOpen, MessageSquare, Calendar, Search, Upload, FileText, DollarSign, TrendingUp, CheckCircle, Clock, AlertCircle, Plus } from "lucide-react";
+import { Loader2, Pencil, Trash2, Users, FolderOpen, MessageSquare, Calendar, Search, Upload, FileText } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 type Profile = {
@@ -81,20 +81,6 @@ type Event = {
   created_by: string;
 };
 
-type Payment = {
-  id: string;
-  user_id: string;
-  amount: number;
-  due_date: string;
-  paid_at?: string;
-  status: "pending" | "confirmed" | "overdue" | "cancelled";
-  description?: string;
-  community_id?: string;
-  created_by: string;
-  user_name?: string;
-  community_name?: string;
-};
-
 export default function DevTools() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -104,19 +90,18 @@ export default function DevTools() {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
   
   const [searchTerm, setSearchTerm] = useState("");
   
   const [editDialog, setEditDialog] = useState<{
     open: boolean;
-    type: "profile" | "community" | "group" | "event" | "payment" | null;
+    type: "profile" | "community" | "group" | "event" | null;
     data: any | null;
   }>({ open: false, type: null, data: null });
 
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
-    type: "profile" | "community" | "group" | "event" | "payment" | null;
+    type: "profile" | "community" | "group" | "event" | null;
     id: string | null;
   }>({ open: false, type: null, id: null });
 
@@ -161,12 +146,11 @@ export default function DevTools() {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [profilesRes, communitiesRes, groupsRes, eventsRes, paymentsRes] = await Promise.all([
+      const [profilesRes, communitiesRes, groupsRes, eventsRes] = await Promise.all([
         supabase.from("profiles").select("*").order("name"),
         supabase.from("communities").select("*").order("name"),
         supabase.from("conversation_groups").select("*").order("name"),
         supabase.from("events").select("*").order("event_date", { ascending: false }),
-        supabase.from("payments").select("*").order("due_date", { ascending: false }),
       ]);
 
       // Fetch roles for each profile
@@ -192,36 +176,6 @@ export default function DevTools() {
       if (communitiesRes.data) setCommunities(communitiesRes.data);
       if (groupsRes.data) setGroups(groupsRes.data);
       if (eventsRes.data) setEvents(eventsRes.data);
-      
-      // Fetch payments with user and community names
-      if (paymentsRes.data) {
-        const paymentsWithDetails = await Promise.all(
-          paymentsRes.data.map(async (payment) => {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("name")
-              .eq("id", payment.user_id)
-              .single();
-            
-            let communityName = null;
-            if (payment.community_id) {
-              const { data: community } = await supabase
-                .from("communities")
-                .select("name")
-                .eq("id", payment.community_id)
-                .single();
-              communityName = community?.name;
-            }
-            
-            return {
-              ...payment,
-              user_name: profile?.name,
-              community_name: communityName,
-            };
-          })
-        );
-        setPayments(paymentsWithDetails);
-      }
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Erro ao carregar dados");
@@ -230,23 +184,8 @@ export default function DevTools() {
     }
   };
 
-  const handleEdit = (type: "profile" | "community" | "group" | "event" | "payment", data: any) => {
+  const handleEdit = (type: "profile" | "community" | "group" | "event", data: any) => {
     setEditDialog({ open: true, type, data: { ...data } });
-  };
-
-  const handleCreatePayment = () => {
-    setEditDialog({
-      open: true,
-      type: "payment",
-      data: {
-        user_id: "",
-        amount: 0,
-        due_date: new Date().toISOString().split("T")[0],
-        status: "pending",
-        description: "",
-        community_id: "",
-      },
-    });
   };
 
   const handleSave = async () => {
@@ -288,31 +227,15 @@ export default function DevTools() {
           case "event":
             table = "events";
             break;
-          case "payment":
-            table = "payments";
-            break;
         }
 
-        if (type === "payment" && !data.id) {
-          // Create new payment
-          const { data: { user } } = await supabase.auth.getUser();
-          const { error } = await supabase
-            .from("payments")
-            .insert({
-              ...data,
-              created_by: user!.id,
-            });
+        // Update existing
+        const { error } = await supabase
+          .from(table as any)
+          .update(data)
+          .eq("id", data.id);
 
-          if (error) throw error;
-        } else {
-          // Update existing
-          const { error } = await supabase
-            .from(table as any)
-            .update(data)
-            .eq("id", data.id);
-
-          if (error) throw error;
-        }
+        if (error) throw error;
       }
 
       toast.success("Atualizado com sucesso!");
@@ -324,7 +247,7 @@ export default function DevTools() {
     }
   };
 
-  const handleDelete = (type: "profile" | "community" | "group" | "event" | "payment", id: string) => {
+  const handleDelete = (type: "profile" | "community" | "group" | "event", id: string) => {
     setDeleteDialog({ open: true, type, id });
   };
 
@@ -346,9 +269,6 @@ export default function DevTools() {
           break;
         case "event":
           table = "events";
-          break;
-        case "payment":
-          table = "payments";
           break;
       }
 
@@ -383,32 +303,6 @@ export default function DevTools() {
   const filteredEvents = events.filter((e) =>
     e.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  
-  const filteredPayments = payments.filter((p) =>
-    p.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Calculate financial statistics
-  const totalReceivable = payments
-    .filter(p => p.status !== "cancelled")
-    .reduce((sum, p) => sum + Number(p.amount), 0);
-  
-  const confirmedTotal = payments
-    .filter(p => p.status === "confirmed")
-    .reduce((sum, p) => sum + Number(p.amount), 0);
-  
-  const pendingTotal = payments
-    .filter(p => p.status === "pending")
-    .reduce((sum, p) => sum + Number(p.amount), 0);
-  
-  const overdueTotal = payments
-    .filter(p => p.status === "overdue")
-    .reduce((sum, p) => sum + Number(p.amount), 0);
-
-  const confirmedCount = payments.filter(p => p.status === "confirmed").length;
-  const pendingCount = payments.filter(p => p.status === "pending").length;
-  const overdueCount = payments.filter(p => p.status === "overdue").length;
 
   const parseCSV = (csv: string): string[][] => {
     const lines = csv.trim().split('\n');
@@ -654,7 +548,6 @@ export default function DevTools() {
           <TabsTrigger value="communities">Comunidades</TabsTrigger>
           <TabsTrigger value="groups">Grupos</TabsTrigger>
           <TabsTrigger value="events">Eventos</TabsTrigger>
-          <TabsTrigger value="financial">Financeiro</TabsTrigger>
           <TabsTrigger value="import">Importação CSV</TabsTrigger>
         </TabsList>
 
@@ -970,171 +863,6 @@ export default function DevTools() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="financial" className="space-y-4">
-          {/* Financial Statistics */}
-          <div className="grid gap-4 md:grid-cols-5">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total a Receber</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  R$ {totalReceivable.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Confirmados</CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  R$ {confirmedTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">{confirmedCount} pagamentos</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
-                <Clock className="h-4 w-4 text-yellow-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">
-                  R$ {pendingTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">{pendingCount} pagamentos</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Atrasados</CardTitle>
-                <AlertCircle className="h-4 w-4 text-red-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">
-                  R$ {overdueTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">{overdueCount} pagamentos</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Projeção</CardTitle>
-                <TrendingUp className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
-                  R$ {(pendingTotal + confirmedTotal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Pendentes + Confirmados</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Payments Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Pagamentos</CardTitle>
-                  <CardDescription>Gerencie todos os pagamentos</CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <div className="relative w-64">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar pagamentos..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8"
-                    />
-                  </div>
-                  <Button onClick={handleCreatePayment}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Pagamento
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Aluno</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Comunidade</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead className="w-[100px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPayments.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">
-                        Nenhum pagamento encontrado
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredPayments.map((payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell className="font-medium">{payment.user_name || "-"}</TableCell>
-                        <TableCell className="font-semibold">
-                          R$ {Number(payment.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(payment.due_date).toLocaleDateString("pt-BR")}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={
-                            payment.status === "confirmed" ? "default" :
-                            payment.status === "pending" ? "secondary" :
-                            payment.status === "overdue" ? "destructive" :
-                            "outline"
-                          }>
-                            {payment.status === "confirmed" && "Confirmado"}
-                            {payment.status === "pending" && "Pendente"}
-                            {payment.status === "overdue" && "Atrasado"}
-                            {payment.status === "cancelled" && "Cancelado"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{payment.community_name || "-"}</TableCell>
-                        <TableCell>{payment.description || "-"}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit("payment", payment)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete("payment", payment.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="import" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
@@ -1262,10 +990,9 @@ export default function DevTools() {
                     editDialog.type === "profile" ? "Usuário" : 
                     editDialog.type === "community" ? "Comunidade" : 
                     editDialog.type === "group" ? "Grupo" : 
-                    editDialog.type === "payment" ? "Pagamento" : 
                     "Evento"
                   }`
-                : "Novo Pagamento"
+                : "Criar Novo"
               }
             </DialogTitle>
             <DialogDescription>Faça as alterações necessárias</DialogDescription>
@@ -1396,92 +1123,6 @@ export default function DevTools() {
                 </div>
               </>
             )}
-
-            {editDialog.type === "payment" && editDialog.data && (
-              <>
-                <div>
-                  <Label htmlFor="user_id">Usuário</Label>
-                  <Select
-                    value={editDialog.data.user_id || ""}
-                    onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), user_id: value } }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o usuário" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {profiles.map((profile) => (
-                        <SelectItem key={profile.id} value={profile.id}>
-                          {profile.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="amount">Valor (R$)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    value={editDialog.data.amount || 0}
-                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), amount: parseFloat(e.target.value) } }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="due_date">Data de Vencimento</Label>
-                  <Input
-                    id="due_date"
-                    type="date"
-                    value={editDialog.data.due_date?.split("T")[0] || ""}
-                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), due_date: e.target.value } }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={editDialog.data.status || "pending"}
-                    onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), status: value } }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="confirmed">Confirmado</SelectItem>
-                      <SelectItem value="overdue">Atrasado</SelectItem>
-                      <SelectItem value="cancelled">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="community_id">Comunidade (Opcional)</Label>
-                  <Select
-                    value={editDialog.data.community_id || ""}
-                    onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), community_id: value } }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a comunidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Nenhuma</SelectItem>
-                      {communities.map((community) => (
-                        <SelectItem key={community.id} value={community.id}>
-                          {community.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="description">Descrição (Opcional)</Label>
-                  <Textarea
-                    id="description"
-                    value={editDialog.data.description || ""}
-                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), description: e.target.value } }))}
-                  />
-                </div>
-              </>
-            )}
           </div>
 
           <DialogFooter>
@@ -1502,7 +1143,6 @@ export default function DevTools() {
               {deleteDialog.type === "profile" ? "usuário" :
                deleteDialog.type === "community" ? "comunidade" :
                deleteDialog.type === "group" ? "grupo" : 
-               deleteDialog.type === "payment" ? "pagamento" : 
                "evento"}.
             </AlertDialogDescription>
           </AlertDialogHeader>

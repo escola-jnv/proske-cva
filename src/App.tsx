@@ -17,6 +17,7 @@ import CourseManagement from "./pages/CourseManagement";
 import CreateCourse from "./pages/CreateCourse";
 import Events from "./pages/Events";
 import DevTools from "./pages/DevTools";
+import Financial from "./pages/Financial";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ const AppContent = () => {
               <Route path="/courses/:courseId/manage" element={<CourseManagement />} />
               <Route path="/invite/:inviteCode" element={<CommunityInvite />} />
               <Route path="/dev-tools" element={<DevTools />} />
+              <Route path="/financial" element={<Financial />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
