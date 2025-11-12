@@ -6,7 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Moon, Sun, Save } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ArrowLeft, Moon, Sun, Save, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -50,9 +51,11 @@ const Profile = () => {
   const [groups, setGroups] = useState<ConversationGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [formData, setFormData] = useState({ name: "", phone: "" });
   const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
@@ -116,6 +119,7 @@ const Profile = () => {
       if (error) throw error;
       setProfile(data);
       setFormData({ name: data.name || "", phone: data.phone || "" });
+      setAvatarUrl(data.avatar_url);
     } catch (error: any) {
       console.error("Error fetching profile:", error);
     }
@@ -291,6 +295,106 @@ const Profile = () => {
     return variants[role] || "outline";
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!e.target.files || e.target.files.length === 0) return;
+      
+      const file = e.target.files[0];
+      
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        toast.error("Por favor, selecione uma imagem");
+        return;
+      }
+      
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("Imagem muito grande. Máximo 2MB");
+        return;
+      }
+
+      setUploading(true);
+
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${user?.id}/${Math.random()}.${fileExt}`;
+
+      // Delete old avatar if exists
+      if (profile?.avatar_url) {
+        const oldPath = profile.avatar_url.split("/").slice(-2).join("/");
+        await supabase.storage.from("avatars").remove([oldPath]);
+      }
+
+      // Upload new avatar
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(fileName);
+
+      // Update profile
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user?.id);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(publicUrl);
+      if (profile) {
+        setProfile({ ...profile, avatar_url: publicUrl });
+      }
+      toast.success("Foto atualizada com sucesso!");
+    } catch (error: any) {
+      toast.error("Erro ao fazer upload: " + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    try {
+      if (!profile?.avatar_url) return;
+
+      setUploading(true);
+
+      // Delete from storage
+      const filePath = profile.avatar_url.split("/").slice(-2).join("/");
+      await supabase.storage.from("avatars").remove([filePath]);
+
+      // Update profile
+      const { error } = await supabase
+        .from("profiles")
+        .update({ avatar_url: null })
+        .eq("id", user?.id);
+
+      if (error) throw error;
+
+      setAvatarUrl(null);
+      if (profile) {
+        setProfile({ ...profile, avatar_url: null });
+      }
+      toast.success("Foto removida com sucesso!");
+    } catch (error: any) {
+      toast.error("Erro ao remover foto: " + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -339,6 +443,58 @@ const Profile = () => {
                   <Badge variant={getRoleBadgeVariant(userRole)}>
                     {getRoleName(userRole)}
                   </Badge>
+                </div>
+
+                {/* Avatar Upload */}
+                <div className="flex items-center gap-6">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={avatarUrl || ""} alt={formData.name} />
+                    <AvatarFallback className="text-2xl">
+                      {formData.name ? getInitials(formData.name) : "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="avatar-upload" className="cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={uploading}
+                          asChild
+                        >
+                          <span>
+                            <Upload className="h-4 w-4 mr-2" />
+                            {uploading ? "Enviando..." : "Alterar foto"}
+                          </span>
+                        </Button>
+                      </div>
+                    </Label>
+                    <Input
+                      id="avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                      disabled={uploading}
+                    />
+                    {avatarUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRemoveAvatar}
+                        disabled={uploading}
+                        className="w-fit gap-2"
+                      >
+                        <X className="h-4 w-4" />
+                        Remover foto
+                      </Button>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      JPG, PNG ou WEBP. Máx 2MB.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
