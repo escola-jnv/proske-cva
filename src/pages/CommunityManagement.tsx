@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,8 @@ import { z } from "zod";
 const groupSchema = z.object({
   name: z.string().trim().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
   description: z.string().trim().max(500, "Descrição muito longa").optional(),
+  is_visible: z.boolean().default(true),
+  students_can_message: z.boolean().default(true),
 });
 
 const inviteSchema = z.object({
@@ -55,7 +58,12 @@ const CommunityManagement = () => {
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [groupForm, setGroupForm] = useState({ name: "", description: "" });
+  const [groupForm, setGroupForm] = useState({ 
+    name: "", 
+    description: "",
+    is_visible: true,
+    students_can_message: true,
+  });
   const [inviteForm, setInviteForm] = useState({ contact: "" });
   const [creating, setCreating] = useState(false);
   const [inviting, setInviting] = useState(false);
@@ -163,12 +171,19 @@ const CommunityManagement = () => {
           name: validated.name,
           description: validated.description || null,
           created_by: user?.id,
+          is_visible: validated.is_visible,
+          students_can_message: validated.students_can_message,
         });
 
       if (error) throw error;
 
       toast.success("Grupo criado com sucesso!");
-      setGroupForm({ name: "", description: "" });
+      setGroupForm({ 
+        name: "", 
+        description: "",
+        is_visible: true,
+        students_can_message: true,
+      });
       setCreateGroupOpen(false);
       if (communityId) fetchGroups(communityId);
     } catch (error: any) {
@@ -334,6 +349,40 @@ const CommunityManagement = () => {
                         placeholder="Descreva o grupo"
                         rows={3}
                       />
+                    </div>
+
+                    <div className="space-y-4 py-2">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="is-visible">Grupo visível para todos</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Todos os membros podem ver este grupo
+                          </p>
+                        </div>
+                        <Switch
+                          id="is-visible"
+                          checked={groupForm.is_visible}
+                          onCheckedChange={(checked) =>
+                            setGroupForm({ ...groupForm, is_visible: checked })
+                          }
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="students-can-message">Alunos podem enviar mensagens</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Permite que alunos enviem mensagens neste grupo
+                          </p>
+                        </div>
+                        <Switch
+                          id="students-can-message"
+                          checked={groupForm.students_can_message}
+                          onCheckedChange={(checked) =>
+                            setGroupForm({ ...groupForm, students_can_message: checked })
+                          }
+                        />
+                      </div>
                     </div>
 
                     <div className="flex gap-2 justify-end">
