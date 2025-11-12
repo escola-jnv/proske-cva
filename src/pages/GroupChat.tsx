@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ProfileModal } from "@/components/ProfileModal";
 import { GroupInfoModal } from "@/components/GroupInfoModal";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
-import { Send, MoreVertical, Users, Settings, LogOut } from "lucide-react";
+import { Send, Menu, Users, Settings, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -249,7 +249,7 @@ const GroupChat = () => {
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card z-10">
+      <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="px-4 py-3 flex items-center gap-3">
           <Avatar 
             className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
@@ -266,11 +266,11 @@ const GroupChat = () => {
             )}
           </div>
           
-          {/* Menu Navigation */}
+          {/* Navigation Menu */}
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="shrink-0">
-                <MoreVertical className="h-5 w-5" />
+                <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-80">
