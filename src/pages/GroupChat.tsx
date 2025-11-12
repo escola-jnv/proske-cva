@@ -43,6 +43,7 @@ const GroupChat = () => {
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const {
@@ -185,6 +186,7 @@ const GroupChat = () => {
       if (error) throw error;
 
       setNewMessage("");
+      inputRef.current?.focus();
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0]?.message || "Erro de validação");
@@ -307,6 +309,7 @@ const GroupChat = () => {
           className="container mx-auto max-w-4xl flex gap-2"
         >
           <Input
+            ref={inputRef}
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Digite uma mensagem..."
