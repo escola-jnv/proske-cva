@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Moon, Sun, Plus, User as UserIcon, Link as LinkIcon, Pencil } from "lucide-react";
+import { LogOut, Moon, Sun, Plus, User as UserIcon, Link as LinkIcon, Pencil, Trash2, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 import { ProfileSheet } from "@/components/ProfileSheet";
@@ -15,6 +15,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,6 +72,11 @@ const editCommunitySchema = z.object({
   subject: z.string().trim().min(2, "Matéria é obrigatória").max(100),
 });
 
+const deleteSchema = z.object({
+  password: z.string().min(1, "Senha é obrigatória"),
+  communityName: z.string().min(1, "Nome da comunidade é obrigatório"),
+});
+
 const Communities = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
@@ -74,6 +94,10 @@ const Communities = () => {
   const [editForm, setEditForm] = useState({ name: "", description: "", subject: "", cover_image_url: "" });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingCommunity, setDeletingCommunity] = useState<MyCommunity | null>(null);
+  const [deleteForm, setDeleteForm] = useState({ password: "", communityName: "" });
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
@@ -415,6 +439,61 @@ const Communities = () => {
     }
   };
 
+  const handleDeleteCommunity = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!deletingCommunity) return;
+
+    try {
+      const validated = deleteSchema.parse(deleteForm);
+      
+      // Validate community name matches
+      if (validated.communityName !== deletingCommunity.name) {
+        toast.error("O nome da comunidade não corresponde");
+        return;
+      }
+
+      setDeleting(true);
+
+      // Verify password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || "",
+        password: validated.password,
+      });
+
+      if (signInError) {
+        toast.error("Senha incorreta");
+        return;
+      }
+
+      // Delete community (cascade will handle related records)
+      const { error: deleteError } = await supabase
+        .from("communities")
+        .delete()
+        .eq("id", deletingCommunity.id);
+
+      if (deleteError) throw deleteError;
+
+      toast.success("Comunidade excluída com sucesso!");
+      setDeleteDialogOpen(false);
+      setDeleteForm({ password: "", communityName: "" });
+      if (user) fetchMyCommunities(user.id);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0]?.message || "Erro de validação");
+      } else {
+        toast.error("Erro ao excluir comunidade: " + error.message);
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleOpenDeleteDialog = (community: MyCommunity) => {
+    setDeletingCommunity(community);
+    setDeleteDialogOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -519,18 +598,40 @@ const Communities = () => {
                       className="overflow-hidden transition-gentle hover:shadow-lg cursor-pointer relative"
                       onClick={() => navigate(`/communities/${community.id}/manage`)}
                     >
-                      {/* Edit Button */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-2 right-2 z-10 bg-white/90 hover:bg-white shadow-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditCommunity(community);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      {/* Edit/Delete Menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-2 right-2 z-10 bg-white/90 hover:bg-white shadow-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditCommunity(community);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDeleteDialog(community);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
 
                       {/* Cover Image */}
                       <div 
@@ -733,6 +834,70 @@ const Communities = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Community Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Comunidade</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Todos os grupos, mensagens e membros desta comunidade serão permanentemente excluídos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <form onSubmit={handleDeleteCommunity} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="delete-password">Senha</Label>
+              <Input
+                id="delete-password"
+                type="password"
+                value={deleteForm.password}
+                onChange={(e) =>
+                  setDeleteForm({ ...deleteForm, password: e.target.value })
+                }
+                placeholder="Digite sua senha"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="delete-community-name">
+                Digite o nome da comunidade para confirmar
+              </Label>
+              <Input
+                id="delete-community-name"
+                value={deleteForm.communityName}
+                onChange={(e) =>
+                  setDeleteForm({ ...deleteForm, communityName: e.target.value })
+                }
+                placeholder={deletingCommunity?.name}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Digite: <span className="font-medium">{deletingCommunity?.name}</span>
+              </p>
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={() => {
+                  setDeleteForm({ password: "", communityName: "" });
+                }}
+                disabled={deleting}
+              >
+                Cancelar
+              </AlertDialogCancel>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={deleting}
+              >
+                {deleting ? "Excluindo..." : "Excluir Comunidade"}
+              </Button>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

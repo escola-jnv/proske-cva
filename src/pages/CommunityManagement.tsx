@@ -16,17 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { ArrowLeft, Plus, Users, Mail, Phone, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Users, Mail, Phone } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -40,11 +30,6 @@ const groupSchema = z.object({
 
 const inviteSchema = z.object({
   contact: z.string().trim().min(3, "Email ou telefone inválido"),
-});
-
-const deleteSchema = z.object({
-  password: z.string().min(1, "Senha é obrigatória"),
-  communityName: z.string().min(1, "Nome da comunidade é obrigatório"),
 });
 
 type Community = {
@@ -82,9 +67,6 @@ const CommunityManagement = () => {
   const [inviteForm, setInviteForm] = useState({ contact: "" });
   const [creating, setCreating] = useState(false);
   const [inviting, setInviting] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteForm, setDeleteForm] = useState({ password: "", communityName: "" });
-  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const {
@@ -289,52 +271,6 @@ const CommunityManagement = () => {
     }
   };
 
-  const handleDeleteCommunity = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      const validated = deleteSchema.parse(deleteForm);
-      
-      // Validate community name matches
-      if (validated.communityName !== community?.name) {
-        toast.error("O nome da comunidade não corresponde");
-        return;
-      }
-
-      setDeleting(true);
-
-      // Verify password
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user?.email || "",
-        password: validated.password,
-      });
-
-      if (signInError) {
-        toast.error("Senha incorreta");
-        return;
-      }
-
-      // Delete community (cascade will handle related records)
-      const { error: deleteError } = await supabase
-        .from("communities")
-        .delete()
-        .eq("id", communityId);
-
-      if (deleteError) throw deleteError;
-
-      toast.success("Comunidade excluída com sucesso!");
-      navigate("/communities");
-    } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        toast.error(error.errors[0]?.message || "Erro de validação");
-      } else {
-        toast.error("Erro ao excluir comunidade: " + error.message);
-      }
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -358,15 +294,6 @@ const CommunityManagement = () => {
             <h1 className="text-2xl font-medium">{community?.name}</h1>
             <p className="text-sm text-muted-foreground">{community?.subject}</p>
           </div>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="gap-2"
-            onClick={() => setDeleteDialogOpen(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            Excluir Comunidade
-          </Button>
         </nav>
       </header>
 
@@ -558,70 +485,6 @@ const CommunityManagement = () => {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Community Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Comunidade</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Todos os grupos, mensagens e membros desta comunidade serão permanentemente excluídos.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <form onSubmit={handleDeleteCommunity} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="delete-password">Senha</Label>
-              <Input
-                id="delete-password"
-                type="password"
-                value={deleteForm.password}
-                onChange={(e) =>
-                  setDeleteForm({ ...deleteForm, password: e.target.value })
-                }
-                placeholder="Digite sua senha"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="delete-community-name">
-                Digite o nome da comunidade para confirmar
-              </Label>
-              <Input
-                id="delete-community-name"
-                value={deleteForm.communityName}
-                onChange={(e) =>
-                  setDeleteForm({ ...deleteForm, communityName: e.target.value })
-                }
-                placeholder={community?.name}
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Digite: <span className="font-medium">{community?.name}</span>
-              </p>
-            </div>
-
-            <AlertDialogFooter>
-              <AlertDialogCancel
-                onClick={() => {
-                  setDeleteForm({ password: "", communityName: "" });
-                }}
-                disabled={deleting}
-              >
-                Cancelar
-              </AlertDialogCancel>
-              <Button
-                type="submit"
-                variant="destructive"
-                disabled={deleting}
-              >
-                {deleting ? "Excluindo..." : "Excluir Comunidade"}
-              </Button>
-            </AlertDialogFooter>
-          </form>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
