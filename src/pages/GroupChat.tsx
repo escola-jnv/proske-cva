@@ -247,32 +247,28 @@ const GroupChat = () => {
             return (
               <div
                 key={message.id}
-                className={`flex gap-2 ${isOwn ? "flex-row-reverse" : "flex-row"}`}
+                className={`flex gap-3 ${isOwn ? "flex-row-reverse" : "flex-row"}`}
               >
-                {!isOwn && (
-                  <Avatar className="h-8 w-8 mt-1">
-                    <AvatarImage src={message.profiles.avatar_url || undefined} />
-                    <AvatarFallback className="text-xs">
-                      {message.profiles.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
+                <Avatar className="h-10 w-10 flex-shrink-0">
+                  <AvatarImage src={message.profiles?.avatar_url || undefined} />
+                  <AvatarFallback className="text-sm bg-primary/10">
+                    {message.profiles?.name?.charAt(0).toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
                 
                 <div
                   className={`flex flex-col max-w-[70%] ${
                     isOwn ? "items-end" : "items-start"
                   }`}
                 >
-                  {!isOwn && (
-                    <span className="text-xs font-medium text-primary mb-1">
-                      {message.profiles.name}
-                    </span>
-                  )}
+                  <span className="text-xs font-medium mb-1 px-1" style={{ color: isOwn ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>
+                    {isOwn ? "Você" : message.profiles?.name || "Usuário"}
+                  </span>
                   <div
-                    className={`rounded-lg px-4 py-2 ${
+                    className={`rounded-2xl px-4 py-2 ${
                       isOwn
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-foreground"
+                        ? "bg-primary text-primary-foreground rounded-tr-sm"
+                        : "bg-muted text-foreground rounded-tl-sm"
                     }`}
                   >
                     <p className="text-sm whitespace-pre-wrap break-words">
