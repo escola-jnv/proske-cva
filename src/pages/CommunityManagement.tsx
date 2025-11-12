@@ -46,6 +46,16 @@ type Course = {
   description: string | null;
   lesson_count?: number;
 };
+
+type Event = {
+  id: string;
+  title: string;
+  description: string | null;
+  event_date: string;
+  duration_minutes: number;
+  group_names: string[];
+  participant_count: number;
+};
 const CommunityManagement = () => {
   const navigate = useNavigate();
   const {
@@ -56,6 +66,7 @@ const CommunityManagement = () => {
   const [community, setCommunity] = useState<Community | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -117,9 +128,10 @@ const CommunityManagement = () => {
       }
       setCommunity(commData);
 
-      // Fetch groups and courses
+      // Fetch groups, courses and events
       await fetchGroups(commId);
       await fetchCourses(commId);
+      await fetchEvents(commId);
     } catch (error: any) {
       console.error("Error fetching community:", error);
       toast.error("Erro ao carregar comunidade");
@@ -210,6 +222,53 @@ const CommunityManagement = () => {
       console.error("Error fetching courses:", error);
     }
   };
+
+  const fetchEvents = async (commId: string) => {
+    try {
+      const { data: eventsData, error } = await supabase
+        .from('events')
+        .select(`
+          id,
+          title,
+          description,
+          event_date,
+          duration_minutes,
+          event_groups(
+            conversation_groups(name)
+          )
+        `)
+        .eq('community_id', commId)
+        .gte('event_date', new Date().toISOString())
+        .order('event_date', { ascending: true })
+        .limit(5);
+
+      if (error) throw error;
+
+      const eventsWithCounts = await Promise.all(
+        (eventsData || []).map(async (event: any) => {
+          const { count } = await supabase
+            .from('event_participants')
+            .select('*', { count: 'exact', head: true })
+            .eq('event_id', event.id);
+
+          return {
+            id: event.id,
+            title: event.title,
+            description: event.description,
+            event_date: event.event_date,
+            duration_minutes: event.duration_minutes,
+            group_names: event.event_groups?.map((eg: any) => eg.conversation_groups?.name).filter(Boolean) || [],
+            participant_count: count || 0
+          };
+        })
+      );
+
+      setEvents(eventsWithCounts);
+    } catch (error: any) {
+      console.error('Error fetching events:', error);
+    }
+  };
+
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -391,7 +450,9 @@ const CommunityManagement = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-medium">Eventos</h2>
               <div className="flex gap-2">
-                
+                <Button variant="outline" onClick={() => navigate('/events')}>
+                  Ver Agenda
+                </Button>
                 <Button className="gap-2" onClick={() => setCreateEventOpen(true)}>
                   <Plus className="h-4 w-4" />
                   Criar Evento
@@ -399,11 +460,83 @@ const CommunityManagement = () => {
               </div>
             </div>
 
-            <Card className="p-6 border-2 border-dashed">
-              <p className="text-muted-foreground text-center">
-                Crie eventos e convide grupos para participar. Os eventos criados aparecerão na página de Agenda.
-              </p>
-            </Card>
+            {/* Events List - WhatsApp Style */}
+            <div className="space-y-1">
+              {events.map(event => {
+                const eventDate = new Date(event.event_date);
+                const formatDate = () => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const tomorrow = new Date(today);
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  const eventDay = new Date(eventDate);
+                  eventDay.setHours(0, 0, 0, 0);
+
+                  if (eventDay.getTime() === today.getTime()) return "Hoje";
+                  if (eventDay.getTime() === tomorrow.getTime()) return "Amanhã";
+                  return eventDate.toLocaleDateString('pt-BR', { 
+                    day: '2-digit', 
+                    month: '2-digit',
+                    year: 'numeric'
+                  });
+                };
+
+                const formatTime = () => {
+                  return eventDate.toLocaleTimeString('pt-BR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  });
+                };
+
+                return (
+                  <Card 
+                    key={event.id} 
+                    className="p-4 cursor-pointer hover:bg-accent transition-colors border-0 border-b rounded-none first:rounded-t-lg last:rounded-b-lg"
+                    onClick={() => navigate('/events')}
+                  >
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          <Calendar className="h-6 w-6" />
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <h3 className="font-medium truncate">{event.title}</h3>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {formatDate()} às {formatTime()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate mb-2">
+                          {event.description || "Sem descrição"}
+                        </p>
+                        <div className="flex gap-2 flex-wrap">
+                          <Badge variant="secondary">
+                            <Users className="h-3 w-3 mr-1" />
+                            {event.participant_count} participantes
+                          </Badge>
+                          {event.group_names.length > 0 && (
+                            <Badge variant="outline" className="truncate max-w-[200px]">
+                              {event.group_names.join(', ')}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+
+              {events.length === 0 && (
+                <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
+                  <Calendar className="h-12 w-12 mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground text-center">
+                    Nenhum evento próximo. Crie o primeiro evento!
+                  </p>
+                </Card>
+              )}
+            </div>
           </div>
 
           {/* Groups Section */}
@@ -582,7 +715,8 @@ const CommunityManagement = () => {
 
       {/* Create Event Dialog */}
       <CreateEventDialog open={createEventOpen} onOpenChange={setCreateEventOpen} communityId={communityId || ""} userId={user?.id || ""} onSuccess={() => {
-      toast.success("Use a página Agenda para visualizar o evento criado");
+      if (communityId) fetchEvents(communityId);
+      toast.success("Evento criado com sucesso!");
     }} />
     </div>;
 };
