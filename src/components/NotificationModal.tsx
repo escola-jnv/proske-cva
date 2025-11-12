@@ -7,43 +7,64 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { AlertCircle } from "lucide-react";
 import type { Notification } from "@/hooks/useNotifications";
 
 interface NotificationModalProps {
-  notification: Notification | null;
+  notifications: Notification[];
+  isOpen: boolean;
   onClose: () => void;
 }
 
-export const NotificationModal = ({ notification, onClose }: NotificationModalProps) => {
+export const NotificationModal = ({ notifications, isOpen, onClose }: NotificationModalProps) => {
   const navigate = useNavigate();
 
-  if (!notification) return null;
-
-  const handleAction = () => {
-    if (notification.action) {
-      navigate(notification.action);
+  const handleAction = (action?: string) => {
+    if (action) {
+      navigate(action);
       onClose();
     }
   };
 
   return (
-    <Dialog open={!!notification} onOpenChange={onClose}>
-      <DialogContent>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{notification.title}</DialogTitle>
-          <DialogDescription>{notification.description}</DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            Avisos Importantes
+          </DialogTitle>
+          <DialogDescription>
+            Você tem {notifications.length} {notifications.length === 1 ? 'aviso pendente' : 'avisos pendentes'}
+          </DialogDescription>
         </DialogHeader>
         
-        {notification.action && (
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={onClose}>
-              Fechar
-            </Button>
-            <Button onClick={handleAction}>
-              Resolver agora
-            </Button>
-          </div>
-        )}
+        <div className="space-y-3 mt-4">
+          {notifications.map((notification) => (
+            <Card key={notification.id} className="p-4 border-l-4 border-l-destructive">
+              <h3 className="font-semibold text-foreground mb-2">{notification.title}</h3>
+              <p className="text-sm text-muted-foreground mb-3">{notification.description}</p>
+              
+              {notification.action && (
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={() => handleAction(notification.action)}
+                    size="sm"
+                  >
+                    Resolver agora
+                  </Button>
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+
+        <div className="flex justify-end mt-4">
+          <Button variant="outline" onClick={onClose}>
+            Fechar
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
