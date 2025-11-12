@@ -41,7 +41,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Pencil, Trash2, Users, FolderOpen, MessageSquare, Calendar, Search } from "lucide-react";
+import { Loader2, Pencil, Trash2, Users, FolderOpen, MessageSquare, Calendar, Search, Upload, FileText } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 type Profile = {
   id: string;
@@ -103,6 +104,10 @@ export default function DevTools() {
     type: "profile" | "community" | "group" | "event" | null;
     id: string | null;
   }>({ open: false, type: null, id: null });
+
+  const [importLoading, setImportLoading] = useState(false);
+  const [usersCSV, setUsersCSV] = useState("");
+  const [lessonsCSV, setLessonsCSV] = useState("");
 
   useEffect(() => {
     checkAdminAndFetchData();
@@ -298,6 +303,181 @@ export default function DevTools() {
     e.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const parseCSV = (csv: string): string[][] => {
+    const lines = csv.trim().split('\n');
+    return lines.map(line => {
+      const values: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim());
+      return values;
+    });
+  };
+
+  const handleImportUsers = async () => {
+    if (!usersCSV.trim()) {
+      toast.error("Por favor, cole o conteúdo do CSV de usuários");
+      return;
+    }
+
+    setImportLoading(true);
+    try {
+      const rows = parseCSV(usersCSV);
+      const headers = rows[0].map(h => h.toLowerCase());
+      
+      // Validate headers
+      const requiredHeaders = ['name', 'email', 'role'];
+      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+      if (missingHeaders.length > 0) {
+        toast.error(`Cabeçalhos obrigatórios ausentes: ${missingHeaders.join(', ')}`);
+        setImportLoading(false);
+        return;
+      }
+
+      let imported = 0;
+      let errors = 0;
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row.length < 2 || !row[0]) continue; // Skip empty rows
+
+        const userData: any = {};
+        headers.forEach((header, index) => {
+          userData[header] = row[index] || null;
+        });
+
+        try {
+          // Create auth user
+          const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+            email: userData.email,
+            password: Math.random().toString(36).slice(-8) + 'A1!', // Random password
+            email_confirm: true,
+            user_metadata: {
+              name: userData.name
+            }
+          });
+
+          if (authError) throw authError;
+
+          // Profile is created automatically via trigger
+          // Update additional profile fields
+          if (authData.user) {
+            await supabase
+              .from("profiles")
+              .update({
+                phone: userData.phone || null,
+                city: userData.city || null,
+                bio: userData.bio || null
+              })
+              .eq("id", authData.user.id);
+
+            // Add role
+            const role = userData.role?.toLowerCase() || 'student';
+            if (['admin', 'teacher', 'student'].includes(role)) {
+              await supabase
+                .from("user_roles")
+                .delete()
+                .eq("user_id", authData.user.id);
+                
+              await supabase
+                .from("user_roles")
+                .insert({ user_id: authData.user.id, role });
+            }
+          }
+
+          imported++;
+        } catch (error: any) {
+          console.error(`Erro ao importar linha ${i + 1}:`, error);
+          errors++;
+        }
+      }
+
+      toast.success(`${imported} usuários importados com sucesso!${errors > 0 ? ` ${errors} erros.` : ''}`);
+      setUsersCSV("");
+      await fetchAllData();
+    } catch (error: any) {
+      console.error("Error importing users:", error);
+      toast.error(error.message || "Erro ao importar usuários");
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleImportLessons = async () => {
+    if (!lessonsCSV.trim()) {
+      toast.error("Por favor, cole o conteúdo do CSV de aulas");
+      return;
+    }
+
+    setImportLoading(true);
+    try {
+      const rows = parseCSV(lessonsCSV);
+      const headers = rows[0].map(h => h.toLowerCase());
+      
+      // Validate headers
+      const requiredHeaders = ['name', 'module_id', 'youtube_url'];
+      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+      if (missingHeaders.length > 0) {
+        toast.error(`Cabeçalhos obrigatórios ausentes: ${missingHeaders.join(', ')}`);
+        setImportLoading(false);
+        return;
+      }
+
+      let imported = 0;
+      let errors = 0;
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row.length < 2 || !row[0]) continue; // Skip empty rows
+
+        const lessonData: any = {};
+        headers.forEach((header, index) => {
+          lessonData[header] = row[index] || null;
+        });
+
+        try {
+          const { error } = await supabase
+            .from("course_lessons")
+            .insert({
+              name: lessonData.name,
+              description: lessonData.description || null,
+              youtube_url: lessonData.youtube_url,
+              module_id: lessonData.module_id,
+              duration_minutes: lessonData.duration_minutes ? parseInt(lessonData.duration_minutes) : null,
+              order_index: lessonData.order_index ? parseInt(lessonData.order_index) : 0
+            });
+
+          if (error) throw error;
+          imported++;
+        } catch (error: any) {
+          console.error(`Erro ao importar linha ${i + 1}:`, error);
+          errors++;
+        }
+      }
+
+      toast.success(`${imported} aulas importadas com sucesso!${errors > 0 ? ` ${errors} erros.` : ''}`);
+      setLessonsCSV("");
+    } catch (error: any) {
+      console.error("Error importing lessons:", error);
+      toast.error(error.message || "Erro ao importar aulas");
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   if (loading || !isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -367,6 +547,7 @@ export default function DevTools() {
           <TabsTrigger value="communities">Comunidades</TabsTrigger>
           <TabsTrigger value="groups">Grupos</TabsTrigger>
           <TabsTrigger value="events">Eventos</TabsTrigger>
+          <TabsTrigger value="import">Importação CSV</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profiles" className="space-y-4">
@@ -679,6 +860,123 @@ export default function DevTools() {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="import" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  Importar Usuários
+                </CardTitle>
+                <CardDescription>
+                  Cole o conteúdo do CSV com os usuários. Formato: name,email,role,phone,city
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="usersCSV">Conteúdo do CSV</Label>
+                  <Textarea
+                    id="usersCSV"
+                    value={usersCSV}
+                    onChange={(e) => setUsersCSV(e.target.value)}
+                    placeholder="name,email,role,phone,city&#10;João Silva,joao@example.com,student,11999999999,São Paulo&#10;Maria Santos,maria@example.com,teacher,11888888888,Rio de Janeiro"
+                    className="font-mono text-sm min-h-[200px]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">
+                    <p className="font-semibold mb-1">Campos obrigatórios:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li><code className="text-xs bg-muted px-1 py-0.5 rounded">name</code> - Nome do usuário</li>
+                      <li><code className="text-xs bg-muted px-1 py-0.5 rounded">email</code> - Email (único)</li>
+                      <li><code className="text-xs bg-muted px-1 py-0.5 rounded">role</code> - Tipo: student, teacher ou admin</li>
+                    </ul>
+                    <p className="font-semibold mt-2 mb-1">Campos opcionais:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li><code className="text-xs bg-muted px-1 py-0.5 rounded">phone</code> - Telefone</li>
+                      <li><code className="text-xs bg-muted px-1 py-0.5 rounded">city</code> - Cidade</li>
+                    </ul>
+                  </div>
+                </div>
+                <Button 
+                  onClick={handleImportUsers} 
+                  disabled={importLoading || !usersCSV.trim()}
+                  className="w-full"
+                >
+                  {importLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Importando...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Importar Usuários
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  Importar Aulas
+                </CardTitle>
+                <CardDescription>
+                  Cole o conteúdo do CSV com as aulas. Formato: name,module_id,youtube_url,description,duration_minutes,order_index
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="lessonsCSV">Conteúdo do CSV</Label>
+                  <Textarea
+                    id="lessonsCSV"
+                    value={lessonsCSV}
+                    onChange={(e) => setLessonsCSV(e.target.value)}
+                    placeholder="name,module_id,youtube_url,description,duration_minutes,order_index&#10;Aula 1,uuid-do-modulo,https://youtube.com/watch?v=abc,Introdução,45,1&#10;Aula 2,uuid-do-modulo,https://youtube.com/watch?v=def,Conceitos,60,2"
+                    className="font-mono text-sm min-h-[200px]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">
+                    <p className="font-semibold mb-1">Campos obrigatórios:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li><code className="text-xs bg-muted px-1 py-0.5 rounded">name</code> - Nome da aula</li>
+                      <li><code className="text-xs bg-muted px-1 py-0.5 rounded">module_id</code> - UUID do módulo</li>
+                      <li><code className="text-xs bg-muted px-1 py-0.5 rounded">youtube_url</code> - URL do vídeo</li>
+                    </ul>
+                    <p className="font-semibold mt-2 mb-1">Campos opcionais:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li><code className="text-xs bg-muted px-1 py-0.5 rounded">description</code> - Descrição</li>
+                      <li><code className="text-xs bg-muted px-1 py-0.5 rounded">duration_minutes</code> - Duração em minutos</li>
+                      <li><code className="text-xs bg-muted px-1 py-0.5 rounded">order_index</code> - Ordem (padrão: 0)</li>
+                    </ul>
+                  </div>
+                </div>
+                <Button 
+                  onClick={handleImportLessons} 
+                  disabled={importLoading || !lessonsCSV.trim()}
+                  className="w-full"
+                >
+                  {importLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Importando...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Importar Aulas
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
