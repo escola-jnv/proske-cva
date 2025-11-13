@@ -16,6 +16,8 @@ import CourseView from "./pages/CourseView";
 import CourseManagement from "./pages/CourseManagement";
 import CreateCourse from "./pages/CreateCourse";
 import Events from "./pages/Events";
+import Tasks from "./pages/Tasks";
+import Plans from "./pages/Plans";
 import DevTools from "./pages/DevTools";
 import Financial from "./pages/Financial";
 import NotFound from "./pages/NotFound";
@@ -48,6 +50,8 @@ const AppContent = () => {
               <Route path="/communities" element={<Communities />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/events" element={<Events />} />
+              <Route path="/tasks" element={<Tasks />} />
+              <Route path="/plans" element={<Plans />} />
               <Route path="/communities/:communityId/manage" element={<CommunityManagement />} />
               <Route path="/communities/:communityId/courses/new" element={<CreateCourse />} />
               <Route path="/groups/:groupId/chat" element={<GroupChat />} />

@@ -375,37 +375,19 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Tarefas Submenu */}
+        {/* Tarefas */}
         <SidebarGroup>
-          <SidebarGroupLabel>
-            {!isCollapsed && "Tarefas"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {!isCollapsed && (
-                <SidebarMenuSub>
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      onClick={() => navigate("/tasks/pending")}
-                      isActive={location.pathname === "/tasks/pending"}
-                    >
-                      <FileText className="h-3 w-3" />
-                      <span>Pendentes</span>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      onClick={() => navigate("/tasks/completed")}
-                      isActive={location.pathname === "/tasks/completed"}
-                    >
-                      <FileText className="h-3 w-3" />
-                      <span>Concluídas</span>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                </SidebarMenuSub>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => navigate("/tasks")}
+                isActive={location.pathname === "/tasks"}
+              >
+                <FileText className="h-4 w-4" />
+                {!isCollapsed && <span>Tarefas</span>}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarGroup>
 
         {/* Planos */}

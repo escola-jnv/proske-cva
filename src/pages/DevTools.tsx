@@ -1178,11 +1178,13 @@ export default function DevTools() {
                           <Badge variant={
                             profile.role === "admin" ? "default" : 
                             profile.role === "teacher" ? "secondary" : 
+                            profile.role === "guest" ? "outline" :
                             "outline"
                           }>
                             {profile.role === "admin" && "Admin"}
                             {profile.role === "teacher" && "Professor"}
                             {profile.role === "student" && "Aluno"}
+                            {profile.role === "guest" && "Convidado"}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -1827,6 +1829,7 @@ export default function DevTools() {
                       <SelectItem value="student">Aluno</SelectItem>
                       <SelectItem value="teacher">Professor</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="guest">Convidado</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
