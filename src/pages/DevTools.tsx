@@ -169,6 +169,17 @@ export default function DevTools() {
   
   const [selectedDefaultGroups, setSelectedDefaultGroups] = useState<string[]>([]);
   
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [bulkEditDialog, setBulkEditDialog] = useState<{
+    open: boolean;
+    data: {
+      role?: string;
+      planId?: string;
+      endDate?: string;
+      groupIds?: string[];
+    };
+  }>({ open: false, data: {} });
+  
   const activeTab = searchParams.get("tab") || "users";
 
   const handleTabChange = (value: string) => {
@@ -860,6 +871,117 @@ export default function DevTools() {
     );
   };
 
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const toggleAllUsers = () => {
+    if (selectedUsers.length === filteredProfiles.length) {
+      setSelectedUsers([]);
+    } else {
+      setSelectedUsers(filteredProfiles.map(p => p.id));
+    }
+  };
+
+  const handleBulkEdit = () => {
+    if (selectedUsers.length === 0) {
+      toast.error("Selecione pelo menos um usuário");
+      return;
+    }
+    setBulkEditDialog({ open: true, data: {} });
+  };
+
+  const handleSaveBulkEdit = async () => {
+    const { data } = bulkEditDialog;
+    if (selectedUsers.length === 0) return;
+
+    try {
+      // Update role for selected users
+      if (data.role) {
+        for (const userId of selectedUsers) {
+          await supabase.from("user_roles").delete().eq("user_id", userId);
+          await supabase.from("user_roles").insert([{ user_id: userId, role: data.role as any }]);
+        }
+      }
+
+      // Update subscription plan and end date
+      if (data.planId) {
+        for (const userId of selectedUsers) {
+          const { data: existingSub } = await supabase
+            .from("user_subscriptions")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("status", "active")
+            .maybeSingle();
+
+          const updateData: any = { plan_id: data.planId };
+          if (data.endDate) {
+            updateData.end_date = new Date(data.endDate).toISOString();
+          }
+
+          if (existingSub) {
+            await supabase
+              .from("user_subscriptions")
+              .update(updateData)
+              .eq("id", existingSub.id);
+          } else {
+            await supabase
+              .from("user_subscriptions")
+              .insert({
+                user_id: userId,
+                plan_id: data.planId,
+                start_date: new Date().toISOString(),
+                end_date: data.endDate 
+                  ? new Date(data.endDate).toISOString() 
+                  : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                status: "active"
+              });
+          }
+        }
+      } else if (data.endDate && !data.planId) {
+        // Update only end date if no plan selected
+        for (const userId of selectedUsers) {
+          const { data: existingSub } = await supabase
+            .from("user_subscriptions")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("status", "active")
+            .maybeSingle();
+
+          if (existingSub) {
+            await supabase
+              .from("user_subscriptions")
+              .update({ end_date: new Date(data.endDate).toISOString() })
+              .eq("id", existingSub.id);
+          }
+        }
+      }
+
+      // Add users to selected groups
+      if (data.groupIds && data.groupIds.length > 0) {
+        for (const userId of selectedUsers) {
+          for (const groupId of data.groupIds) {
+            await supabase
+              .from("group_members")
+              .upsert({ user_id: userId, group_id: groupId }, { onConflict: "user_id,group_id" });
+          }
+        }
+      }
+
+      toast.success(`${selectedUsers.length} usuário(s) atualizado(s) com sucesso!`);
+      setBulkEditDialog({ open: false, data: {} });
+      setSelectedUsers([]);
+      await fetchAllData();
+    } catch (error: any) {
+      console.error("Error in bulk edit:", error);
+      toast.error(error.message || "Erro ao atualizar usuários");
+    }
+  };
+
   // Filter data based on search
   const filteredProfiles = profiles.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1136,14 +1258,21 @@ export default function DevTools() {
                   <CardTitle>Usuários</CardTitle>
                   <CardDescription>Visualize e edite perfis de usuários</CardDescription>
                 </div>
-                <div className="relative w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar usuários..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
-                  />
+                <div className="flex items-center gap-2">
+                  {selectedUsers.length > 0 && (
+                    <Button onClick={handleBulkEdit} variant="default">
+                      Editar {selectedUsers.length} selecionado(s)
+                    </Button>
+                  )}
+                  <div className="relative w-64">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar usuários..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -1151,6 +1280,12 @@ export default function DevTools() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedUsers.length === filteredProfiles.length && filteredProfiles.length > 0}
+                        onCheckedChange={toggleAllUsers}
+                      />
+                    </TableHead>
                     <TableHead>Avatar</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
@@ -1163,13 +1298,19 @@ export default function DevTools() {
                 <TableBody>
                   {filteredProfiles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredProfiles.map((profile) => (
                       <TableRow key={profile.id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedUsers.includes(profile.id)}
+                            onCheckedChange={() => toggleUserSelection(profile.id)}
+                          />
+                        </TableCell>
                         <TableCell>
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={profile.avatar_url || ""} alt={profile.name} />
@@ -2370,6 +2511,139 @@ export default function DevTools() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Edit Dialog */}
+      <Dialog open={bulkEditDialog.open} onOpenChange={(open) => !open && setBulkEditDialog({ open: false, data: {} })}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar {selectedUsers.length} Usuário(s)</DialogTitle>
+            <DialogDescription>
+              Modificações serão aplicadas a todos os usuários selecionados
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="bulk-role">Tipo de Usuário</Label>
+              <Select 
+                value={bulkEditDialog.data.role || ""} 
+                onValueChange={(value) => setBulkEditDialog(prev => ({ 
+                  ...prev, 
+                  data: { ...prev.data, role: value } 
+                }))}
+              >
+                <SelectTrigger id="bulk-role">
+                  <SelectValue placeholder="Selecione um tipo (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="teacher">Professor</SelectItem>
+                  <SelectItem value="student">Aluno</SelectItem>
+                  <SelectItem value="guest">Convidado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="bulk-plan">Plano</Label>
+              <Select 
+                value={bulkEditDialog.data.planId || ""} 
+                onValueChange={(value) => setBulkEditDialog(prev => ({ 
+                  ...prev, 
+                  data: { ...prev.data, planId: value } 
+                }))}
+              >
+                <SelectTrigger id="bulk-plan">
+                  <SelectValue placeholder="Selecione um plano (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subscriptionPlans.map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name} - R$ {plan.price.toFixed(2)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="bulk-end-date">Data de Vencimento</Label>
+              <Input
+                id="bulk-end-date"
+                type="date"
+                value={bulkEditDialog.data.endDate || ""}
+                onChange={(e) => setBulkEditDialog(prev => ({ 
+                  ...prev, 
+                  data: { ...prev.data, endDate: e.target.value } 
+                }))}
+              />
+            </div>
+
+            <div>
+              <Label className="mb-2 block">Liberar Grupos</Label>
+              <p className="text-sm text-muted-foreground mb-3">
+                Adicionar usuários aos grupos selecionados
+              </p>
+              <div className="border rounded-md p-4 space-y-2 max-h-[200px] overflow-y-auto">
+                {groups.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhum grupo disponível
+                  </p>
+                ) : (
+                  groups.map((group) => (
+                    <div key={group.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`bulk-group-${group.id}`}
+                        checked={bulkEditDialog.data.groupIds?.includes(group.id) || false}
+                        onCheckedChange={(checked) => {
+                          setBulkEditDialog(prev => {
+                            const currentGroups = prev.data.groupIds || [];
+                            return {
+                              ...prev,
+                              data: {
+                                ...prev.data,
+                                groupIds: checked 
+                                  ? [...currentGroups, group.id]
+                                  : currentGroups.filter(id => id !== group.id)
+                              }
+                            };
+                          });
+                        }}
+                      />
+                      <label
+                        htmlFor={`bulk-group-${group.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                      >
+                        {group.name}
+                        {group.community_name && (
+                          <span className="text-muted-foreground ml-2">
+                            ({group.community_name})
+                          </span>
+                        )}
+                      </label>
+                    </div>
+                  ))
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                {bulkEditDialog.data.groupIds?.length || 0} grupo(s) selecionado(s)
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setBulkEditDialog({ open: false, data: {} })}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveBulkEdit}>
+              Aplicar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <CreateEventDialog
         open={createEventOpen}
