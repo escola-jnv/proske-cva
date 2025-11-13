@@ -41,10 +41,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Pencil, Trash2, Users, FolderOpen, MessageSquare, Calendar, Search, Upload, FileText } from "lucide-react";
+import { Loader2, Pencil, Trash2, Users, FolderOpen, MessageSquare, Calendar, Search, Upload, FileText, Plus, DollarSign } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { CreateEventDialog } from "@/components/CreateEventDialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Profile = {
   id: string;
@@ -68,6 +69,9 @@ type SubscriptionPlan = {
   name: string;
   price: number;
   description?: string;
+  monitoring_frequency?: string;
+  weekly_corrections_limit?: number;
+  default_groups?: string[];
 };
 
 type Community = {
@@ -155,6 +159,14 @@ export default function DevTools() {
   const [createEventOpen, setCreateEventOpen] = useState(false);
   const [selectedCommunityForEvent, setSelectedCommunityForEvent] = useState<string>("");
   
+  const [planDialog, setPlanDialog] = useState<{
+    open: boolean;
+    mode: "create" | "edit";
+    data: SubscriptionPlan | null;
+  }>({ open: false, mode: "create", data: null });
+  
+  const [selectedDefaultGroups, setSelectedDefaultGroups] = useState<string[]>([]);
+  
   const activeTab = searchParams.get("tab") || "users";
 
   const handleTabChange = (value: string) => {
@@ -214,7 +226,24 @@ export default function DevTools() {
       ]);
 
       if (coursesRes.data) setAvailableCourses(coursesRes.data);
-      if (plansRes.data) setSubscriptionPlans(plansRes.data);
+      
+      // Fetch plans with default groups
+      if (plansRes.data) {
+        const plansWithGroups = await Promise.all(
+          plansRes.data.map(async (plan) => {
+            const { data: defaultGroups } = await supabase
+              .from("plan_default_groups")
+              .select("group_id")
+              .eq("plan_id", plan.id);
+            
+            return {
+              ...plan,
+              default_groups: defaultGroups?.map(g => g.group_id) || []
+            };
+          })
+        );
+        setSubscriptionPlans(plansWithGroups);
+      }
 
       // Fetch roles and subscriptions for each profile
       if (profilesRes.data) {
@@ -545,6 +574,9 @@ export default function DevTools() {
         status: "active",
       });
 
+      // Add user to default groups
+      await addUserToDefaultGroups(userId, planId);
+
       toast.success("Assinatura atualizada com sucesso!");
       setSubscriptionDialog({ open: false, userId: null, userName: null, currentSubscription: null });
       await fetchAllData();
@@ -552,6 +584,180 @@ export default function DevTools() {
       console.error("Error updating subscription:", error);
       toast.error(error.message || "Erro ao atualizar assinatura");
     }
+  };
+
+  const addUserToDefaultGroups = async (userId: string, planId: string) => {
+    try {
+      const { data: defaultGroups } = await supabase
+        .from("plan_default_groups")
+        .select("group_id")
+        .eq("plan_id", planId);
+      
+      if (defaultGroups) {
+        for (const { group_id } of defaultGroups) {
+          // Check if user is already in the group
+          const { data: existing } = await supabase
+            .from("group_members")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("group_id", group_id)
+            .maybeSingle();
+          
+          if (!existing) {
+            await supabase
+              .from("group_members")
+              .insert({ user_id: userId, group_id: group_id });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error adding user to default groups:", error);
+    }
+  };
+
+  const handleEditPlan = (plan: SubscriptionPlan) => {
+    setPlanDialog({ open: true, mode: "edit", data: plan });
+    setSelectedDefaultGroups(plan.default_groups || []);
+  };
+
+  const handleCreatePlan = () => {
+    setPlanDialog({ 
+      open: true, 
+      mode: "create", 
+      data: { 
+        id: "", 
+        name: "", 
+        price: 0, 
+        description: "", 
+        monitoring_frequency: "none",
+        weekly_corrections_limit: 0,
+        default_groups: []
+      } 
+    });
+    setSelectedDefaultGroups([]);
+  };
+
+  const handleSavePlan = async () => {
+    const { data, mode } = planDialog;
+    if (!data) return;
+
+    try {
+      // Validations
+      if (!data.name?.trim()) {
+        toast.error("Nome do plano é obrigatório");
+        return;
+      }
+      if (data.price <= 0) {
+        toast.error("Valor deve ser maior que 0");
+        return;
+      }
+      if ((data.weekly_corrections_limit ?? 0) < 0) {
+        toast.error("Limite de correções não pode ser negativo");
+        return;
+      }
+
+      let planId = data.id;
+
+      if (mode === "edit") {
+        // Update existing plan
+        const { error } = await supabase
+          .from("subscription_plans")
+          .update({
+            name: data.name,
+            price: data.price,
+            description: data.description,
+            monitoring_frequency: data.monitoring_frequency,
+            weekly_corrections_limit: data.weekly_corrections_limit
+          })
+          .eq("id", data.id);
+
+        if (error) throw error;
+      } else {
+        // Create new plan
+        const { data: newPlan, error } = await supabase
+          .from("subscription_plans")
+          .insert({
+            name: data.name,
+            price: data.price,
+            description: data.description,
+            monitoring_frequency: data.monitoring_frequency,
+            weekly_corrections_limit: data.weekly_corrections_limit
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        planId = newPlan.id;
+      }
+
+      // Update default groups
+      // Delete existing links
+      await supabase
+        .from("plan_default_groups")
+        .delete()
+        .eq("plan_id", planId);
+
+      // Insert new links
+      if (selectedDefaultGroups.length > 0) {
+        const links = selectedDefaultGroups.map(group_id => ({
+          plan_id: planId,
+          group_id
+        }));
+        
+        await supabase
+          .from("plan_default_groups")
+          .insert(links);
+      }
+
+      toast.success(`Plano ${mode === "edit" ? "atualizado" : "criado"} com sucesso!`);
+      setPlanDialog({ open: false, mode: "create", data: null });
+      setSelectedDefaultGroups([]);
+      await fetchAllData();
+    } catch (error: any) {
+      console.error("Error saving plan:", error);
+      toast.error(error.message || "Erro ao salvar plano");
+    }
+  };
+
+  const handleDeletePlan = async (planId: string) => {
+    try {
+      // Check if there are active subscriptions
+      const { data: activeSubs, error: checkError } = await supabase
+        .from("user_subscriptions")
+        .select("id")
+        .eq("plan_id", planId)
+        .eq("status", "active")
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (activeSubs && activeSubs.length > 0) {
+        toast.error("Não é possível deletar um plano com assinaturas ativas");
+        return;
+      }
+
+      // Delete the plan (cascade will delete plan_default_groups)
+      const { error } = await supabase
+        .from("subscription_plans")
+        .delete()
+        .eq("id", planId);
+
+      if (error) throw error;
+
+      toast.success("Plano deletado com sucesso!");
+      await fetchAllData();
+    } catch (error: any) {
+      console.error("Error deleting plan:", error);
+      toast.error(error.message || "Erro ao deletar plano");
+    }
+  };
+
+  const toggleGroupSelection = (groupId: string) => {
+    setSelectedDefaultGroups(prev => 
+      prev.includes(groupId) 
+        ? prev.filter(id => id !== groupId)
+        : [...prev, groupId]
+    );
   };
 
   // Filter data based on search
@@ -818,6 +1024,7 @@ export default function DevTools() {
           <TabsTrigger value="communities">Comunidades</TabsTrigger>
           <TabsTrigger value="groups">Grupos</TabsTrigger>
           <TabsTrigger value="events">Eventos</TabsTrigger>
+          <TabsTrigger value="plans">Planos</TabsTrigger>
           <TabsTrigger value="import">Importação CSV</TabsTrigger>
         </TabsList>
 
@@ -1236,6 +1443,103 @@ export default function DevTools() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="plans" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Planos de Assinatura</CardTitle>
+                  <CardDescription>Gerencie planos, valores e configurações</CardDescription>
+                </div>
+                <Button onClick={handleCreatePlan}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Novo Plano
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Monitorias</TableHead>
+                    <TableHead>Correções/Semana</TableHead>
+                    <TableHead>Grupos Padrão</TableHead>
+                    <TableHead className="w-[100px]">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {subscriptionPlans.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        Nenhum plano cadastrado
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    subscriptionPlans.map((plan) => (
+                      <TableRow key={plan.id}>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <p className="font-medium">{plan.name}</p>
+                            {plan.description && (
+                              <p className="text-sm text-muted-foreground">{plan.description}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="font-mono">
+                            R$ {plan.price.toFixed(2)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {plan.monitoring_frequency === "weekly" && "Semanal"}
+                            {plan.monitoring_frequency === "biweekly" && "Quinzenal"}
+                            {plan.monitoring_frequency === "monthly" && "Mensal"}
+                            {plan.monitoring_frequency === "none" && "Sem monitorias"}
+                            {!plan.monitoring_frequency && "-"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="default">
+                            {plan.weekly_corrections_limit || 0} correções
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {plan.default_groups?.length || 0} grupos
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditPlan(plan)}
+                              title="Editar"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeletePlan(plan.id)}
+                              title="Deletar"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="import" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
@@ -1594,6 +1898,151 @@ export default function DevTools() {
               </Select>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={planDialog.open} onOpenChange={(open) => !open && setPlanDialog({ open: false, mode: "create", data: null })}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {planDialog.mode === "edit" ? "Editar Plano" : "Criar Novo Plano"}
+            </DialogTitle>
+            <DialogDescription>
+              Configure os detalhes do plano de assinatura
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="plan-name">Nome do Plano *</Label>
+              <Input
+                id="plan-name"
+                value={planDialog.data?.name || ""}
+                onChange={(e) => setPlanDialog(prev => ({ 
+                  ...prev, 
+                  data: { ...(prev.data || {} as SubscriptionPlan), name: e.target.value } 
+                }))}
+                placeholder="Ex: Plano Premium"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="plan-description">Descrição</Label>
+              <Textarea
+                id="plan-description"
+                value={planDialog.data?.description || ""}
+                onChange={(e) => setPlanDialog(prev => ({ 
+                  ...prev, 
+                  data: { ...(prev.data || {} as SubscriptionPlan), description: e.target.value } 
+                }))}
+                placeholder="Descrição do plano"
+                rows={2}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="plan-price">Valor Mensal (R$) *</Label>
+              <Input
+                id="plan-price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={planDialog.data?.price || 0}
+                onChange={(e) => setPlanDialog(prev => ({ 
+                  ...prev, 
+                  data: { ...(prev.data || {} as SubscriptionPlan), price: parseFloat(e.target.value) || 0 } 
+                }))}
+                placeholder="0.00"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="monitoring-frequency">Frequência de Monitorias</Label>
+              <Select
+                value={planDialog.data?.monitoring_frequency || "none"}
+                onValueChange={(value) => setPlanDialog(prev => ({ 
+                  ...prev, 
+                  data: { ...(prev.data || {} as SubscriptionPlan), monitoring_frequency: value } 
+                }))}
+              >
+                <SelectTrigger id="monitoring-frequency">
+                  <SelectValue placeholder="Selecione a frequência" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem monitorias</SelectItem>
+                  <SelectItem value="weekly">Semanal</SelectItem>
+                  <SelectItem value="biweekly">Quinzenal</SelectItem>
+                  <SelectItem value="monthly">Mensal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="corrections-limit">Limite de Correções por Semana *</Label>
+              <Input
+                id="corrections-limit"
+                type="number"
+                min="0"
+                value={planDialog.data?.weekly_corrections_limit || 0}
+                onChange={(e) => setPlanDialog(prev => ({ 
+                  ...prev, 
+                  data: { ...(prev.data || {} as SubscriptionPlan), weekly_corrections_limit: parseInt(e.target.value) || 0 } 
+                }))}
+                placeholder="0"
+              />
+            </div>
+
+            <div>
+              <Label className="mb-2 block">Grupos Padrão</Label>
+              <p className="text-sm text-muted-foreground mb-3">
+                Alunos com este plano serão automaticamente adicionados aos grupos selecionados
+              </p>
+              <div className="border rounded-md p-4 space-y-2 max-h-[200px] overflow-y-auto">
+                {groups.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhum grupo disponível
+                  </p>
+                ) : (
+                  groups.map((group) => (
+                    <div key={group.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`group-${group.id}`}
+                        checked={selectedDefaultGroups.includes(group.id)}
+                        onCheckedChange={() => toggleGroupSelection(group.id)}
+                      />
+                      <label
+                        htmlFor={`group-${group.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                      >
+                        {group.name}
+                        {group.community_name && (
+                          <span className="text-muted-foreground ml-2">
+                            ({group.community_name})
+                          </span>
+                        )}
+                      </label>
+                    </div>
+                  ))
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                {selectedDefaultGroups.length} grupo(s) selecionado(s)
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setPlanDialog({ open: false, mode: "create", data: null })}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleSavePlan}>
+              <DollarSign className="h-4 w-4 mr-2" />
+              {planDialog.mode === "edit" ? "Salvar Alterações" : "Criar Plano"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -568,6 +568,42 @@ export type Database = {
           },
         ]
       }
+      plan_default_groups: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          plan_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          plan_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_default_groups_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_default_groups_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -680,25 +716,31 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          monitoring_frequency: string | null
           name: string
           price: number
           updated_at: string
+          weekly_corrections_limit: number | null
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
+          monitoring_frequency?: string | null
           name: string
           price: number
           updated_at?: string
+          weekly_corrections_limit?: number | null
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
+          monitoring_frequency?: string | null
           name?: string
           price?: number
           updated_at?: string
+          weekly_corrections_limit?: number | null
         }
         Relationships: []
       }
