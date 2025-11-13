@@ -174,7 +174,7 @@ const GroupChat = () => {
 
   const fetchOnlineUsers = async (grpId: string) => {
     try {
-      const sixtyMinutesAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       
       const { data: membersData, error } = await supabase
         .from("group_members")
@@ -183,7 +183,7 @@ const GroupChat = () => {
           profiles!inner(id, name, avatar_url, last_active_at)
         `)
         .eq("group_id", grpId)
-        .gte("profiles.last_active_at", sixtyMinutesAgo);
+        .gte("profiles.last_active_at", twentyFourHoursAgo);
 
       if (error) throw error;
 
