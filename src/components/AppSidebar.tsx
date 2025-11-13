@@ -32,9 +32,27 @@ import {
   CalendarDays,
   Upload,
   LogOut,
-  FileText
+  FileText,
+  GripVertical
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type Community = {
   id: string;
@@ -47,6 +65,7 @@ type Group = {
   name: string;
   community_id: string;
   unread_count?: number;
+  order_index?: number;
 };
 
 type Course = {
@@ -69,8 +88,20 @@ export function AppSidebar() {
     avatar_url: string | null;
   } | null>(null);
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
   
   const isCollapsed = state === "collapsed";
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     fetchData();
@@ -80,6 +111,8 @@ export function AppSidebar() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      setUserId(user.id);
 
       // Fetch user profile
       const { data: profileData } = await supabase
@@ -178,9 +211,20 @@ export function AppSidebar() {
       }
 
       if (groupsData) {
+        // Fetch user's custom order
+        const { data: orderData } = await supabase
+          .from('user_menu_order')
+          .select('item_id, order_index')
+          .eq('user_id', user.id)
+          .eq('item_type', 'group');
+
+        const orderMap = new Map(
+          orderData?.map(o => [o.item_id, o.order_index]) || []
+        );
+
         // Fetch unread counts for each group
         const groupsWithUnread = await Promise.all(
-          groupsData.map(async (g: any) => {
+          groupsData.map(async (g: any, index: number) => {
             const { data: unreadData } = await supabase
               .rpc('get_unread_count', { 
                 _user_id: user.id, 
@@ -192,9 +236,13 @@ export function AppSidebar() {
               name: g.name,
               community_id: g.community_id,
               unread_count: unreadData || 0,
+              order_index: orderMap.get(g.id) ?? index,
             };
           })
         );
+
+        // Sort by custom order
+        groupsWithUnread.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
         const totalUnread = groupsWithUnread.reduce((sum, g) => sum + (g.unread_count || 0), 0);
         setTotalUnreadCount(totalUnread);
@@ -230,6 +278,54 @@ export function AppSidebar() {
 
   const isActiveCourse = (courseId: string) => {
     return location.pathname.includes(`/courses/${courseId}`);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent, communityId: string) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id || !userId) {
+      return;
+    }
+
+    const communityGroups = groups.filter(g => g.community_id === communityId);
+    const oldIndex = communityGroups.findIndex((g) => g.id === active.id);
+    const newIndex = communityGroups.findIndex((g) => g.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reorderedGroups = arrayMove(communityGroups, oldIndex, newIndex);
+    
+    // Update local state immediately
+    const updatedGroups = groups.map(g => {
+      if (g.community_id !== communityId) return g;
+      const newOrder = reorderedGroups.findIndex(rg => rg.id === g.id);
+      return { ...g, order_index: newOrder };
+    });
+    setGroups(updatedGroups);
+
+    // Save to database
+    try {
+      const updates = reorderedGroups.map((group, index) => ({
+        user_id: userId,
+        item_type: 'group',
+        item_id: group.id,
+        order_index: index,
+      }));
+
+      // Upsert all orders
+      const { error } = await supabase
+        .from('user_menu_order')
+        .upsert(updates, { 
+          onConflict: 'user_id,item_type,item_id' 
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving menu order:', error);
+      toast.error('Erro ao salvar ordem');
+      // Revert on error
+      fetchData();
+    }
   };
 
   const handleLogout = async () => {
@@ -345,27 +441,26 @@ export function AppSidebar() {
                           </SidebarMenuSubItem>
                         ))}
                         
-                        {/* Groups */}
-                        {communityGroups.map((group) => (
-                          <SidebarMenuSubItem key={group.id}>
-                            <SidebarMenuSubButton
-                              onClick={() => navigate(`/groups/${group.id}/chat`)}
-                              isActive={isActiveGroup(group.id)}
-                              className="relative"
-                            >
-                              <Hash className="h-3 w-3" />
-                              <span className="truncate flex-1">{group.name}</span>
-                              {group.unread_count && group.unread_count > 0 && (
-                                <Badge 
-                                  variant="destructive" 
-                                  className="h-5 min-w-5 px-1.5 text-xs rounded-full"
-                                >
-                                  {group.unread_count > 99 ? '99+' : group.unread_count}
-                                </Badge>
-                              )}
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
+                        {/* Groups with drag-and-drop */}
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={(event) => handleDragEnd(event, community.id)}
+                        >
+                          <SortableContext
+                            items={communityGroups.map(g => g.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {communityGroups.map((group) => (
+                              <SortableGroupItem
+                                key={group.id}
+                                group={group}
+                                isActive={isActiveGroup(group.id)}
+                                onClick={() => navigate(`/groups/${group.id}/chat`)}
+                              />
+                            ))}
+                          </SortableContext>
+                        </DndContext>
                       </SidebarMenuSub>
                     )}
                   </div>
@@ -502,5 +597,59 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
+  );
+}
+
+// Sortable Group Item Component
+function SortableGroupItem({ 
+  group, 
+  isActive, 
+  onClick 
+}: { 
+  group: Group; 
+  isActive: boolean; 
+  onClick: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: group.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <SidebarMenuSubItem ref={setNodeRef} style={style}>
+      <SidebarMenuSubButton
+        onClick={onClick}
+        isActive={isActive}
+        className="relative group/item"
+      >
+        <div 
+          {...attributes} 
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 hover:bg-muted/50 rounded"
+        >
+          <GripVertical className="h-3 w-3 text-muted-foreground opacity-0 group-hover/item:opacity-100 transition-opacity" />
+        </div>
+        <Hash className="h-3 w-3" />
+        <span className="truncate flex-1">{group.name}</span>
+        {group.unread_count && group.unread_count > 0 && (
+          <Badge 
+            variant="destructive" 
+            className="h-5 min-w-5 px-1.5 text-xs rounded-full"
+          >
+            {group.unread_count > 99 ? '99+' : group.unread_count}
+          </Badge>
+        )}
+      </SidebarMenuSubButton>
+    </SidebarMenuSubItem>
   );
 }
