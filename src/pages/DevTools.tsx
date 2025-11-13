@@ -175,7 +175,7 @@ export default function DevTools() {
     data: {
       role?: string;
       planId?: string;
-      endDate?: string;
+      dueDay?: number;
       groupIds?: string[];
     };
   }>({ open: false, data: {} });
@@ -908,7 +908,7 @@ export default function DevTools() {
         }
       }
 
-      // Update subscription plan and end date
+      // Update subscription plan and due day
       if (data.planId) {
         for (const userId of selectedUsers) {
           const { data: existingSub } = await supabase
@@ -919,8 +919,8 @@ export default function DevTools() {
             .maybeSingle();
 
           const updateData: any = { plan_id: data.planId };
-          if (data.endDate) {
-            updateData.end_date = new Date(data.endDate).toISOString();
+          if (data.dueDay) {
+            updateData.due_day = data.dueDay;
           }
 
           if (existingSub) {
@@ -934,16 +934,15 @@ export default function DevTools() {
               .insert({
                 user_id: userId,
                 plan_id: data.planId,
+                due_day: data.dueDay || 1,
                 start_date: new Date().toISOString(),
-                end_date: data.endDate 
-                  ? new Date(data.endDate).toISOString() 
-                  : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
                 status: "active"
               });
           }
         }
-      } else if (data.endDate && !data.planId) {
-        // Update only end date if no plan selected
+      } else if (data.dueDay && !data.planId) {
+        // Update only due day if no plan selected
         for (const userId of selectedUsers) {
           const { data: existingSub } = await supabase
             .from("user_subscriptions")
@@ -955,7 +954,7 @@ export default function DevTools() {
           if (existingSub) {
             await supabase
               .from("user_subscriptions")
-              .update({ end_date: new Date(data.endDate).toISOString() })
+              .update({ due_day: data.dueDay })
               .eq("id", existingSub.id);
           }
         }
@@ -2567,16 +2566,32 @@ export default function DevTools() {
             </div>
 
             <div>
-              <Label htmlFor="bulk-end-date">Data de Vencimento</Label>
+              <Label htmlFor="bulk-due-day">Dia de Vencimento (1-30)</Label>
               <Input
-                id="bulk-end-date"
-                type="date"
-                value={bulkEditDialog.data.endDate || ""}
-                onChange={(e) => setBulkEditDialog(prev => ({ 
-                  ...prev, 
-                  data: { ...prev.data, endDate: e.target.value } 
-                }))}
+                id="bulk-due-day"
+                type="number"
+                min="1"
+                max="30"
+                placeholder="Ex: 5 para dia 5 de cada mês"
+                value={bulkEditDialog.data.dueDay || ""}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  if (value >= 1 && value <= 30) {
+                    setBulkEditDialog(prev => ({ 
+                      ...prev, 
+                      data: { ...prev.data, dueDay: value } 
+                    }));
+                  } else if (e.target.value === "") {
+                    setBulkEditDialog(prev => ({ 
+                      ...prev, 
+                      data: { ...prev.data, dueDay: undefined } 
+                    }));
+                  }
+                }}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Dia do mês em que o pagamento vence (ex: 5 = dia 5 de cada mês)
+              </p>
             </div>
 
             <div>
