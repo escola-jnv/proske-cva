@@ -508,384 +508,417 @@ const CommunityManagement = () => {
 
       <main className="container mx-auto px-6 py-12">
         <div className="max-w-4xl mx-auto">
-          <Tabs defaultValue="cursos" className="w-full">
+          <Tabs defaultValue="grupos" className="w-full">
             <TabsList className="grid w-full grid-cols-4 mb-8">
-              <TabsTrigger value="cursos">Cursos</TabsTrigger>
-              <TabsTrigger value="eventos">Eventos</TabsTrigger>
-              <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
               <TabsTrigger value="grupos">Grupos</TabsTrigger>
+              <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
+              <TabsTrigger value="eventos">Agenda</TabsTrigger>
+              <TabsTrigger value="cursos">Cursos</TabsTrigger>
             </TabsList>
 
-            {/* Courses Tab */}
-            <TabsContent value="cursos" className="space-y-4">
-            <div>
-              <h2 className="text-2xl font-medium">Cursos</h2>
-            </div>
+            {/* Groups Tab */}
+            <TabsContent value="grupos" className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-2xl font-medium">Grupos de Conversa</h2>
+                  <Dialog open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Criar Novo Grupo</DialogTitle>
+                        <DialogDescription>
+                          Crie um grupo de conversa para os alunos
+                        </DialogDescription>
+                      </DialogHeader>
 
-            {/* Courses List - WhatsApp Style */}
-            <div className="space-y-1">
-              {courses.map(course => {
-              const initials = course.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
-              return <Card key={course.id} className="p-4 cursor-pointer hover:bg-accent transition-colors border-0 border-b rounded-none first:rounded-t-lg last:rounded-b-lg" onClick={() => navigate(`/courses/${course.id}`)}>
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12">
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          <GraduationCap className="h-6 w-6" />
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <h3 className="font-medium truncate">{course.name}</h3>
-                          <div className="flex gap-2 shrink-0">
-                            <Badge variant="secondary">
-                              {course.lesson_count || 0} aulas
-                            </Badge>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => {
-                          e.stopPropagation();
-                          navigate(`/courses/${course.id}/manage`);
-                        }}>
-                              <Edit className="h-3 w-3" />
-                            </Button>
+                      <form onSubmit={handleCreateGroup} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="group-name">Nome do grupo</Label>
+                          <Input 
+                            id="group-name" 
+                            value={groupForm.name} 
+                            onChange={e => setGroupForm({ ...groupForm, name: e.target.value })} 
+                            placeholder="Ex: Turma 3A" 
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="group-description">Descrição (opcional)</Label>
+                          <Textarea 
+                            id="group-description" 
+                            value={groupForm.description} 
+                            onChange={e => setGroupForm({ ...groupForm, description: e.target.value })} 
+                            placeholder="Descreva o grupo" 
+                            rows={3} 
+                          />
+                        </div>
+
+                        <div className="space-y-4 py-2">
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <Label htmlFor="is-visible">Grupo visível para todos</Label>
+                              <p className="text-sm text-muted-foreground">
+                                Todos os membros podem ver este grupo
+                              </p>
+                            </div>
+                            <Switch 
+                              id="is-visible" 
+                              checked={groupForm.is_visible} 
+                              onCheckedChange={checked => setGroupForm({ ...groupForm, is_visible: checked })} 
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <Label htmlFor="students-can-message">Alunos podem enviar mensagens</Label>
+                              <p className="text-sm text-muted-foreground">
+                                Permite que alunos enviem mensagens neste grupo
+                              </p>
+                            </div>
+                            <Switch 
+                              id="students-can-message" 
+                              checked={groupForm.students_can_message} 
+                              onCheckedChange={checked => setGroupForm({ ...groupForm, students_can_message: checked })} 
+                            />
                           </div>
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {course.description || "Sem descrição"}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>;
-            })}
 
-              {courses.length === 0 && <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
-                  <GraduationCap className="h-12 w-12 mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground text-center">
-                    Nenhum curso criado ainda. Crie o primeiro curso!
-                  </p>
-                </Card>}
-            </div>
-            </TabsContent>
-
-            {/* Events Tab */}
-            <TabsContent value="eventos" className="space-y-4">
-            <div>
-              <h2 className="text-2xl font-medium">Eventos</h2>
-            </div>
-
-            {/* Events List - WhatsApp Style */}
-            <div className="space-y-1">
-              {events.map(event => {
-              const eventDate = new Date(event.event_date);
-              const formatDate = () => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const tomorrow = new Date(today);
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                const eventDay = new Date(eventDate);
-                eventDay.setHours(0, 0, 0, 0);
-                if (eventDay.getTime() === today.getTime()) return "Hoje";
-                if (eventDay.getTime() === tomorrow.getTime()) return "Amanhã";
-                return eventDate.toLocaleDateString('pt-BR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric'
-                });
-              };
-              const formatTime = () => {
-                return eventDate.toLocaleTimeString('pt-BR', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                });
-              };
-              return <Card key={event.id} className="p-4 cursor-pointer hover:bg-accent transition-colors border-0 border-b rounded-none first:rounded-t-lg last:rounded-b-lg" onClick={() => navigate('/events')}>
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12">
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          <Calendar className="h-6 w-6" />
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <h3 className="font-medium truncate">{event.title}</h3>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {formatDate()} às {formatTime()}
-                          </span>
+                        <div className="flex gap-2 justify-end">
+                          <Button type="button" variant="outline" onClick={() => setCreateGroupOpen(false)} disabled={creating}>
+                            Cancelar
+                          </Button>
+                          <Button type="submit" disabled={creating}>
+                            {creating ? "Criando..." : "Criar Grupo"}
+                          </Button>
                         </div>
-                        <p className="text-sm text-muted-foreground truncate mb-2">
-                          {event.description || "Sem descrição"}
-                        </p>
-                        <div className="flex gap-2 flex-wrap">
-                          <Badge variant="secondary">
-                            <Users className="h-3 w-3 mr-1" />
-                            {event.participant_count} participantes
-                          </Badge>
-                          {event.group_names.length > 0 && <Badge variant="outline" className="truncate max-w-[200px]">
-                              {event.group_names.join(', ')}
-                            </Badge>}
-                        </div>
-                      </div>
-                    </div>
-                  </Card>;
-            })}
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
 
-              {events.length === 0 && <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
-                  <Calendar className="h-12 w-12 mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground text-center">
-                    Nenhum evento próximo. Crie o primeiro evento!
-                  </p>
-                </Card>}
-            </div>
+                {/* Groups List - WhatsApp Style */}
+                <div className="space-y-1">
+                  {groups.map(group => {
+                    const initials = group.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+                    const formatTime = (timestamp: string | null) => {
+                      if (!timestamp) return "";
+                      const date = new Date(timestamp);
+                      const now = new Date();
+                      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+                      if (diffInHours < 24) {
+                        return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                      } else if (diffInHours < 168) {
+                        return date.toLocaleDateString('pt-BR', { weekday: 'short' });
+                      } else {
+                        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                      }
+                    };
+                    
+                    return (
+                      <Card 
+                        key={group.id} 
+                        className="p-4 cursor-pointer hover:bg-accent transition-colors border-0 border-b rounded-none first:rounded-t-lg last:rounded-b-lg" 
+                        onClick={() => navigate(`/groups/${group.id}/chat`)}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <Avatar className="h-12 w-12">
+                              <AvatarFallback className="bg-primary text-primary-foreground">
+                                {initials}
+                              </AvatarFallback>
+                            </Avatar>
+                            {group.unread_count && group.unread_count > 0 && (
+                              <div className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground h-5 min-w-5 px-1.5 text-xs rounded-full flex items-center justify-center font-semibold">
+                                {group.unread_count > 99 ? '99+' : group.unread_count}
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <h3 className="font-medium truncate">{group.name}</h3>
+                              {group.last_message_time && (
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {formatTime(group.last_message_time)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {group.last_message ? (
+                                <>
+                                  <span className="font-medium">{group.last_message_sender || "Usuário"}:</span>{" "}
+                                  {group.last_message}
+                                </>
+                              ) : group.description || "Nenhuma mensagem ainda"}
+                            </p>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+
+                  {groups.length === 0 && (
+                    <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
+                      <p className="text-muted-foreground text-center">
+                        Nenhum grupo criado ainda. Crie o primeiro grupo!
+                      </p>
+                    </Card>
+                  )}
+                </div>
+              </div>
             </TabsContent>
 
             {/* Tasks Tab */}
             <TabsContent value="tarefas" className="space-y-4">
-
-          {/* Submissions Section - For Teachers */}
-          {isTeacher && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-2xl font-medium">Tarefas Pendentes de Correção</h2>
-              </div>
-
-              <div className="space-y-2">
-                {pendingSubmissions.map((submission) => (
-                  <SubmissionCard
-                    key={submission.id}
-                    taskName={submission.task_name}
-                    studentName={submission.student_name}
-                    studentAvatar={submission.student_avatar}
-                    createdAt={submission.created_at}
-                    status={submission.status}
-                    onClick={() => {
-                      setSelectedSubmission(submission);
-                      setReviewDialogOpen(true);
-                    }}
-                  />
-                ))}
-
-                {pendingSubmissions.length === 0 && (
-                  <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
-                    <FileText className="h-12 w-12 mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground text-center">
-                      Nenhuma tarefa pendente de correção no momento.
-                    </p>
-                  </Card>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Submissions Section - For Students */}
-          {!isTeacher && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-medium">Minhas Tarefas</h2>
-                {communityId && <SubmitTaskDialog communityId={communityId} />}
-              </div>
-
-              <div className="space-y-6">
-                {/* Pending Submissions */}
-                {mySubmissions.filter(s => s.status === "pending").length > 0 && (
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-medium text-muted-foreground">Aguardando Correção</h3>
-                    {mySubmissions
-                      .filter(s => s.status === "pending")
-                      .map((submission) => (
-                        <SubmissionCard
-                          key={submission.id}
-                          taskName={submission.task_name}
-                          createdAt={submission.created_at}
-                          status={submission.status}
-                          onClick={() => {
-                            setSelectedSubmission(submission);
-                            setViewDialogOpen(true);
-                          }}
-                        />
-                      ))}
+              {/* Submissions Section - For Teachers */}
+              {isTeacher && (
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-2xl font-medium">Tarefas Pendentes de Correção</h2>
                   </div>
-                )}
 
-                {/* Reviewed Submissions */}
-                {mySubmissions.filter(s => s.status === "reviewed").length > 0 && (
                   <div className="space-y-2">
-                    <h3 className="text-lg font-medium text-muted-foreground">Corrigidas</h3>
-                    {mySubmissions
-                      .filter(s => s.status === "reviewed")
-                      .map((submission) => (
-                        <SubmissionCard
-                          key={submission.id}
-                          taskName={submission.task_name}
-                          createdAt={submission.created_at}
-                          status={submission.status}
-                          grade={submission.grade}
-                          onClick={() => {
-                            setSelectedSubmission(submission);
-                            setViewDialogOpen(true);
-                          }}
-                        />
-                      ))}
-                  </div>
-                )}
+                    {pendingSubmissions.map((submission) => (
+                      <SubmissionCard
+                        key={submission.id}
+                        taskName={submission.task_name}
+                        studentName={submission.student_name}
+                        studentAvatar={submission.student_avatar}
+                        createdAt={submission.created_at}
+                        status={submission.status}
+                        onClick={() => {
+                          setSelectedSubmission(submission);
+                          setReviewDialogOpen(true);
+                        }}
+                      />
+                    ))}
 
-                {mySubmissions.length === 0 && (
-                  <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
-                    <FileText className="h-12 w-12 mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground text-center mb-4">
-                      Você ainda não enviou nenhuma tarefa.
-                    </p>
+                    {pendingSubmissions.length === 0 && (
+                      <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
+                        <FileText className="h-12 w-12 mb-4 text-muted-foreground" />
+                        <p className="text-muted-foreground text-center">
+                          Nenhuma tarefa pendente de correção no momento.
+                        </p>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Submissions Section - For Students */}
+              {!isTeacher && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-medium">Minhas Tarefas</h2>
                     {communityId && <SubmitTaskDialog communityId={communityId} />}
-                  </Card>
-                )}
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Pending Submissions */}
+                    {mySubmissions.filter(s => s.status === "pending").length > 0 && (
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-medium text-muted-foreground">Aguardando Correção</h3>
+                        {mySubmissions
+                          .filter(s => s.status === "pending")
+                          .map((submission) => (
+                            <SubmissionCard
+                              key={submission.id}
+                              taskName={submission.task_name}
+                              createdAt={submission.created_at}
+                              status={submission.status}
+                              onClick={() => {
+                                setSelectedSubmission(submission);
+                                setViewDialogOpen(true);
+                              }}
+                            />
+                          ))}
+                      </div>
+                    )}
+
+                    {/* Reviewed Submissions */}
+                    {mySubmissions.filter(s => s.status === "reviewed").length > 0 && (
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-medium text-muted-foreground">Corrigidas</h3>
+                        {mySubmissions
+                          .filter(s => s.status === "reviewed")
+                          .map((submission) => (
+                            <SubmissionCard
+                              key={submission.id}
+                              taskName={submission.task_name}
+                              createdAt={submission.created_at}
+                              status={submission.status}
+                              grade={submission.grade}
+                              onClick={() => {
+                                setSelectedSubmission(submission);
+                                setViewDialogOpen(true);
+                              }}
+                            />
+                          ))}
+                      </div>
+                    )}
+
+                    {mySubmissions.length === 0 && (
+                      <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
+                        <FileText className="h-12 w-12 mb-4 text-muted-foreground" />
+                        <p className="text-muted-foreground text-center mb-4">
+                          Você ainda não enviou nenhuma tarefa.
+                        </p>
+                        {communityId && <SubmitTaskDialog communityId={communityId} />}
+                      </Card>
+                    )}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Events Tab (Agenda) */}
+            <TabsContent value="eventos" className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-medium">Agenda</h2>
               </div>
-            </div>
-          )}
-          </TabsContent>
 
-          {/* Groups Tab */}
-          <TabsContent value="grupos" className="space-y-4">
-          {/* Groups Section */}
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-2xl font-medium">Grupos de Conversa</h2>
-              <Dialog open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Criar Novo Grupo</DialogTitle>
-                    <DialogDescription>
-                      Crie um grupo de conversa para os alunos
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <form onSubmit={handleCreateGroup} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="group-name">Nome do grupo</Label>
-                      <Input id="group-name" value={groupForm.name} onChange={e => setGroupForm({
-                      ...groupForm,
-                      name: e.target.value
-                    })} placeholder="Ex: Turma 3A" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="group-description">Descrição (opcional)</Label>
-                      <Textarea id="group-description" value={groupForm.description} onChange={e => setGroupForm({
-                      ...groupForm,
-                      description: e.target.value
-                    })} placeholder="Descreva o grupo" rows={3} />
-                    </div>
-
-                    <div className="space-y-4 py-2">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="is-visible">Grupo visível para todos</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Todos os membros podem ver este grupo
+              {/* Events List - WhatsApp Style */}
+              <div className="space-y-1">
+                {events.map(event => {
+                  const eventDate = new Date(event.event_date);
+                  const formatDate = () => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    const eventDay = new Date(eventDate);
+                    eventDay.setHours(0, 0, 0, 0);
+                    if (eventDay.getTime() === today.getTime()) return "Hoje";
+                    if (eventDay.getTime() === tomorrow.getTime()) return "Amanhã";
+                    return eventDate.toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    });
+                  };
+                  const formatTime = () => {
+                    return eventDate.toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    });
+                  };
+                  
+                  return (
+                    <Card 
+                      key={event.id} 
+                      className="p-4 cursor-pointer hover:bg-accent transition-colors border-0 border-b rounded-none first:rounded-t-lg last:rounded-b-lg" 
+                      onClick={() => navigate('/events')}
+                    >
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-12 w-12">
+                          <AvatarFallback className="bg-primary text-primary-foreground">
+                            <Calendar className="h-6 w-6" />
+                          </AvatarFallback>
+                        </Avatar>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <h3 className="font-medium truncate">{event.title}</h3>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {formatDate()} às {formatTime()}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate mb-2">
+                            {event.description || "Sem descrição"}
                           </p>
-                        </div>
-                        <Switch id="is-visible" checked={groupForm.is_visible} onCheckedChange={checked => setGroupForm({
-                        ...groupForm,
-                        is_visible: checked
-                      })} />
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="students-can-message">Alunos podem enviar mensagens</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Permite que alunos enviem mensagens neste grupo
-                          </p>
-                        </div>
-                        <Switch id="students-can-message" checked={groupForm.students_can_message} onCheckedChange={checked => setGroupForm({
-                        ...groupForm,
-                        students_can_message: checked
-                      })} />
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 justify-end">
-                      <Button type="button" variant="outline" onClick={() => setCreateGroupOpen(false)} disabled={creating}>
-                        Cancelar
-                      </Button>
-                      <Button type="submit" disabled={creating}>
-                        {creating ? "Criando..." : "Criar Grupo"}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {/* Groups List - WhatsApp Style */}
-            <div className="space-y-1">
-              {groups.map(group => {
-              const initials = group.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
-              const formatTime = (timestamp: string | null) => {
-                if (!timestamp) return "";
-                const date = new Date(timestamp);
-                const now = new Date();
-                const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-                if (diffInHours < 24) {
-                  return date.toLocaleTimeString('pt-BR', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  });
-                } else if (diffInHours < 168) {
-                  return date.toLocaleDateString('pt-BR', {
-                    weekday: 'short'
-                  });
-                } else {
-                  return date.toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit'
-                  });
-                }
-              };
-              return <Card key={group.id} className="p-4 cursor-pointer hover:bg-accent transition-colors border-0 border-b rounded-none first:rounded-t-lg last:rounded-b-lg" onClick={() => navigate(`/groups/${group.id}/chat`)}>
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12">
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <h3 className="font-medium truncate">{group.name}</h3>
-                          <div className="flex items-center gap-2">
-                            {group.unread_count && group.unread_count > 0 && (
-                              <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs rounded-full">
-                                {group.unread_count > 99 ? '99+' : group.unread_count}
+                          <div className="flex gap-2 flex-wrap">
+                            <Badge variant="secondary">
+                              <Users className="h-3 w-3 mr-1" />
+                              {event.participant_count} participantes
+                            </Badge>
+                            {event.group_names.length > 0 && (
+                              <Badge variant="outline" className="truncate max-w-[200px]">
+                                {event.group_names.join(', ')}
                               </Badge>
                             )}
-                            {group.last_message_time && <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                {formatTime(group.last_message_time)}
-                              </span>}
                           </div>
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {group.last_message ? <>
-                              <span className="font-medium">{group.last_message_sender || "Usuário"}:</span>{" "}
-                              {group.last_message}
-                            </> : group.description || "Nenhuma mensagem ainda"}
-                        </p>
                       </div>
+                    </Card>
+                  );
+                })}
 
-                      
-                    </div>
-                  </Card>;
-            })}
+                {events.length === 0 && (
+                  <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
+                    <Calendar className="h-12 w-12 mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground text-center">
+                      Nenhum evento próximo. Crie o primeiro evento!
+                    </p>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
 
-              {groups.length === 0 && <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
-                  <p className="text-muted-foreground text-center">
-                    Nenhum grupo criado ainda. Crie o primeiro grupo!
-                  </p>
-                </Card>}
-            </div>
-          </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </main>
+            {/* Courses Tab */}
+            <TabsContent value="cursos" className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-medium">Cursos</h2>
+              </div>
+
+              {/* Courses List - WhatsApp Style */}
+              <div className="space-y-1">
+                {courses.map(course => {
+                  const initials = course.name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+                  
+                  return (
+                    <Card 
+                      key={course.id} 
+                      className="p-4 cursor-pointer hover:bg-accent transition-colors border-0 border-b rounded-none first:rounded-t-lg last:rounded-b-lg" 
+                      onClick={() => navigate(`/courses/${course.id}`)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-12 w-12">
+                          <AvatarFallback className="bg-primary text-primary-foreground">
+                            <GraduationCap className="h-6 w-6" />
+                          </AvatarFallback>
+                        </Avatar>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <h3 className="font-medium truncate">{course.name}</h3>
+                            <div className="flex gap-2 shrink-0">
+                              <Badge variant="secondary">
+                                {course.lesson_count || 0} aulas
+                              </Badge>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6" 
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  navigate(`/courses/${course.id}/manage`);
+                                }}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {course.description || "Sem descrição"}
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+
+                {courses.length === 0 && (
+                  <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
+                    <GraduationCap className="h-12 w-12 mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground text-center">
+                      Nenhum curso criado ainda. Crie o primeiro curso!
+                    </p>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </main>
 
       {/* Invite Dialog */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>

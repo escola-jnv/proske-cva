@@ -12,7 +12,7 @@ export const NotificationBar = () => {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="relative h-10 bg-destructive overflow-hidden border-b border-border w-full cursor-pointer hover:bg-destructive/90 transition-colors"
+        className="sticky top-0 z-50 relative h-10 bg-destructive overflow-hidden border-b border-border w-full cursor-pointer hover:bg-destructive/90 transition-colors"
       >
         <div className="absolute inset-0 flex items-center pointer-events-none">
           <div className="flex gap-8 animate-scroll whitespace-nowrap">

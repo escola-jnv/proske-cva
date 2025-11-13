@@ -147,6 +147,40 @@ const GroupChat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Mark messages as read when entering the group
+  useEffect(() => {
+    const markMessagesAsRead = async () => {
+      if (!user?.id || !groupId || messages.length === 0) return;
+
+      try {
+        // Get all message IDs from this group that are not from the current user
+        const messageIds = messages
+          .filter(msg => msg.user_id !== user.id)
+          .map(msg => msg.id);
+
+        if (messageIds.length === 0) return;
+
+        // Insert read status for all messages (using ON CONFLICT DO NOTHING to avoid duplicates)
+        const readStatusInserts = messageIds.map(messageId => ({
+          user_id: user.id,
+          message_id: messageId,
+          group_id: groupId,
+        }));
+
+        await supabase
+          .from('message_read_status')
+          .upsert(readStatusInserts, { 
+            onConflict: 'user_id,message_id',
+            ignoreDuplicates: true 
+          });
+      } catch (error) {
+        console.error('Error marking messages as read:', error);
+      }
+    };
+
+    markMessagesAsRead();
+  }, [user?.id, groupId, messages]);
+
   const fetchGroupData = async (grpId: string, userId: string) => {
     try {
       // Fetch group
