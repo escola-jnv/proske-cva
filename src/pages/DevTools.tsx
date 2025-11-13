@@ -647,8 +647,8 @@ export default function DevTools() {
         toast.error("Nome do plano é obrigatório");
         return;
       }
-      if (data.price <= 0) {
-        toast.error("Valor deve ser maior que 0");
+      if (data.price < 0) {
+        toast.error("Valor não pode ser negativo");
         return;
       }
       if ((data.weekly_corrections_limit ?? 0) < 0) {
