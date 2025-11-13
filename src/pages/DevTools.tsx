@@ -488,13 +488,26 @@ export default function DevTools() {
             break;
         }
 
-        // Update existing
-        const { error } = await supabase
-          .from(table as any)
-          .update(data)
-          .eq("id", data.id);
+        // Check if creating (no id) or updating (has id)
+        if (data.id) {
+          // Update existing
+          const { error } = await supabase
+            .from(table as any)
+            .update(data)
+            .eq("id", data.id);
 
-        if (error) throw error;
+          if (error) throw error;
+        } else {
+          // Create new - add created_by
+          const { data: { user } } = await supabase.auth.getUser();
+          const newData = { ...data, created_by: user?.id };
+          
+          const { error } = await supabase
+            .from(table as any)
+            .insert(newData);
+
+          if (error) throw error;
+        }
       }
 
       toast.success("Atualizado com sucesso!");
@@ -1978,6 +1991,44 @@ export default function DevTools() {
                     value={editDialog.data.description || ""}
                     onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), description: e.target.value } }))}
                   />
+                </div>
+                <div>
+                  <Label htmlFor="community">Comunidade</Label>
+                  <Select
+                    value={editDialog.data.community_id || ""}
+                    onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), community_id: value } }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a comunidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {communities.map((community) => (
+                        <SelectItem key={community.id} value={community.id}>
+                          {community.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="students_can_message"
+                    checked={editDialog.data.students_can_message ?? true}
+                    onCheckedChange={(checked) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), students_can_message: checked } }))}
+                  />
+                  <Label htmlFor="students_can_message" className="cursor-pointer">
+                    Alunos podem enviar mensagens
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="is_visible"
+                    checked={editDialog.data.is_visible ?? true}
+                    onCheckedChange={(checked) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), is_visible: checked } }))}
+                  />
+                  <Label htmlFor="is_visible" className="cursor-pointer">
+                    Grupo visível
+                  </Label>
                 </div>
               </>
             )}
