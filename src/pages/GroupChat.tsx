@@ -23,6 +23,13 @@ type Message = {
   content: string;
   user_id: string;
   created_at: string;
+  message_type?: string;
+  metadata?: {
+    submission_id?: string;
+    video_url?: string;
+    task_name?: string;
+    grade?: number;
+  };
   profiles: {
     name: string;
     avatar_url: string | null;
@@ -270,6 +277,8 @@ const GroupChat = () => {
             city: null,
           },
           user_role: userRole || "student",
+          message_type: msg.message_type || 'normal',
+          metadata: msg.metadata || {},
         };
       });
 
@@ -399,6 +408,38 @@ const GroupChat = () => {
             const isTeacher = message.user_role === "teacher";
             const isAdmin = message.user_role === "admin";
             const isSpecialRole = isTeacher || isAdmin;
+            const isSystemMessage = message.message_type === 'system';
+            
+            // Render system messages differently
+            if (isSystemMessage) {
+              return (
+                <div key={message.id} className="flex justify-center my-4">
+                  <div className="max-w-[85%] rounded-lg bg-accent/50 border border-accent px-4 py-3 shadow-sm">
+                    <p className="text-sm text-center whitespace-pre-wrap">
+                      {message.content}
+                    </p>
+                    
+                    {/* Show video link if available */}
+                    {message.metadata?.video_url && (
+                      <div className="mt-3 flex justify-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => window.open(message.metadata?.video_url, '_blank')}
+                        >
+                          📹 Ver Vídeo da Tarefa
+                        </Button>
+                      </div>
+                    )}
+                    
+                    <span className="text-xs text-muted-foreground block text-center mt-2">
+                      {formatTime(message.created_at)}
+                    </span>
+                  </div>
+                </div>
+              );
+            }
             
             return (
               <div
