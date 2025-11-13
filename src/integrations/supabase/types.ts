@@ -690,14 +690,19 @@ export type Database = {
       }
       submissions: {
         Row: {
+          bpm: number | null
           community_id: string
           created_at: string
+          effective_key: string | null
           extra_notes: string | null
           grade: number | null
+          harmonic_field: string | null
           id: string
+          melodic_reference: string | null
           recording_date: string
           reviewed_at: string | null
           reviewed_by: string | null
+          song_name: string | null
           status: string
           student_id: string
           task_name: string
@@ -706,14 +711,19 @@ export type Database = {
           video_url: string
         }
         Insert: {
+          bpm?: number | null
           community_id: string
           created_at?: string
+          effective_key?: string | null
           extra_notes?: string | null
           grade?: number | null
+          harmonic_field?: string | null
           id?: string
+          melodic_reference?: string | null
           recording_date: string
           reviewed_at?: string | null
           reviewed_by?: string | null
+          song_name?: string | null
           status?: string
           student_id: string
           task_name: string
@@ -722,14 +732,19 @@ export type Database = {
           video_url: string
         }
         Update: {
+          bpm?: number | null
           community_id?: string
           created_at?: string
+          effective_key?: string | null
           extra_notes?: string | null
           grade?: number | null
+          harmonic_field?: string | null
           id?: string
+          melodic_reference?: string | null
           recording_date?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
+          song_name?: string | null
           status?: string
           student_id?: string
           task_name?: string

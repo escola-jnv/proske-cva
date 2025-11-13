@@ -32,6 +32,11 @@ const formSchema = z.object({
   ),
   recording_date: z.string().min(1, "Data obrigatória"),
   task_name: z.string().min(3, "Nome da tarefa deve ter pelo menos 3 caracteres"),
+  song_name: z.string().min(1, "Nome da música é obrigatório"),
+  harmonic_field: z.string().min(1, "Campo Harmônico é obrigatório"),
+  effective_key: z.string().min(1, "Tom Efetivo é obrigatório"),
+  bpm: z.string().min(1, "BPM é obrigatório"),
+  melodic_reference: z.string().min(1, "Referência melódica é obrigatória"),
   extra_notes: z.string().optional(),
 });
 
@@ -52,6 +57,11 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
       video_url: "",
       recording_date: "",
       task_name: "",
+      song_name: "",
+      harmonic_field: "",
+      effective_key: "",
+      bpm: "",
+      melodic_reference: "",
       extra_notes: "",
     },
   });
@@ -68,6 +78,11 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
         video_url: values.video_url,
         recording_date: values.recording_date,
         task_name: values.task_name,
+        song_name: values.song_name,
+        harmonic_field: values.harmonic_field,
+        effective_key: values.effective_key,
+        bpm: parseInt(values.bpm),
+        melodic_reference: values.melodic_reference,
         extra_notes: values.extra_notes || null,
       });
 
@@ -99,7 +114,7 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
           Enviar Tarefa
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Enviar Tarefa para Correção</DialogTitle>
           <DialogDescription>
@@ -121,6 +136,79 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
                 </FormItem>
               )}
             />
+            
+            <FormField
+              control={form.control}
+              name="song_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome da Música</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Garota de Ipanema" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="harmonic_field"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Campo Harmônico (CH)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: Dó Maior" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="effective_key"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tom Efetivo</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: C" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="bpm"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>BPM</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="Ex: 120" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="melodic_reference"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Referência Melódica</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Tom Jobim" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
             <FormField
               control={form.control}
               name="video_url"
@@ -137,6 +225,7 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
                 </FormItem>
               )}
             />
+            
             <FormField
               control={form.control}
               name="recording_date"
@@ -150,6 +239,7 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
                 </FormItem>
               )}
             />
+            
             <FormField
               control={form.control}
               name="extra_notes"
