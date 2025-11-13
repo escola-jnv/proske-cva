@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   Hash,
   BookOpen,
@@ -45,6 +46,7 @@ type Group = {
   id: string;
   name: string;
   community_id: string;
+  unread_count?: number;
 };
 
 type Course = {
@@ -66,6 +68,7 @@ export function AppSidebar() {
     name: string;
     avatar_url: string | null;
   } | null>(null);
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
   
   const isCollapsed = state === "collapsed";
 
@@ -175,11 +178,26 @@ export function AppSidebar() {
       }
 
       if (groupsData) {
-        const groupsList: Group[] = groupsData.map((g: any) => ({
-          id: g.id,
-          name: g.name,
-          community_id: g.community_id,
-        }));
+        // Fetch unread counts for each group
+        const groupsWithUnread = await Promise.all(
+          groupsData.map(async (g: any) => {
+            const { data: unreadData } = await supabase
+              .rpc('get_unread_count', { 
+                _user_id: user.id, 
+                _group_id: g.id 
+              });
+            
+            return {
+              id: g.id,
+              name: g.name,
+              community_id: g.community_id,
+              unread_count: unreadData || 0,
+            };
+          })
+        );
+
+        const totalUnread = groupsWithUnread.reduce((sum, g) => sum + (g.unread_count || 0), 0);
+        setTotalUnreadCount(totalUnread);
 
         const communitiesMap = new Map<string, Community>();
         groupsData.forEach((g: any) => {
@@ -195,7 +213,7 @@ export function AppSidebar() {
           }
         });
 
-        setGroups(groupsList);
+        setGroups(groupsWithUnread);
         setCommunities(Array.from(communitiesMap.values()));
       }
 
@@ -345,9 +363,18 @@ export function AppSidebar() {
                             <SidebarMenuSubButton
                               onClick={() => navigate(`/groups/${group.id}/chat`)}
                               isActive={isActiveGroup(group.id)}
+                              className="relative"
                             >
                               <Hash className="h-3 w-3" />
-                              <span className="truncate">{group.name}</span>
+                              <span className="truncate flex-1">{group.name}</span>
+                              {group.unread_count && group.unread_count > 0 && (
+                                <Badge 
+                                  variant="destructive" 
+                                  className="h-5 min-w-5 px-1.5 text-xs rounded-full"
+                                >
+                                  {group.unread_count > 99 ? '99+' : group.unread_count}
+                                </Badge>
+                              )}
                             </SidebarMenuSubButton>
                           </SidebarMenuSubItem>
                         ))}

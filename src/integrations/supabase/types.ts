@@ -434,6 +434,33 @@ export type Database = {
           },
         ]
       }
+      message_read_status: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          message_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          message_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          message_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           community_id: string
@@ -835,6 +862,10 @@ export type Database = {
         Returns: boolean
       }
       format_name: { Args: { name_text: string }; Returns: string }
+      get_unread_count: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

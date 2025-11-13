@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ArrowLeft, Users, Mail, Phone, BookOpen, GraduationCap, Edit, Calendar, FileText } from "lucide-react";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { SubmitTaskDialog } from "@/components/SubmitTaskDialog";
 import { SubmissionCard } from "@/components/SubmissionCard";
@@ -42,6 +43,7 @@ type Group = {
   last_message?: string | null;
   last_message_time?: string | null;
   last_message_sender?: string | null;
+  unread_count?: number;
 };
 type Course = {
   id: string;
@@ -203,6 +205,19 @@ const CommunityManagement = () => {
           } = await supabase.from("profiles").select("name").eq("id", lastMessageData.user_id).single();
           senderName = profileData?.name || null;
         }
+
+        // Get unread count if user is authenticated
+        let unreadCount = 0;
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (currentUser) {
+          const { data: unreadData } = await supabase
+            .rpc('get_unread_count', { 
+              _user_id: currentUser.id, 
+              _group_id: group.id 
+            });
+          unreadCount = unreadData || 0;
+        }
+
         return {
           id: group.id,
           name: group.name,
@@ -210,7 +225,8 @@ const CommunityManagement = () => {
           member_count: count || 0,
           last_message: lastMessageData?.content || null,
           last_message_time: lastMessageData?.created_at || null,
-          last_message_sender: senderName
+          last_message_sender: senderName,
+          unread_count: unreadCount,
         };
       }));
       setGroups(groupsWithCounts);
@@ -491,9 +507,17 @@ const CommunityManagement = () => {
       </header>
 
       <main className="container mx-auto px-6 py-12">
-        <div className="max-w-4xl mx-auto space-y-8">
-          {/* Courses Section */}
-          <div className="space-y-4">
+        <div className="max-w-4xl mx-auto">
+          <Tabs defaultValue="cursos" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 mb-8">
+              <TabsTrigger value="cursos">Cursos</TabsTrigger>
+              <TabsTrigger value="eventos">Eventos</TabsTrigger>
+              <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
+              <TabsTrigger value="grupos">Grupos</TabsTrigger>
+            </TabsList>
+
+            {/* Courses Tab */}
+            <TabsContent value="cursos" className="space-y-4">
             <div>
               <h2 className="text-2xl font-medium">Cursos</h2>
             </div>
@@ -540,10 +564,10 @@ const CommunityManagement = () => {
                   </p>
                 </Card>}
             </div>
-          </div>
+            </TabsContent>
 
-          {/* Events Section */}
-          <div className="space-y-4">
+            {/* Events Tab */}
+            <TabsContent value="eventos" className="space-y-4">
             <div>
               <h2 className="text-2xl font-medium">Eventos</h2>
             </div>
@@ -612,7 +636,10 @@ const CommunityManagement = () => {
                   </p>
                 </Card>}
             </div>
-          </div>
+            </TabsContent>
+
+            {/* Tasks Tab */}
+            <TabsContent value="tarefas" className="space-y-4">
 
           {/* Submissions Section - For Teachers */}
           {isTeacher && (
@@ -713,7 +740,10 @@ const CommunityManagement = () => {
               </div>
             </div>
           )}
+          </TabsContent>
 
+          {/* Groups Tab */}
+          <TabsContent value="grupos" className="space-y-4">
           {/* Groups Section */}
           <div className="space-y-4">
             <div>
@@ -821,9 +851,16 @@ const CommunityManagement = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <h3 className="font-medium truncate">{group.name}</h3>
-                          {group.last_message_time && <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              {formatTime(group.last_message_time)}
-                            </span>}
+                          <div className="flex items-center gap-2">
+                            {group.unread_count && group.unread_count > 0 && (
+                              <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs rounded-full">
+                                {group.unread_count > 99 ? '99+' : group.unread_count}
+                              </Badge>
+                            )}
+                            {group.last_message_time && <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {formatTime(group.last_message_time)}
+                              </span>}
+                          </div>
                         </div>
                         <p className="text-sm text-muted-foreground truncate">
                           {group.last_message ? <>
@@ -845,8 +882,10 @@ const CommunityManagement = () => {
                 </Card>}
             </div>
           </div>
-        </div>
-      </main>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </main>
 
       {/* Invite Dialog */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
