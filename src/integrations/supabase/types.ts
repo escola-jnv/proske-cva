@@ -744,6 +744,7 @@ export type Database = {
       subscription_plans: {
         Row: {
           billing_frequency: string | null
+          checkout_url: string | null
           created_at: string
           description: string | null
           id: string
@@ -755,6 +756,7 @@ export type Database = {
         }
         Insert: {
           billing_frequency?: string | null
+          checkout_url?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -766,6 +768,7 @@ export type Database = {
         }
         Update: {
           billing_frequency?: string | null
+          checkout_url?: string | null
           created_at?: string
           description?: string | null
           id?: string

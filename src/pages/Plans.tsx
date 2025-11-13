@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, DollarSign } from "lucide-react";
+import { ArrowLeft, DollarSign, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 type SubscriptionPlan = {
@@ -15,6 +15,7 @@ type SubscriptionPlan = {
   billing_frequency: string | null;
   monitoring_frequency: string | null;
   weekly_corrections_limit: number | null;
+  checkout_url: string | null;
 };
 
 const Plans = () => {
@@ -142,6 +143,17 @@ const Plans = () => {
                       )}
                     </div>
                   </CardContent>
+                  {plan.price > 0 && plan.checkout_url && (
+                    <CardFooter>
+                      <Button 
+                        className="w-full" 
+                        onClick={() => window.open(plan.checkout_url!, '_blank')}
+                      >
+                        Adquirir Plano
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                      </Button>
+                    </CardFooter>
+                  )}
                 </Card>
               ))}
             </div>

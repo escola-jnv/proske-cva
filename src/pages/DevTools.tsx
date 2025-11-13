@@ -72,6 +72,7 @@ type SubscriptionPlan = {
   billing_frequency?: string;
   monitoring_frequency?: string;
   weekly_corrections_limit?: number;
+  checkout_url?: string;
   default_groups?: string[];
 };
 
@@ -725,6 +726,7 @@ export default function DevTools() {
         billing_frequency: "monthly",
         monitoring_frequency: "none",
         weekly_corrections_limit: 0,
+        checkout_url: "",
         default_groups: []
       } 
     });
@@ -762,7 +764,8 @@ export default function DevTools() {
             description: data.description,
             billing_frequency: data.billing_frequency,
             monitoring_frequency: data.monitoring_frequency,
-            weekly_corrections_limit: data.weekly_corrections_limit
+            weekly_corrections_limit: data.weekly_corrections_limit,
+            checkout_url: data.checkout_url
           })
           .eq("id", data.id);
 
@@ -777,7 +780,8 @@ export default function DevTools() {
             description: data.description,
             billing_frequency: data.billing_frequency,
             monitoring_frequency: data.monitoring_frequency,
-            weekly_corrections_limit: data.weekly_corrections_limit
+            weekly_corrections_limit: data.weekly_corrections_limit,
+            checkout_url: data.checkout_url
           })
           .select()
           .single();
@@ -2275,6 +2279,20 @@ export default function DevTools() {
                   data: { ...(prev.data || {} as SubscriptionPlan), weekly_corrections_limit: parseInt(e.target.value) || 0 } 
                 }))}
                 placeholder="0"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="checkout-url">Link de Checkout</Label>
+              <Input
+                id="checkout-url"
+                type="url"
+                value={planDialog.data?.checkout_url || ""}
+                onChange={(e) => setPlanDialog(prev => ({ 
+                  ...prev, 
+                  data: { ...(prev.data || {} as SubscriptionPlan), checkout_url: e.target.value } 
+                }))}
+                placeholder="https://..."
               />
             </div>
 
