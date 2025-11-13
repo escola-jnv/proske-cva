@@ -89,6 +89,8 @@ export function AppSidebar() {
   } | null>(null);
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>('student');
+  const [userPlan, setUserPlan] = useState<string | null>(null);
   
   const isCollapsed = state === "collapsed";
 
@@ -137,6 +139,35 @@ export function AppSidebar() {
 
       const admin = userRoles?.some((r) => r.role === "admin");
       setIsAdmin(admin || false);
+
+      // Set user role for display
+      if (admin) {
+        setUserRole('admin');
+      } else if (userRoles?.some((r) => r.role === "teacher")) {
+        setUserRole('teacher');
+      } else if (userRoles?.some((r) => r.role === "guest")) {
+        setUserRole('guest');
+      } else {
+        setUserRole('student');
+      }
+
+      // Fetch user's active subscription plan
+      const { data: subscriptionData } = await supabase
+        .from('user_subscriptions')
+        .select(`
+          plan_id,
+          subscription_plans (
+            name
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single();
+
+      if (subscriptionData?.subscription_plans) {
+        const planData: any = subscriptionData.subscription_plans;
+        setUserPlan(planData.name);
+      }
 
       let groupsData;
 
@@ -354,9 +385,9 @@ export function AppSidebar() {
     <Sidebar className={isCollapsed ? "w-14" : "w-64"}>
       {/* User Profile Header */}
       <SidebarHeader>
-        <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 rounded-md transition-colors" onClick={() => navigate("/profile")}>
+        <div className="flex flex-col gap-2 p-3 cursor-pointer hover:bg-muted/50 rounded-md transition-colors" onClick={() => navigate("/profile")}>
           {isCollapsed ? (
-            <Avatar className="h-8 w-8">
+            <Avatar className="h-8 w-8 mx-auto">
               <AvatarImage src={userProfile?.avatar_url || undefined} />
               <AvatarFallback className="bg-primary/10">
                 {userProfile?.name?.charAt(0).toUpperCase() || "U"}
@@ -364,16 +395,50 @@ export function AppSidebar() {
             </Avatar>
           ) : (
             <>
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={userProfile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/10">
-                  {userProfile?.name?.charAt(0).toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">
-                  {userProfile?.name || "Usuário"}
-                </p>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={userProfile?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary/10">
+                    {userProfile?.name?.charAt(0).toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">
+                    {userProfile?.name || "Usuário"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap ml-1">
+                {/* Role Badge */}
+                <Badge 
+                  variant={
+                    userRole === 'admin' ? 'default' : 
+                    userRole === 'teacher' ? 'secondary' : 
+                    userRole === 'guest' ? 'outline' : 
+                    'outline'
+                  }
+                  className={
+                    userRole === 'admin' ? 'bg-destructive text-destructive-foreground' :
+                    userRole === 'teacher' ? 'bg-primary text-primary-foreground' :
+                    userRole === 'guest' ? 'border-muted-foreground/50' :
+                    'border-muted-foreground/30'
+                  }
+                >
+                  {userRole === 'admin' ? '👑 Admin' :
+                   userRole === 'teacher' ? '📚 Professor' :
+                   userRole === 'guest' ? '👤 Convidado' :
+                   '🎓 Aluno'}
+                </Badge>
+
+                {/* Plan Badge */}
+                {userPlan && (
+                  <Badge 
+                    variant="secondary"
+                    className="bg-accent text-accent-foreground"
+                  >
+                    💎 {userPlan}
+                  </Badge>
+                )}
               </div>
             </>
           )}
