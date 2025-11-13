@@ -713,6 +713,7 @@ export type Database = {
       }
       subscription_plans: {
         Row: {
+          billing_frequency: string | null
           created_at: string
           description: string | null
           id: string
@@ -723,6 +724,7 @@ export type Database = {
           weekly_corrections_limit: number | null
         }
         Insert: {
+          billing_frequency?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -733,6 +735,7 @@ export type Database = {
           weekly_corrections_limit?: number | null
         }
         Update: {
+          billing_frequency?: string | null
           created_at?: string
           description?: string | null
           id?: string

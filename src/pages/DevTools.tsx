@@ -69,6 +69,7 @@ type SubscriptionPlan = {
   name: string;
   price: number;
   description?: string;
+  billing_frequency?: string;
   monitoring_frequency?: string;
   weekly_corrections_limit?: number;
   default_groups?: string[];
@@ -629,6 +630,7 @@ export default function DevTools() {
         name: "", 
         price: 0, 
         description: "", 
+        billing_frequency: "monthly",
         monitoring_frequency: "none",
         weekly_corrections_limit: 0,
         default_groups: []
@@ -666,6 +668,7 @@ export default function DevTools() {
             name: data.name,
             price: data.price,
             description: data.description,
+            billing_frequency: data.billing_frequency,
             monitoring_frequency: data.monitoring_frequency,
             weekly_corrections_limit: data.weekly_corrections_limit
           })
@@ -680,6 +683,7 @@ export default function DevTools() {
             name: data.name,
             price: data.price,
             description: data.description,
+            billing_frequency: data.billing_frequency,
             monitoring_frequency: data.monitoring_frequency,
             weekly_corrections_limit: data.weekly_corrections_limit
           })
@@ -1463,6 +1467,7 @@ export default function DevTools() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Valor</TableHead>
+                    <TableHead>Cobrança</TableHead>
                     <TableHead>Monitorias</TableHead>
                     <TableHead>Correções/Semana</TableHead>
                     <TableHead>Grupos Padrão</TableHead>
@@ -1472,7 +1477,7 @@ export default function DevTools() {
                 <TableBody>
                   {subscriptionPlans.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground">
                         Nenhum plano cadastrado
                       </TableCell>
                     </TableRow>
@@ -1490,6 +1495,15 @@ export default function DevTools() {
                         <TableCell>
                           <Badge variant="secondary" className="font-mono">
                             R$ {plan.price.toFixed(2)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {plan.billing_frequency === "monthly" && "Mensal"}
+                            {plan.billing_frequency === "quarterly" && "Trimestral"}
+                            {plan.billing_frequency === "semiannual" && "Semestral"}
+                            {plan.billing_frequency === "annual" && "Anual"}
+                            {!plan.billing_frequency && "Mensal"}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -1954,6 +1968,27 @@ export default function DevTools() {
                 }))}
                 placeholder="0.00"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="billing-frequency">Frequência de Cobrança *</Label>
+              <Select
+                value={planDialog.data?.billing_frequency || "monthly"}
+                onValueChange={(value) => setPlanDialog(prev => ({ 
+                  ...prev, 
+                  data: { ...(prev.data || {} as SubscriptionPlan), billing_frequency: value } 
+                }))}
+              >
+                <SelectTrigger id="billing-frequency">
+                  <SelectValue placeholder="Selecione a frequência" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensal</SelectItem>
+                  <SelectItem value="quarterly">Trimestral</SelectItem>
+                  <SelectItem value="semiannual">Semestral</SelectItem>
+                  <SelectItem value="annual">Anual</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
