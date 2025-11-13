@@ -32,7 +32,7 @@ import {
   CalendarDays,
   Upload,
   LogOut,
-  Edit
+  FileText
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -258,9 +258,9 @@ export function AppSidebar() {
     <Sidebar className={isCollapsed ? "w-14" : "w-64"}>
       {/* User Profile Header */}
       <SidebarHeader>
-        <div className="flex items-center gap-3 p-3">
+        <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 rounded-md transition-colors" onClick={() => navigate("/profile")}>
           {isCollapsed ? (
-            <Avatar className="h-8 w-8 cursor-pointer" onClick={() => navigate("/profile")}>
+            <Avatar className="h-8 w-8">
               <AvatarImage src={userProfile?.avatar_url || undefined} />
               <AvatarFallback className="bg-primary/10">
                 {userProfile?.name?.charAt(0).toUpperCase() || "U"}
@@ -279,35 +279,12 @@ export function AppSidebar() {
                   {userProfile?.name || "Usuário"}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                onClick={() => navigate("/profile")}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
             </>
           )}
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Agenda */}
-        <SidebarGroup>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => navigate("/events")}
-                isActive={location.pathname === "/events"}
-              >
-                <Calendar className="h-4 w-4" />
-                {!isCollapsed && <span>Agenda</span>}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-
         {/* Communities and Groups */}
         <SidebarGroup>
           <SidebarGroupLabel>
@@ -344,6 +321,17 @@ export function AppSidebar() {
                     
                     {!isCollapsed && (
                       <SidebarMenuSub>
+                        {/* Agenda */}
+                        <SidebarMenuSubItem>
+                          <SidebarMenuSubButton
+                            onClick={() => navigate("/events")}
+                            isActive={location.pathname === "/events"}
+                          >
+                            <Calendar className="h-3 w-3" />
+                            <span>Agenda</span>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+
                         {/* Courses */}
                         {communityCourses.map((course) => (
                           <SidebarMenuSubItem key={course.id}>
@@ -385,6 +373,54 @@ export function AppSidebar() {
               })}
             </SidebarMenu>
           </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Tarefas Submenu */}
+        <SidebarGroup>
+          <SidebarGroupLabel>
+            {!isCollapsed && "Tarefas"}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {!isCollapsed && (
+                <SidebarMenuSub>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      onClick={() => navigate("/tasks/pending")}
+                      isActive={location.pathname === "/tasks/pending"}
+                    >
+                      <FileText className="h-3 w-3" />
+                      <span>Pendentes</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      onClick={() => navigate("/tasks/completed")}
+                      isActive={location.pathname === "/tasks/completed"}
+                    >
+                      <FileText className="h-3 w-3" />
+                      <span>Concluídas</span>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Planos */}
+        <SidebarGroup>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => navigate("/plans")}
+                isActive={location.pathname === "/plans"}
+              >
+                <DollarSign className="h-4 w-4" />
+                {!isCollapsed && <span>Planos</span>}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarGroup>
 
         {/* Admin Tools */}

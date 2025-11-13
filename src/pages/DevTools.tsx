@@ -1319,14 +1319,35 @@ export default function DevTools() {
                   <CardTitle>Grupos</CardTitle>
                   <CardDescription>Visualize e edite grupos de conversa</CardDescription>
                 </div>
-                <div className="relative w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar grupos..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
-                  />
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={() => {
+                      setEditDialog({ 
+                        open: true, 
+                        type: "group", 
+                        data: {
+                          name: "",
+                          description: "",
+                          community_id: "",
+                          students_can_message: true,
+                          is_visible: true
+                        }
+                      });
+                    }}
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Grupo
+                  </Button>
+                  <div className="relative w-64">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar grupos..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
                 </div>
               </div>
             </CardHeader>
