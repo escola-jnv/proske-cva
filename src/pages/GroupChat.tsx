@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ProfileModal } from "@/components/ProfileModal";
 import { GroupInfoModal } from "@/components/GroupInfoModal";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
-import { Send, Menu, Users, Settings, LogOut, Calendar } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Send, Menu } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -57,7 +57,7 @@ const GroupChat = () => {
   } | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [groupInfoModalOpen, setGroupInfoModalOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   // Track user activity
   useActivityTracker(user?.id);
@@ -271,6 +271,17 @@ const GroupChat = () => {
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="px-4 py-3 flex items-center gap-3">
+          {isMobile && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="shrink-0"
+              onClick={() => navigate("/communities")}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          
           <Avatar 
             className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
             onClick={() => setGroupInfoModalOpen(true)}
@@ -285,79 +296,6 @@ const GroupChat = () => {
               <p className="text-xs text-muted-foreground">{group.description}</p>
             )}
           </div>
-          
-          {/* Navigation Menu */}
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-80">
-              <div className="py-6 space-y-1">
-                <h2 className="text-lg font-semibold mb-4">Menu</h2>
-                
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-3"
-                  onClick={() => {
-                    setGroupInfoModalOpen(true);
-                    setMenuOpen(false);
-                  }}
-                >
-                  <Users className="h-5 w-5" />
-                  Informações do Grupo
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-3"
-                  onClick={() => {
-                    navigate("/events");
-                    setMenuOpen(false);
-                  }}
-                >
-                  <Calendar className="h-5 w-5" />
-                  Agenda
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-3"
-                  onClick={() => {
-                    navigate("/profile");
-                    setMenuOpen(false);
-                  }}
-                >
-                  <Settings className="h-5 w-5" />
-                  Meu Perfil
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-3"
-                  onClick={() => {
-                    navigate("/communities");
-                    setMenuOpen(false);
-                  }}
-                >
-                  <Settings className="h-5 w-5" />
-                  Comunidades
-                </Button>
-
-                <div className="pt-4 mt-4 border-t">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-3 text-destructive hover:text-destructive"
-                    onClick={handleSignOut}
-                  >
-                    <LogOut className="h-5 w-5" />
-                    Sair
-                  </Button>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
         </div>
       </header>
 
