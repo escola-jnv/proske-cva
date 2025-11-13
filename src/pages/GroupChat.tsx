@@ -57,6 +57,7 @@ const GroupChat = () => {
   } | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [groupInfoModalOpen, setGroupInfoModalOpen] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<Array<{id: string, name: string, avatar_url: string | null}>>([]);
   const isMobile = useIsMobile();
 
   // Track user activity
@@ -130,8 +131,14 @@ const GroupChat = () => {
       )
       .subscribe();
 
+    // Refresh online users every 30 seconds
+    const onlineInterval = setInterval(() => {
+      if (groupId) fetchOnlineUsers(groupId);
+    }, 30000);
+
     return () => {
       supabase.removeChannel(messagesChannel);
+      clearInterval(onlineInterval);
     };
   }, [groupId]);
 
@@ -155,10 +162,42 @@ const GroupChat = () => {
 
       // Fetch messages
       await fetchMessages(grpId);
+      
+      // Fetch online users
+      await fetchOnlineUsers(grpId);
     } catch (error: any) {
       console.error("Error fetching group:", error);
       toast.error("Erro ao carregar grupo");
       navigate("/communities");
+    }
+  };
+
+  const fetchOnlineUsers = async (grpId: string) => {
+    try {
+      const sixtyMinutesAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      
+      const { data: membersData, error } = await supabase
+        .from("group_members")
+        .select(`
+          user_id,
+          profiles!inner(id, name, avatar_url, last_active_at)
+        `)
+        .eq("group_id", grpId)
+        .gte("profiles.last_active_at", sixtyMinutesAgo);
+
+      if (error) throw error;
+
+      const online = membersData
+        ?.map((m: any) => ({
+          id: m.profiles.id,
+          name: m.profiles.name,
+          avatar_url: m.profiles.avatar_url,
+        }))
+        .filter(Boolean) || [];
+
+      setOnlineUsers(online);
+    } catch (error: any) {
+      console.error("Error fetching online users:", error);
     }
   };
 
@@ -295,6 +334,23 @@ const GroupChat = () => {
             {group?.description && (
               <p className="text-xs text-muted-foreground">{group.description}</p>
             )}
+            
+            {/* Online users indicator */}
+            <div className="flex items-center gap-2 mt-1">
+              <div className="flex -space-x-2">
+                {onlineUsers.slice(0, 5).map((user) => (
+                  <Avatar key={user.id} className="h-5 w-5 border-2 border-card">
+                    <AvatarImage src={user.avatar_url || undefined} />
+                    <AvatarFallback className="text-[10px] bg-primary/10">
+                      {user.name?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {onlineUsers.length} online
+              </span>
+            </div>
           </div>
         </div>
       </header>
