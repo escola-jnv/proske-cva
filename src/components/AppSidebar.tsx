@@ -13,8 +13,12 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
+  SidebarHeader,
+  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { 
   Hash,
   BookOpen,
@@ -25,8 +29,11 @@ import {
   Users,
   MessageSquare,
   CalendarDays,
-  Upload
+  Upload,
+  LogOut,
+  Edit
 } from "lucide-react";
+import { toast } from "sonner";
 
 type Community = {
   id: string;
@@ -55,6 +62,10 @@ export function AppSidebar() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userProfile, setUserProfile] = useState<{
+    name: string;
+    avatar_url: string | null;
+  } | null>(null);
   
   const isCollapsed = state === "collapsed";
 
@@ -66,6 +77,17 @@ export function AppSidebar() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Fetch user profile
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("name, avatar_url")
+        .eq("id", user.id)
+        .single();
+      
+      if (profileData) {
+        setUserProfile(profileData);
+      }
 
       // Check if user is teacher or admin
       const { data: userRoles } = await supabase
@@ -192,6 +214,16 @@ export function AppSidebar() {
     return location.pathname.includes(`/courses/${courseId}`);
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate("/auth");
+      toast.success("Logout realizado com sucesso");
+    } catch (error: any) {
+      toast.error("Erro ao fazer logout: " + error.message);
+    }
+  };
+
   if (loading) {
     return (
       <Sidebar className={isCollapsed ? "w-14" : "w-64"}>
@@ -206,6 +238,42 @@ export function AppSidebar() {
 
   return (
     <Sidebar className={isCollapsed ? "w-14" : "w-64"}>
+      {/* User Profile Header */}
+      <SidebarHeader>
+        <div className="flex items-center gap-3 p-3">
+          {isCollapsed ? (
+            <Avatar className="h-8 w-8 cursor-pointer" onClick={() => navigate("/profile")}>
+              <AvatarImage src={userProfile?.avatar_url || undefined} />
+              <AvatarFallback className="bg-primary/10">
+                {userProfile?.name?.charAt(0).toUpperCase() || "U"}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <>
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={userProfile?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/10">
+                  {userProfile?.name?.charAt(0).toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">
+                  {userProfile?.name || "Usuário"}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={() => navigate("/profile")}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      </SidebarHeader>
+
       <SidebarContent>
         {/* Agenda */}
         <SidebarGroup>
@@ -373,6 +441,21 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
       </SidebarContent>
+
+      {/* Logout Footer */}
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleLogout}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <LogOut className="h-4 w-4" />
+              {!isCollapsed && <span>Sair</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }
