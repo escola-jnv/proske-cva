@@ -619,6 +619,7 @@ export type Database = {
           name: string
           phone: string | null
           updated_at: string
+          weekly_submissions_limit: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -634,6 +635,7 @@ export type Database = {
           name: string
           phone?: string | null
           updated_at?: string
+          weekly_submissions_limit?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -649,6 +651,7 @@ export type Database = {
           name?: string
           phone?: string | null
           updated_at?: string
+          weekly_submissions_limit?: number | null
         }
         Relationships: []
       }
@@ -771,6 +774,8 @@ export type Database = {
       user_subscriptions: {
         Row: {
           created_at: string
+          custom_price: number | null
+          due_day: number | null
           end_date: string
           id: string
           plan_id: string
@@ -781,6 +786,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_price?: number | null
+          due_day?: number | null
           end_date: string
           id?: string
           plan_id: string
@@ -791,6 +798,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_price?: number | null
+          due_day?: number | null
           end_date?: string
           id?: string
           plan_id?: string

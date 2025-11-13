@@ -364,8 +364,40 @@ export default function DevTools() {
     }
   };
 
-  const handleEdit = (type: "profile" | "community" | "group" | "event", data: any) => {
-    setEditDialog({ open: true, type, data: { ...data } });
+  const handleEdit = async (type: "profile" | "community" | "group" | "event", data: any) => {
+    if (type === "profile") {
+      // Fetch subscription data for the user
+      const { data: subscription } = await supabase
+        .from("user_subscriptions")
+        .select("*, subscription_plans(*)")
+        .eq("user_id", data.id)
+        .eq("status", "active")
+        .maybeSingle();
+
+      // Fetch profile data for monitoring settings
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", data.id)
+        .single();
+
+      setEditDialog({ 
+        open: true, 
+        type, 
+        data: { 
+          ...data,
+          ...profileData,
+          planId: subscription?.plan_id || "",
+          customPrice: subscription?.custom_price || subscription?.subscription_plans?.price || 0,
+          dueDay: subscription?.due_day || 1,
+          monitoringDayOfWeek: profileData?.monitoring_day_of_week,
+          monitoringTime: profileData?.monitoring_time,
+          weeklySubmissionsLimit: profileData?.weekly_submissions_limit || 0
+        } 
+      });
+    } else {
+      setEditDialog({ open: true, type, data: { ...data } });
+    }
   };
 
   const handleSave = async () => {
@@ -375,10 +407,18 @@ export default function DevTools() {
     try {
       if (type === "profile") {
         // Update profile
-        const { role, ...profileData } = data;
+        const { role, planId, customPrice, dueDay, monitoringDayOfWeek, monitoringTime, weeklySubmissionsLimit, ...profileData } = data;
         const { error: profileError } = await supabase
           .from("profiles")
-          .update(profileData)
+          .update({
+            name: profileData.name,
+            email: profileData.email,
+            phone: profileData.phone,
+            city: profileData.city,
+            monitoring_day_of_week: monitoringDayOfWeek,
+            monitoring_time: monitoringTime,
+            weekly_submissions_limit: weeklySubmissionsLimit
+          })
           .eq("id", data.id);
 
         if (profileError) throw profileError;
@@ -394,6 +434,45 @@ export default function DevTools() {
             .insert({ user_id: data.id, role });
 
           if (roleError) throw roleError;
+        }
+
+        // Update or create subscription if planId is provided
+        if (planId) {
+          const { data: existingSub } = await supabase
+            .from("user_subscriptions")
+            .select("id")
+            .eq("user_id", data.id)
+            .eq("status", "active")
+            .maybeSingle();
+
+          if (existingSub) {
+            // Update existing subscription
+            const { error: subError } = await supabase
+              .from("user_subscriptions")
+              .update({
+                plan_id: planId,
+                custom_price: customPrice > 0 ? customPrice : null,
+                due_day: dueDay
+              })
+              .eq("id", existingSub.id);
+
+            if (subError) throw subError;
+          } else {
+            // Create new subscription
+            const { error: subError } = await supabase
+              .from("user_subscriptions")
+              .insert({
+                user_id: data.id,
+                plan_id: planId,
+                custom_price: customPrice > 0 ? customPrice : null,
+                due_day: dueDay,
+                start_date: new Date().toISOString(),
+                end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                status: "active"
+              });
+
+            if (subError) throw subError;
+          }
         }
       } else {
         let table: string = "";
@@ -1067,7 +1146,7 @@ export default function DevTools() {
                 <TableBody>
                   {filteredProfiles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>
@@ -1125,14 +1204,6 @@ export default function DevTools() {
                               title="Editar"
                             >
                               <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleManageSubscription(profile.id, profile.name)}
-                              title="Gerenciar Plano"
-                            >
-                              <Calendar className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -1701,6 +1772,15 @@ export default function DevTools() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="email">E-mail</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={editDialog.data.email || ""}
+                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), email: e.target.value } }))}
+                  />
+                </div>
+                <div>
                   <Label htmlFor="role">Tipo de Usuário</Label>
                   <Select
                     value={editDialog.data.role || "student"}
@@ -1731,6 +1811,102 @@ export default function DevTools() {
                     value={editDialog.data.city || ""}
                     onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), city: e.target.value } }))}
                   />
+                </div>
+                
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-sm font-semibold mb-3">Configurações de Plano</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="plan">Plano</Label>
+                      <Select
+                        value={editDialog.data.planId || ""}
+                        onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), planId: value } }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o plano" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subscriptionPlans.map((plan) => (
+                            <SelectItem key={plan.id} value={plan.id}>
+                              {plan.name} - R$ {plan.price.toFixed(2)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="customPrice">Valor Customizado (R$)</Label>
+                      <Input
+                        id="customPrice"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editDialog.data.customPrice || 0}
+                        onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), customPrice: parseFloat(e.target.value) || 0 } }))}
+                        placeholder="Deixe 0 para usar o valor do plano"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="dueDay">Dia de Vencimento (1-31)</Label>
+                      <Input
+                        id="dueDay"
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={editDialog.data.dueDay || 1}
+                        onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), dueDay: parseInt(e.target.value) || 1 } }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-sm font-semibold mb-3">Configurações de Monitoria</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="monitoringDay">Dia da Semana</Label>
+                      <Select
+                        value={editDialog.data.monitoringDayOfWeek?.toString() || ""}
+                        onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringDayOfWeek: parseInt(value) } }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o dia" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">Domingo</SelectItem>
+                          <SelectItem value="1">Segunda</SelectItem>
+                          <SelectItem value="2">Terça</SelectItem>
+                          <SelectItem value="3">Quarta</SelectItem>
+                          <SelectItem value="4">Quinta</SelectItem>
+                          <SelectItem value="5">Sexta</SelectItem>
+                          <SelectItem value="6">Sábado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="monitoringTime">Hora</Label>
+                      <Input
+                        id="monitoringTime"
+                        type="time"
+                        value={editDialog.data.monitoringTime || ""}
+                        onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringTime: e.target.value } }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-sm font-semibold mb-3">Limite de Envios</h4>
+                  <div>
+                    <Label htmlFor="weeklySubmissionsLimit">Tarefas por Semana</Label>
+                    <Input
+                      id="weeklySubmissionsLimit"
+                      type="number"
+                      min="0"
+                      value={editDialog.data.weeklySubmissionsLimit || 0}
+                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), weeklySubmissionsLimit: parseInt(e.target.value) || 0 } }))}
+                    />
+                  </div>
                 </div>
               </>
             )}
