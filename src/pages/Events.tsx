@@ -133,6 +133,11 @@ const Events = () => {
               Visualize e gerencie seus eventos
             </p>
           </div>
+          {!userRoles.includes('guest') && (
+            <Button onClick={() => navigate("/communities")}>
+              Criar Evento
+            </Button>
+          )}
         </nav>
       </header>
 

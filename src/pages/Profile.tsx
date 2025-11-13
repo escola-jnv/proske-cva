@@ -68,6 +68,7 @@ const Profile = () => {
     dayOfWeek: "",
     time: "",
   });
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
@@ -147,11 +148,12 @@ const Profile = () => {
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", userId)
-        .single();
+        .eq("user_id", userId);
 
       if (error) throw error;
-      setUserRole(data?.role || "student");
+      const roles = data?.map(r => r.role) || [];
+      setUserRole(roles[0] || "student");
+      setIsAdmin(roles.includes("admin"));
     } catch (error: any) {
       console.error("Error fetching role:", error);
     }
@@ -317,6 +319,7 @@ const Profile = () => {
       student: "Estudante",
       teacher: "Professor",
       admin: "Administrador",
+      guest: "Convidado",
     };
     return roleNames[role] || role;
   };
@@ -581,62 +584,81 @@ const Profile = () => {
               <div className="pt-6 border-t border-border space-y-4">
                 <h3 className="text-lg font-medium">Configuração de Monitorias</h3>
                 <p className="text-sm text-muted-foreground">
-                  Configure sua agenda padrão para monitorias recorrentes
+                  {isAdmin ? "Configure a agenda padrão para monitorias recorrentes" : "Frequência de monitorias configurada pelo administrador"}
                 </p>
 
                 <div className="space-y-2">
                   <Label htmlFor="frequency">Frequência das Monitorias</Label>
-                  <Select
-                    value={monitoringData.frequency}
-                    onValueChange={(value) =>
-                      setMonitoringData({ ...monitoringData, frequency: value })
-                    }
-                  >
-                    <SelectTrigger id="frequency">
-                      <SelectValue placeholder="Selecione a frequência" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="weekly">Semanal</SelectItem>
-                      <SelectItem value="biweekly">Quinzenal</SelectItem>
-                      <SelectItem value="monthly">Mensal</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {isAdmin ? (
+                    <Select
+                      value={monitoringData.frequency}
+                      onValueChange={(value) =>
+                        setMonitoringData({ ...monitoringData, frequency: value })
+                      }
+                    >
+                      <SelectTrigger id="frequency">
+                        <SelectValue placeholder="Selecione a frequência" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="biweekly">Quinzenal</SelectItem>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="frequency"
+                      type="text"
+                      value={
+                        monitoringData.frequency === 'weekly' ? 'Semanal' :
+                        monitoringData.frequency === 'biweekly' ? 'Quinzenal' :
+                        monitoringData.frequency === 'monthly' ? 'Mensal' :
+                        'Não configurado'
+                      }
+                      disabled
+                      className="bg-muted"
+                    />
+                  )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="dayOfWeek">Dia da Semana</Label>
-                  <Select
-                    value={monitoringData.dayOfWeek}
-                    onValueChange={(value) =>
-                      setMonitoringData({ ...monitoringData, dayOfWeek: value })
-                    }
-                  >
-                    <SelectTrigger id="dayOfWeek">
-                      <SelectValue placeholder="Selecione o dia" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">Domingo</SelectItem>
-                      <SelectItem value="1">Segunda-feira</SelectItem>
-                      <SelectItem value="2">Terça-feira</SelectItem>
-                      <SelectItem value="3">Quarta-feira</SelectItem>
-                      <SelectItem value="4">Quinta-feira</SelectItem>
-                      <SelectItem value="5">Sexta-feira</SelectItem>
-                      <SelectItem value="6">Sábado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {isAdmin && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="dayOfWeek">Dia da Semana</Label>
+                      <Select
+                        value={monitoringData.dayOfWeek}
+                        onValueChange={(value) =>
+                          setMonitoringData({ ...monitoringData, dayOfWeek: value })
+                        }
+                      >
+                        <SelectTrigger id="dayOfWeek">
+                          <SelectValue placeholder="Selecione o dia" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">Domingo</SelectItem>
+                          <SelectItem value="1">Segunda-feira</SelectItem>
+                          <SelectItem value="2">Terça-feira</SelectItem>
+                          <SelectItem value="3">Quarta-feira</SelectItem>
+                          <SelectItem value="4">Quinta-feira</SelectItem>
+                          <SelectItem value="5">Sexta-feira</SelectItem>
+                          <SelectItem value="6">Sábado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="time">Horário</Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    value={monitoringData.time}
-                    onChange={(e) =>
-                      setMonitoringData({ ...monitoringData, time: e.target.value })
-                    }
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="time">Horário</Label>
+                      <Input
+                        id="time"
+                        type="time"
+                        value={monitoringData.time}
+                        onChange={(e) =>
+                          setMonitoringData({ ...monitoringData, time: e.target.value })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <Button type="submit" disabled={saving} className="w-full gap-2">
