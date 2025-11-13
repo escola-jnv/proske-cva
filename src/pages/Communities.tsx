@@ -152,10 +152,10 @@ const Communities = () => {
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
-        .single();
+        .limit(1);
 
       if (error) throw error;
-      setUserRole(data?.role || "student");
+      setUserRole(data?.[0]?.role || "student");
     } catch (error: any) {
       console.error("Error fetching role:", error);
     }
