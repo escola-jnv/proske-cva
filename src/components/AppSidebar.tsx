@@ -416,20 +416,19 @@ export function AppSidebar() {
                   variant={
                     userRole === 'admin' ? 'default' : 
                     userRole === 'teacher' ? 'secondary' : 
-                    userRole === 'guest' ? 'outline' : 
+                    userRole === 'visitor' ? 'outline' : 
                     'outline'
                   }
                   className={
                     userRole === 'admin' ? 'bg-destructive text-destructive-foreground' :
                     userRole === 'teacher' ? 'bg-primary text-primary-foreground' :
-                    userRole === 'guest' ? 'border-muted-foreground/50' :
+                    userRole === 'visitor' ? 'border-muted-foreground/50' :
                     'border-muted-foreground/30'
                   }
                 >
                    {userRole === 'admin' ? '👑 Admin' :
                    userRole === 'teacher' ? '📚 Professor' :
                    userRole === 'visitor' ? '👤 Visitante' :
-                   userRole === 'guest' ? '👤 Visitante' :
                    '🎓 Aluno'}
                 </Badge>
 

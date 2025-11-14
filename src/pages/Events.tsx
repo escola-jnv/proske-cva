@@ -133,7 +133,7 @@ const Events = () => {
               Visualize e gerencie seus eventos
             </p>
           </div>
-          {!userRoles.includes('guest') && (
+          {!userRoles.includes('visitor') && (
             <Button onClick={() => navigate("/communities")}>
               Criar Evento
             </Button>
@@ -159,7 +159,7 @@ const Events = () => {
                   <CalendarIcon className="h-16 w-16 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium mb-2">Nenhum evento próximo</h3>
                   <p className="text-muted-foreground">
-                    Quando você for convidado para eventos, eles aparecerão aqui
+                    Quando você participar de eventos, eles aparecerão aqui
                   </p>
                 </div>
               ) : (

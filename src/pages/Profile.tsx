@@ -319,7 +319,7 @@ const Profile = () => {
       student: "Estudante",
       teacher: "Professor",
       admin: "Administrador",
-      guest: "Convidado",
+      visitor: "Visitante",
     };
     return roleNames[role] || role;
   };
@@ -329,6 +329,7 @@ const Profile = () => {
       student: "default",
       teacher: "secondary",
       admin: "destructive",
+      visitor: "outline",
     };
     return variants[role] || "outline";
   };
