@@ -447,20 +447,24 @@ export default function DevTools() {
         .from("profiles")
         .select("*")
         .eq("id", data.id)
-        .single();
+        .single() as any;
 
       setEditDialog({ 
         open: true, 
         type, 
         data: { 
           ...data,
-          ...profileData,
+          ...profileData.data,
           planId: subscription?.plan_id || "",
           customPrice: subscription?.custom_price || subscription?.subscription_plans?.price || 0,
           dueDay: subscription?.due_day || 1,
-          monitoringDayOfWeek: profileData?.monitoring_day_of_week,
-          monitoringTime: profileData?.monitoring_time,
-          weeklySubmissionsLimit: profileData?.weekly_submissions_limit || 0
+          monitoringDayOfWeek: profileData.data?.monitoring_day_of_week,
+          monitoringTime: profileData.data?.monitoring_time,
+          monitoringFrequency: profileData.data?.monitoring_frequency,
+          weeklySubmissionsLimit: profileData.data?.weekly_submissions_limit || 0,
+          studyGoals: profileData.data?.study_goals || [],
+          studyDays: profileData.data?.study_days || [],
+          studySchedule: profileData.data?.study_schedule || {}
         } 
       });
     } else if (type === "group" && data.id) {
@@ -485,7 +489,7 @@ export default function DevTools() {
     try {
       if (type === "profile") {
         // Update profile
-        const { role, planId, customPrice, dueDay, monitoringDayOfWeek, monitoringTime, weeklySubmissionsLimit, ...profileData } = data;
+        const { role, planId, customPrice, dueDay, monitoringDayOfWeek, monitoringTime, weeklySubmissionsLimit, monitoringFrequency, studyGoals, studyDays, studySchedule, ...profileData } = data;
         const { error: profileError } = await supabase
           .from("profiles")
           .update({
@@ -493,9 +497,15 @@ export default function DevTools() {
             email: profileData.email,
             phone: profileData.phone,
             city: profileData.city,
+            bio: profileData.bio,
+            avatar_url: profileData.avatar_url,
             monitoring_day_of_week: monitoringDayOfWeek,
             monitoring_time: monitoringTime,
-            weekly_submissions_limit: weeklySubmissionsLimit
+            monitoring_frequency: monitoringFrequency,
+            weekly_submissions_limit: weeklySubmissionsLimit,
+            study_goals: studyGoals,
+            study_days: studyDays,
+            study_schedule: studySchedule
           })
           .eq("id", data.id);
 
@@ -2159,6 +2169,25 @@ export default function DevTools() {
                     onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), city: e.target.value } }))}
                   />
                 </div>
+                <div>
+                  <Label htmlFor="bio">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    value={editDialog.data.bio || ""}
+                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), bio: e.target.value } }))}
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="avatar_url">Avatar URL</Label>
+                  <Input
+                    id="avatar_url"
+                    type="url"
+                    value={editDialog.data.avatar_url || ""}
+                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), avatar_url: e.target.value } }))}
+                    placeholder="https://..."
+                  />
+                </div>
                 
                 <div className="border-t pt-4 mt-4">
                   <h4 className="text-sm font-semibold mb-3">Configurações de Plano</h4>
@@ -2209,35 +2238,109 @@ export default function DevTools() {
 
                 <div className="border-t pt-4 mt-4">
                   <h4 className="text-sm font-semibold mb-3">Configurações de Monitoria</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div>
-                      <Label htmlFor="monitoringDay">Dia da Semana</Label>
+                      <Label htmlFor="monitoringFrequency">Frequência</Label>
                       <Select
-                        value={editDialog.data.monitoringDayOfWeek?.toString() || ""}
-                        onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringDayOfWeek: parseInt(value) } }))}
+                        value={editDialog.data.monitoringFrequency || ""}
+                        onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringFrequency: value } }))}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione o dia" />
+                          <SelectValue placeholder="Selecione a frequência" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="0">Domingo</SelectItem>
-                          <SelectItem value="1">Segunda</SelectItem>
-                          <SelectItem value="2">Terça</SelectItem>
-                          <SelectItem value="3">Quarta</SelectItem>
-                          <SelectItem value="4">Quinta</SelectItem>
-                          <SelectItem value="5">Sexta</SelectItem>
-                          <SelectItem value="6">Sábado</SelectItem>
+                          <SelectItem value="semanal">Semanal</SelectItem>
+                          <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                          <SelectItem value="mensal">Mensal</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="monitoringDay">Dia da Semana</Label>
+                        <Select
+                          value={editDialog.data.monitoringDayOfWeek?.toString() || ""}
+                          onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringDayOfWeek: parseInt(value) } }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o dia" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">Domingo</SelectItem>
+                            <SelectItem value="1">Segunda</SelectItem>
+                            <SelectItem value="2">Terça</SelectItem>
+                            <SelectItem value="3">Quarta</SelectItem>
+                            <SelectItem value="4">Quinta</SelectItem>
+                            <SelectItem value="5">Sexta</SelectItem>
+                            <SelectItem value="6">Sábado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="monitoringTime">Hora</Label>
+                        <Input
+                          id="monitoringTime"
+                          type="time"
+                          value={editDialog.data.monitoringTime || ""}
+                          onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringTime: e.target.value } }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-sm font-semibold mb-3">Configurações de Estudo</h4>
+                  <div className="space-y-4">
                     <div>
-                      <Label htmlFor="monitoringTime">Hora</Label>
-                      <Input
-                        id="monitoringTime"
-                        type="time"
-                        value={editDialog.data.monitoringTime || ""}
-                        onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringTime: e.target.value } }))}
+                      <Label>Objetivos de Estudo</Label>
+                      <Textarea
+                        value={Array.isArray(editDialog.data.studyGoals) ? editDialog.data.studyGoals.join(', ') : ''}
+                        onChange={(e) => setEditDialog(prev => ({ 
+                          ...prev, 
+                          data: { 
+                            ...(prev.data || {}), 
+                            studyGoals: e.target.value.split(',').map((g: string) => g.trim()).filter(Boolean)
+                          } 
+                        }))}
+                        placeholder="Digite os objetivos separados por vírgula"
+                        rows={2}
                       />
+                      <p className="text-xs text-muted-foreground mt-1">Separe os objetivos por vírgula</p>
+                    </div>
+                    <div>
+                      <Label>Dias de Estudo</Label>
+                      <Textarea
+                        value={Array.isArray(editDialog.data.studyDays) ? editDialog.data.studyDays.join(', ') : ''}
+                        onChange={(e) => setEditDialog(prev => ({ 
+                          ...prev, 
+                          data: { 
+                            ...(prev.data || {}), 
+                            studyDays: e.target.value.split(',').map((d: string) => parseInt(d.trim())).filter((n: number) => !isNaN(n))
+                          } 
+                        }))}
+                        placeholder="0-6 (0=Domingo, 1=Segunda, ..., 6=Sábado)"
+                        rows={2}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Digite números de 0 a 6 separados por vírgula</p>
+                    </div>
+                    <div>
+                      <Label>Horários de Estudo (JSON)</Label>
+                      <Textarea
+                        value={typeof editDialog.data.studySchedule === 'object' ? JSON.stringify(editDialog.data.studySchedule, null, 2) : '{}'}
+                        onChange={(e) => {
+                          try {
+                            const parsed = JSON.parse(e.target.value);
+                            setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), studySchedule: parsed } }));
+                          } catch (err) {
+                            // Invalid JSON, just update the value
+                            setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), studySchedule: e.target.value } }));
+                          }
+                        }}
+                        placeholder='{"0": "20:00", "1": "19:00"}'
+                        rows={3}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Formato: {`{"dia": "hora"}`} (ex: {`{"0": "20:00"}`})</p>
                     </div>
                   </div>
                 </div>
