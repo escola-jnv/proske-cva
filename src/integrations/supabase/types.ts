@@ -78,6 +78,7 @@ export type Database = {
       }
       conversation_groups: {
         Row: {
+          allowed_message_roles: string[] | null
           community_id: string
           created_at: string
           created_by: string
@@ -85,10 +86,10 @@ export type Database = {
           id: string
           is_visible: boolean
           name: string
-          students_can_message: boolean
           updated_at: string
         }
         Insert: {
+          allowed_message_roles?: string[] | null
           community_id: string
           created_at?: string
           created_by: string
@@ -96,10 +97,10 @@ export type Database = {
           id?: string
           is_visible?: boolean
           name: string
-          students_can_message?: boolean
           updated_at?: string
         }
         Update: {
+          allowed_message_roles?: string[] | null
           community_id?: string
           created_at?: string
           created_by?: string
@@ -107,7 +108,6 @@ export type Database = {
           id?: string
           is_visible?: boolean
           name?: string
-          students_can_message?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -204,6 +204,7 @@ export type Database = {
       }
       courses: {
         Row: {
+          checkout_url: string | null
           community_id: string
           cover_image_url: string | null
           created_at: string
@@ -212,9 +213,11 @@ export type Database = {
           id: string
           is_visible: boolean
           name: string
+          price: number | null
           updated_at: string
         }
         Insert: {
+          checkout_url?: string | null
           community_id: string
           cover_image_url?: string | null
           created_at?: string
@@ -223,9 +226,11 @@ export type Database = {
           id?: string
           is_visible?: boolean
           name: string
+          price?: number | null
           updated_at?: string
         }
         Update: {
+          checkout_url?: string | null
           community_id?: string
           cover_image_url?: string | null
           created_at?: string
@@ -234,6 +239,7 @@ export type Database = {
           id?: string
           is_visible?: boolean
           name?: string
+          price?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -322,38 +328,59 @@ export type Database = {
       }
       events: {
         Row: {
+          actual_end_time: string | null
+          actual_start_time: string | null
+          actual_study_notes: string | null
           community_id: string
           created_at: string
           created_by: string
           description: string | null
           duration_minutes: number
           event_date: string
+          event_type: Database["public"]["Enums"]["event_type"]
           google_calendar_event_id: string | null
           id: string
+          social_media_link: string | null
+          study_status: string | null
+          study_topic: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          actual_end_time?: string | null
+          actual_start_time?: string | null
+          actual_study_notes?: string | null
           community_id: string
           created_at?: string
           created_by: string
           description?: string | null
           duration_minutes?: number
           event_date: string
+          event_type?: Database["public"]["Enums"]["event_type"]
           google_calendar_event_id?: string | null
           id?: string
+          social_media_link?: string | null
+          study_status?: string | null
+          study_topic?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          actual_end_time?: string | null
+          actual_start_time?: string | null
+          actual_study_notes?: string | null
           community_id?: string
           created_at?: string
           created_by?: string
           description?: string | null
           duration_minutes?: number
           event_date?: string
+          event_type?: Database["public"]["Enums"]["event_type"]
           google_calendar_event_id?: string | null
           id?: string
+          social_media_link?: string | null
+          study_status?: string | null
+          study_topic?: string | null
           title?: string
           updated_at?: string
         }
@@ -392,6 +419,61 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "conversation_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_schedules: {
+        Row: {
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          scheduled_date: string
+          scheduled_time: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          scheduled_date: string
+          scheduled_time: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          scheduled_date?: string
+          scheduled_time?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_schedules_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_schedules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -651,6 +733,9 @@ export type Database = {
           monitoring_time: string | null
           name: string
           phone: string | null
+          study_days: number[] | null
+          study_goals: string[] | null
+          study_schedule: Json | null
           updated_at: string
           weekly_submissions_limit: number | null
         }
@@ -667,6 +752,9 @@ export type Database = {
           monitoring_time?: string | null
           name: string
           phone?: string | null
+          study_days?: number[] | null
+          study_goals?: string[] | null
+          study_schedule?: Json | null
           updated_at?: string
           weekly_submissions_limit?: number | null
         }
@@ -683,6 +771,9 @@ export type Database = {
           monitoring_time?: string | null
           name?: string
           phone?: string | null
+          study_days?: number[] | null
+          study_goals?: string[] | null
+          study_schedule?: Json | null
           updated_at?: string
           weekly_submissions_limit?: number | null
         }
@@ -770,6 +861,8 @@ export type Database = {
           description: string | null
           id: string
           monitoring_frequency: string | null
+          monthly_corrections_limit: number | null
+          monthly_monitorings_limit: number | null
           name: string
           price: number
           updated_at: string
@@ -782,6 +875,8 @@ export type Database = {
           description?: string | null
           id?: string
           monitoring_frequency?: string | null
+          monthly_corrections_limit?: number | null
+          monthly_monitorings_limit?: number | null
           name: string
           price: number
           updated_at?: string
@@ -794,12 +889,55 @@ export type Database = {
           description?: string | null
           id?: string
           monitoring_frequency?: string | null
+          monthly_corrections_limit?: number | null
+          monthly_monitorings_limit?: number | null
           name?: string
           price?: number
           updated_at?: string
           weekly_corrections_limit?: number | null
         }
         Relationships: []
+      }
+      user_course_access: {
+        Row: {
+          course_id: string
+          created_at: string
+          end_date: string
+          granted_by: string
+          id: string
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          end_date: string
+          granted_by: string
+          id?: string
+          start_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          end_date?: string
+          granted_by?: string
+          id?: string
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_course_access_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_menu_order: {
         Row: {
@@ -933,7 +1071,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "student" | "teacher" | "admin" | "guest"
+      app_role: "student" | "teacher" | "admin" | "guest" | "visitor"
+      event_type:
+        | "interview"
+        | "mentoring"
+        | "group_study"
+        | "live"
+        | "individual_study"
       payment_status: "pending" | "confirmed" | "overdue" | "cancelled"
     }
     CompositeTypes: {
@@ -1062,7 +1206,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["student", "teacher", "admin", "guest"],
+      app_role: ["student", "teacher", "admin", "guest", "visitor"],
+      event_type: [
+        "interview",
+        "mentoring",
+        "group_study",
+        "live",
+        "individual_study",
+      ],
       payment_status: ["pending", "confirmed", "overdue", "cancelled"],
     },
   },
