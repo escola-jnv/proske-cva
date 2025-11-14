@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { DollarSign, ExternalLink, Calendar, CheckCircle2, Video, Users } from "lucide-react";
 import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
 
 type SubscriptionPlan = {
   id: string;
@@ -16,6 +17,7 @@ type SubscriptionPlan = {
   billing_frequency: string | null;
   monthly_corrections_limit?: number | null;
   monthly_monitorings_limit?: number | null;
+  monthly_group_studies_limit?: number | null;
   checkout_url: string | null;
 };
 
@@ -445,6 +447,14 @@ const Plans = () => {
                           {plan.description}
                         </p>
                       )}
+                      {plan.monthly_group_studies_limit !== null && plan.monthly_group_studies_limit > 0 && (
+                        <div className="text-sm">
+                          <span className="font-medium">Estudos em grupo por mês: </span>
+                          <span className="text-muted-foreground">
+                            {plan.monthly_group_studies_limit}
+                          </span>
+                        </div>
+                      )}
                       {plan.monthly_monitorings_limit !== null && plan.monthly_monitorings_limit > 0 && (
                         <div className="text-sm">
                           <span className="font-medium">Monitorias por mês: </span>
@@ -455,7 +465,7 @@ const Plans = () => {
                       )}
                       {plan.monthly_corrections_limit !== null && plan.monthly_corrections_limit > 0 && (
                         <div className="text-sm">
-                          <span className="font-medium">Correções por mês: </span>
+                          <span className="font-medium">Tarefas por mês: </span>
                           <span className="text-muted-foreground">
                             {plan.monthly_corrections_limit}
                           </span>
@@ -524,10 +534,17 @@ const Plans = () => {
             </div>
           )}
 
+          {/* Separator */}
+          {(courseAccess.length > 0 || courses.length > 0) && (
+            <div className="my-12">
+              <Separator />
+            </div>
+          )}
+
           {/* Available Courses */}
           {courses.length > 0 && (
-            <div className="mt-8">
-              <h2 className="text-xl font-medium mb-4">Cursos Disponíveis</h2>
+            <div>
+              <h2 className="text-xl font-medium mb-4">Cursos Disponíveis para Compra</h2>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {courses.map((course) => {
                   const hasAccess = courseAccess.some((access) => access.course.id === course.id);

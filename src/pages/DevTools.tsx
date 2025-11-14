@@ -2747,6 +2747,59 @@ export default function DevTools() {
             </>
           )}
 
+            {editDialog.type === "course" && editDialog.data && (
+              <>
+                <div>
+                  <Label htmlFor="course-name">Nome</Label>
+                  <Input
+                    id="course-name"
+                    value={editDialog.data.name || ""}
+                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), name: e.target.value } }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="course-description">Descrição</Label>
+                  <Input
+                    id="course-description"
+                    value={editDialog.data.description || ""}
+                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), description: e.target.value } }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="course-price">Preço (R$)</Label>
+                  <Input
+                    id="course-price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editDialog.data.price || 0}
+                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), price: parseFloat(e.target.value) || 0 } }))}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="course-checkout">Link de Checkout</Label>
+                  <Input
+                    id="course-checkout"
+                    type="url"
+                    value={editDialog.data.checkout_url || ""}
+                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), checkout_url: e.target.value } }))}
+                    placeholder="https://..."
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="course-cover">URL da Imagem de Capa</Label>
+                  <Input
+                    id="course-cover"
+                    type="url"
+                    value={editDialog.data.cover_image_url || ""}
+                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), cover_image_url: e.target.value } }))}
+                    placeholder="https://..."
+                  />
+                </div>
+              </>
+            )}
+
             {editDialog.type === "event" && editDialog.data && (
               <>
                 <div>
