@@ -22,7 +22,8 @@ interface ScheduleInterviewDialogProps {
 }
 
 const TIME_SLOTS = [
-  "09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"
+  "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", 
+  "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"
 ];
 
 export function ScheduleInterviewDialog({
@@ -55,12 +56,12 @@ export function ScheduleInterviewDialog({
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("interview_schedules" as any).insert({
+      const { error } = await supabase.from("interview_schedules").insert({
         user_id: userId,
         scheduled_date: format(selectedDate, "yyyy-MM-dd"),
         scheduled_time: selectedTime,
         status: "pending",
-      }) as any;
+      });
 
       if (error) throw error;
 

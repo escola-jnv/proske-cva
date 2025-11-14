@@ -37,10 +37,10 @@ export function useInterviewSchedule(userId: string | null) {
 
       // Check if visitor has scheduled an interview
       const { data: schedules } = await supabase
-        .from("interview_schedules" as any)
+        .from("interview_schedules")
         .select("id, status")
         .eq("user_id", userId)
-        .in("status", ["pending", "confirmed"]) as any;
+        .in("status", ["pending", "confirmed"]);
 
       console.log("useInterviewSchedule - schedules:", schedules);
 
