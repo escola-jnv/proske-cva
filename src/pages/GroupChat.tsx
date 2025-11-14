@@ -9,7 +9,8 @@ import { ProfileModal } from "@/components/ProfileModal";
 import { GroupInfoModal } from "@/components/GroupInfoModal";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Send, Menu } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Send } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -410,14 +411,7 @@ const GroupChat = () => {
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="px-4 py-3 flex items-center gap-3">
           {isMobile && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="shrink-0"
-              onClick={() => navigate("/communities")}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
+            <SidebarTrigger className="shrink-0" />
           )}
           
           <Avatar 
