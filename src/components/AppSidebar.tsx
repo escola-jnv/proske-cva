@@ -424,9 +424,10 @@ export function AppSidebar() {
                     'border-muted-foreground/30'
                   }
                 >
-                  {userRole === 'admin' ? '👑 Admin' :
+                   {userRole === 'admin' ? '👑 Admin' :
                    userRole === 'teacher' ? '📚 Professor' :
-                   userRole === 'guest' ? '👤 Convidado' :
+                   userRole === 'visitor' ? '👤 Visitante' :
+                   userRole === 'guest' ? '👤 Visitante' :
                    '🎓 Aluno'}
                 </Badge>
 
@@ -480,18 +481,19 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     
+                    {/* Grupos e Cursos - Todos na mesma hierarquia */}
                     {!isCollapsed && (
-                      <SidebarMenuSub>
+                      <>
                         {/* Agenda */}
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton
+                        <SidebarMenuItem>
+                          <SidebarMenuButton
                             onClick={() => navigate("/events")}
                             isActive={location.pathname === "/events"}
                           >
                             <Calendar className="h-3 w-3" />
                             <span>Agenda</span>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
 
                         {/* Courses */}
                         {communityCourses.map((course) => (
@@ -526,7 +528,7 @@ export function AppSidebar() {
                             ))}
                           </SortableContext>
                         </DndContext>
-                      </SidebarMenuSub>
+                      </>
                     )}
                   </div>
                 );
