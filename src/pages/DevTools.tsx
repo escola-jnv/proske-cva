@@ -598,16 +598,47 @@ export default function DevTools() {
             .eq("id", data.id);
 
           if (error) throw error;
+          
+          // Update plan link for groups
+          if (type === "group" && data.plan_id !== undefined) {
+            // Remove existing plan links
+            await supabase
+              .from("plan_default_groups")
+              .delete()
+              .eq("group_id", data.id);
+            
+            // Add new plan link if plan is selected
+            if (data.plan_id) {
+              await supabase
+                .from("plan_default_groups")
+                .insert({
+                  plan_id: data.plan_id,
+                  group_id: data.id
+                });
+            }
+          }
         } else {
           // Create new - add created_by
           const { data: { user } } = await supabase.auth.getUser();
           const newData = { ...updateData, created_by: user?.id };
           
-          const { error } = await supabase
+          const { data: insertedData, error } = await supabase
             .from(table as any)
-            .insert(newData);
+            .insert(newData)
+            .select()
+            .single();
 
           if (error) throw error;
+          
+          // Add plan link for new groups
+          if (type === "group" && data.plan_id && insertedData && 'id' in insertedData) {
+            await supabase
+              .from("plan_default_groups")
+              .insert({
+                plan_id: data.plan_id,
+                group_id: (insertedData as any).id
+              });
+          }
         }
       }
 
@@ -2254,6 +2285,25 @@ export default function DevTools() {
                       {communities.map((community) => (
                         <SelectItem key={community.id} value={community.id}>
                           {community.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="plan">Plano Requerido (opcional)</Label>
+                  <Select
+                    value={editDialog.data.plan_id || ""}
+                    onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), plan_id: value } }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Nenhum plano específico" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nenhum plano específico</SelectItem>
+                      {subscriptionPlans.map((plan) => (
+                        <SelectItem key={plan.id} value={plan.id}>
+                          {plan.name} - R$ {plan.price}
                         </SelectItem>
                       ))}
                     </SelectContent>

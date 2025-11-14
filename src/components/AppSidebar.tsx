@@ -35,6 +35,7 @@ import {
   DollarSign
 } from "lucide-react";
 import { toast } from "sonner";
+import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
 
 type Community = {
   id: string;
@@ -48,6 +49,9 @@ type Group = {
   community_id: string;
   unread_count?: number;
   order_index?: number;
+  required_plan_id?: string | null;
+  required_plan_name?: string | null;
+  has_access: boolean;
 };
 
 type Course = {
@@ -74,6 +78,12 @@ export function AppSidebar() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('student');
   const [userPlan, setUserPlan] = useState<string | null>(null);
+  const [userPlanId, setUserPlanId] = useState<string | null>(null);
+  const [upgradePlanDialog, setUpgradePlanDialog] = useState<{
+    open: boolean;
+    planName: string;
+    groupName: string;
+  }>({ open: false, planName: "", groupName: "" });
   
   const isCollapsed = state === "collapsed";
 
@@ -130,6 +140,7 @@ export function AppSidebar() {
         .select(`
           plan_id,
           subscription_plans (
+            id,
             name
           )
         `)
@@ -140,6 +151,7 @@ export function AppSidebar() {
       if (subscriptionData?.subscription_plans) {
         const planData: any = subscriptionData.subscription_plans;
         setUserPlan(planData.name);
+        setUserPlanId(subscriptionData.plan_id);
       }
 
       let groupsData;
@@ -168,35 +180,66 @@ export function AppSidebar() {
           .order("created_at", { ascending: false });
         setCourses(coursesData || []);
       } else {
-        // Students see only their groups and courses with access
+        // Students see groups they have access to + locked groups (ghost)
         const { data: membershipData } = await supabase
           .from("group_members")
           .select("group_id")
           .eq("user_id", user.id);
 
-        const groupIds = membershipData?.map((m) => m.group_id) || [];
+        const memberGroupIds = membershipData?.map((m) => m.group_id) || [];
 
-        if (groupIds.length === 0) {
-          setGroups([]);
-          setCommunities([]);
-          setLoading(false);
-          return;
-        }
-
-        const { data } = await supabase
+        // Fetch all visible groups
+        const { data: allGroupsData } = await supabase
           .from("conversation_groups")
           .select(`
             id,
             name,
             community_id,
+            is_visible,
             communities (
               id,
               name,
               subject
             )
           `)
-          .in("id", groupIds);
-        groupsData = data;
+          .eq("is_visible", true)
+          .order("created_at", { ascending: false });
+
+        // Fetch plan requirements for all groups
+        const { data: planLinks } = await supabase
+          .from("plan_default_groups")
+          .select(`
+            group_id,
+            plan_id,
+            subscription_plans (
+              id,
+              name
+            )
+          `);
+
+        const planLinkMap = new Map(
+          planLinks?.map(link => [
+            link.group_id, 
+            { 
+              plan_id: (link.subscription_plans as any)?.id,
+              plan_name: (link.subscription_plans as any)?.name 
+            }
+          ]) || []
+        );
+
+        // Determine which groups user has access to
+        groupsData = allGroupsData?.map((g: any) => {
+          const planReq = planLinkMap.get(g.id);
+          const isMember = memberGroupIds.includes(g.id);
+          const hasAccess = isMember || !planReq || planReq.plan_id === userPlanId;
+          
+          return {
+            ...g,
+            required_plan_id: planReq?.plan_id || null,
+            required_plan_name: planReq?.plan_name || null,
+            has_access: hasAccess
+          };
+        });
 
         // Fetch courses the user has active access to
         const { data: courseAccessData } = await supabase
@@ -250,6 +293,9 @@ export function AppSidebar() {
               community_id: g.community_id,
               unread_count: unreadData || 0,
               order_index: orderMap.get(g.id) ?? index,
+              required_plan_id: g.required_plan_id || null,
+              required_plan_name: g.required_plan_name || null,
+              has_access: g.has_access ?? true
             };
           })
         );
@@ -459,12 +505,15 @@ export function AppSidebar() {
                         
                         {/* Groups */}
                         {communityGroups.map((group) => {
-                          const isMember = isTeacherOrAdmin || groups.some(g => g.id === group.id);
-                          const isRestricted = userRole === 'visitor' && !isMember;
+                          const hasAccess = group.has_access !== false;
                           
                           const handleGroupClick = () => {
-                            if (isRestricted) {
-                              toast.error("Este grupo não está liberado para o seu plano");
+                            if (!hasAccess) {
+                              setUpgradePlanDialog({
+                                open: true,
+                                planName: group.required_plan_name || "Plano Premium",
+                                groupName: group.name
+                              });
                             } else {
                               navigate(`/groups/${group.id}/chat`);
                             }
@@ -474,17 +523,17 @@ export function AppSidebar() {
                             <SidebarMenuSubItem key={group.id}>
                               <SidebarMenuSubButton
                                 onClick={handleGroupClick}
-                                isActive={isActiveGroup(group.id)}
-                                className={isRestricted ? "opacity-60 cursor-not-allowed" : ""}
+                                isActive={isActiveGroup(group.id) && hasAccess}
+                                className={!hasAccess ? "opacity-40 hover:opacity-60 transition-opacity" : ""}
                               >
                                 <MessageCircle className="h-3 w-3" />
                                 <span className="truncate flex-1">{group.name}</span>
-                                {group.unread_count && group.unread_count > 0 && (
+                                 {hasAccess && group.unread_count && group.unread_count > 0 && (
                                   <Badge 
                                     variant="destructive" 
-                                    className="h-5 min-w-5 px-1.5 text-xs rounded-full"
+                                    className="ml-auto h-5 min-w-[20px] flex items-center justify-center text-xs px-1.5"
                                   >
-                                    {group.unread_count > 99 ? '99+' : group.unread_count}
+                                    {group.unread_count > 99 ? "99+" : group.unread_count}
                                   </Badge>
                                 )}
                               </SidebarMenuSubButton>
@@ -611,6 +660,13 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+
+      <UpgradePlanDialog
+        open={upgradePlanDialog.open}
+        onOpenChange={(open) => setUpgradePlanDialog({ ...upgradePlanDialog, open })}
+        planName={upgradePlanDialog.planName}
+        groupName={upgradePlanDialog.groupName}
+      />
     </Sidebar>
   );
 }
