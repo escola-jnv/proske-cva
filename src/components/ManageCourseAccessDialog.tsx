@@ -44,13 +44,13 @@ export function ManageCourseAccessDialog({
       const { data: { user } } = await supabase.auth.getUser();
       
       const { error } = await supabase
-        .from("user_course_access")
+        .from("user_course_access" as any)
         .insert({
           user_id: userId,
           course_id: courseId,
           end_date: endDate,
           granted_by: user?.id,
-        });
+        } as any);
 
       if (error) throw error;
 
