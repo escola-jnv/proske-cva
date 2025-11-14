@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { DollarSign, ExternalLink, Calendar, CheckCircle2, Video } from "lucide-react";
+import { DollarSign, ExternalLink, Calendar, CheckCircle2, Video, Users } from "lucide-react";
 import { toast } from "sonner";
 
 type SubscriptionPlan = {
@@ -53,6 +53,7 @@ type SubscriptionStats = {
   totalDays: number;
   tasksSubmitted: number;
   monitoringsCompleted: number;
+  groupStudiesCompleted: number;
 };
 
 type CourseAccess = {
@@ -68,6 +69,11 @@ const Plans = () => {
   const [activeSubscription, setActiveSubscription] = useState<UserSubscription | null>(null);
   const [stats, setStats] = useState<SubscriptionStats | null>(null);
   const [courseAccess, setCourseAccess] = useState<CourseAccess[]>([]);
+  const [userLimits, setUserLimits] = useState<{
+    monthly_group_studies_limit: number;
+    monthly_tasks_limit: number;
+    monthly_monitorings_limit: number;
+  } | null>(null);
 
   useEffect(() => {
     checkAuthAndFetchPlans();
@@ -88,6 +94,7 @@ const Plans = () => {
         fetchActiveSubscription(user.id),
         fetchStats(user.id),
         fetchCourseAccess(user.id),
+        fetchUserLimits(user.id),
       ]);
     } catch (error: any) {
       console.error("Error:", error);
@@ -196,11 +203,21 @@ const Plans = () => {
         .gte("scheduled_date", startOfMonth.toISOString().split('T')[0])
         .lte("scheduled_date", endOfMonth.toISOString().split('T')[0]);
 
+      // Count group studies this month
+      const { count: groupStudiesCount } = await supabase
+        .from("events")
+        .select("*", { count: "exact", head: true })
+        .eq("created_by", userId)
+        .eq("event_type", "group_study")
+        .gte("event_date", startOfMonth.toISOString())
+        .lte("event_date", endOfMonth.toISOString());
+
       setStats({
         daysRemaining,
         totalDays,
         tasksSubmitted: tasksCount || 0,
         monitoringsCompleted: monitoringsCount || 0,
+        groupStudiesCompleted: groupStudiesCount || 0,
       });
     } catch (error: any) {
       console.error("Error fetching stats:", error);
@@ -246,6 +263,21 @@ const Plans = () => {
       setCourseAccess(accessWithDays);
     } catch (error: any) {
       console.error("Error fetching course access:", error);
+    }
+  };
+
+  const fetchUserLimits = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("monthly_group_studies_limit, monthly_tasks_limit, monthly_monitorings_limit")
+        .eq("id", userId)
+        .single();
+
+      if (error) throw error;
+      setUserLimits(data);
+    } catch (error: any) {
+      console.error("Error fetching user limits:", error);
     }
   };
 
@@ -312,8 +344,27 @@ const Plans = () => {
                   </p>
                 </div>
 
+                {/* Group Studies Progress */}
+                {userLimits && userLimits.monthly_group_studies_limit > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-primary" />
+                        <span className="font-medium">Estudos em grupo este mês</span>
+                      </div>
+                      <span className="text-muted-foreground">
+                        {stats.groupStudiesCompleted} / {userLimits.monthly_group_studies_limit}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={Math.min((stats.groupStudiesCompleted / userLimits.monthly_group_studies_limit) * 100, 100)} 
+                      className="h-2" 
+                    />
+                  </div>
+                )}
+
                 {/* Tasks Progress */}
-                {(activeSubscription.plan as any).monthly_corrections_limit > 0 && (
+                {userLimits && userLimits.monthly_tasks_limit > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
@@ -321,18 +372,18 @@ const Plans = () => {
                         <span className="font-medium">Tarefas enviadas este mês</span>
                       </div>
                       <span className="text-muted-foreground">
-                        {stats.tasksSubmitted} / {(activeSubscription.plan as any).monthly_corrections_limit}
+                        {stats.tasksSubmitted} / {userLimits.monthly_tasks_limit}
                       </span>
                     </div>
                     <Progress 
-                      value={Math.min((stats.tasksSubmitted / (activeSubscription.plan as any).monthly_corrections_limit) * 100, 100)} 
+                      value={Math.min((stats.tasksSubmitted / userLimits.monthly_tasks_limit) * 100, 100)} 
                       className="h-2" 
                     />
                   </div>
                 )}
 
                 {/* Monitorings Progress */}
-                {(activeSubscription.plan as any).monthly_monitorings_limit > 0 && (
+                {userLimits && userLimits.monthly_monitorings_limit > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
@@ -340,11 +391,11 @@ const Plans = () => {
                         <span className="font-medium">Monitorias realizadas este mês</span>
                       </div>
                       <span className="text-muted-foreground">
-                        {stats.monitoringsCompleted} / {(activeSubscription.plan as any).monthly_monitorings_limit}
+                        {stats.monitoringsCompleted} / {userLimits.monthly_monitorings_limit}
                       </span>
                     </div>
                     <Progress 
-                      value={Math.min((stats.monitoringsCompleted / (activeSubscription.plan as any).monthly_monitorings_limit) * 100, 100)} 
+                      value={Math.min((stats.monitoringsCompleted / userLimits.monthly_monitorings_limit) * 100, 100)} 
                       className="h-2" 
                     />
                   </div>
