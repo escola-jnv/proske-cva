@@ -32,6 +32,7 @@ const Events = () => {
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [defaultCommunityId, setDefaultCommunityId] = useState<string | null>(null);
+  const [generatingStudies, setGeneratingStudies] = useState(false);
 
   useEffect(() => {
     const {
@@ -134,6 +135,93 @@ const Events = () => {
     }
   };
 
+  const generateMonthlyStudies = async () => {
+    if (!user?.id || !defaultCommunityId) {
+      toast.error("Erro ao gerar estudos. Tente novamente.");
+      return;
+    }
+
+    setGeneratingStudies(true);
+    try {
+      // Fetch user profile with study configuration
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("study_days, study_schedule")
+        .eq("id", user.id)
+        .single() as any;
+
+      if (profileError) throw profileError;
+
+      if (!profile?.study_days || profile.study_days.length === 0) {
+        toast.error("Configure seus dias de estudo no perfil primeiro");
+        setGeneratingStudies(false);
+        return;
+      }
+
+      const studyDays = profile.study_days as number[];
+      const studySchedule = (profile.study_schedule || {}) as Record<number, string>;
+
+      // Get current month's start and end
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const monthStart = new Date(currentYear, currentMonth, 1);
+      const monthEnd = new Date(currentYear, currentMonth + 1, 0);
+
+      // Generate studies for configured days
+      const eventsToCreate = [];
+      for (let date = new Date(monthStart); date <= monthEnd; date.setDate(date.getDate() + 1)) {
+        const dayOfWeek = date.getDay();
+        
+        if (studyDays.includes(dayOfWeek)) {
+          const currentDate = new Date(date);
+          
+          // Skip past dates
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          currentDate.setHours(0, 0, 0, 0);
+          if (currentDate < today) continue;
+
+          const timeStr = studySchedule[dayOfWeek] || "20:00";
+          const [hours, minutes] = timeStr.split(":").map(Number);
+          currentDate.setHours(hours, minutes, 0, 0);
+
+          eventsToCreate.push({
+            title: "Estudo Individual",
+            description: "Estudo individual agendado",
+            event_date: currentDate.toISOString(),
+            duration_minutes: 60,
+            event_type: "individual_study",
+            study_topic: "Estudo programado",
+            created_by: user.id,
+            community_id: defaultCommunityId,
+          });
+        }
+      }
+
+      if (eventsToCreate.length === 0) {
+        toast.info("Nenhum estudo para criar no mês atual");
+        setGeneratingStudies(false);
+        return;
+      }
+
+      // Insert all studies
+      const { error: insertError } = await (supabase
+        .from("events")
+        .insert(eventsToCreate) as any);
+
+      if (insertError) throw insertError;
+
+      toast.success(`${eventsToCreate.length} estudos criados para este mês!`);
+      fetchEvents(user.id);
+    } catch (error) {
+      console.error("Error generating studies:", error);
+      toast.error("Erro ao gerar estudos automaticamente");
+    } finally {
+      setGeneratingStudies(false);
+    }
+  };
+
   const upcomingEvents = events.filter((e) => isFuture(new Date(e.event_date)));
   const pastEvents = events.filter((e) => !isFuture(new Date(e.event_date)));
 
@@ -162,14 +250,26 @@ const Events = () => {
               Visualize e gerencie seus eventos
             </p>
           </div>
-          {!userRoles.includes('visitor') && defaultCommunityId && (
-            <CreateEventMenu
-              communityId={defaultCommunityId}
-              userId={user?.id || ""}
-              isAdmin={userRoles.includes('admin')}
-              onSuccess={() => fetchEvents(user?.id || "")}
-            />
-          )}
+          <div className="flex items-center gap-2">
+            {!userRoles.includes('visitor') && defaultCommunityId && (
+              <>
+                <Button
+                  onClick={generateMonthlyStudies}
+                  disabled={generatingStudies || !defaultCommunityId}
+                  variant="outline"
+                  size="sm"
+                >
+                  {generatingStudies ? "Gerando..." : "Gerar Estudos do Mês"}
+                </Button>
+                <CreateEventMenu
+                  communityId={defaultCommunityId}
+                  userId={user?.id || ""}
+                  isAdmin={userRoles.includes('admin')}
+                  onSuccess={() => fetchEvents(user?.id || "")}
+                />
+              </>
+            )}
+          </div>
         </nav>
       </header>
 
