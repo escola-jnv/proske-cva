@@ -454,17 +454,17 @@ export default function DevTools() {
         type, 
         data: { 
           ...data,
-          ...profileData.data,
+          ...profileData,
           planId: subscription?.plan_id || "",
           customPrice: subscription?.custom_price || subscription?.subscription_plans?.price || 0,
           dueDay: subscription?.due_day || 1,
-          monitoringDayOfWeek: profileData.data?.monitoring_day_of_week,
-          monitoringTime: profileData.data?.monitoring_time,
-          monitoringFrequency: profileData.data?.monitoring_frequency,
-          weeklySubmissionsLimit: profileData.data?.weekly_submissions_limit || 0,
-          studyGoals: profileData.data?.study_goals || [],
-          studyDays: profileData.data?.study_days || [],
-          studySchedule: profileData.data?.study_schedule || {}
+          monitoringDayOfWeek: profileData?.monitoring_day_of_week,
+          monitoringTime: profileData?.monitoring_time,
+          monitoringFrequency: profileData?.monitoring_frequency,
+          weeklySubmissionsLimit: profileData?.weekly_submissions_limit || 0,
+          studyGoals: profileData?.study_goals || [],
+          studyDays: profileData?.study_days || [],
+          studySchedule: profileData?.study_schedule || {}
         } 
       });
     } else if (type === "group" && data.id) {
