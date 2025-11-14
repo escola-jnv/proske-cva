@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,6 +54,7 @@ import {
   AlertCircle, 
   Plus 
 } from "lucide-react";
+import { StudentLTVAnalysis } from "@/components/StudentLTVAnalysis";
 
 type Payment = {
   id: string;
@@ -294,8 +296,15 @@ export default function Financial() {
         <h1 className="text-3xl font-bold">Gestão Financeira</h1>
       </div>
 
-      {/* Financial Statistics */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <Tabs defaultValue="payments" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="payments">Pagamentos</TabsTrigger>
+          <TabsTrigger value="ltv">Análise LTV</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="payments" className="space-y-6">
+          {/* Financial Statistics */}
+          <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total a Receber</CardTitle>
@@ -456,6 +465,12 @@ export default function Financial() {
           </Table>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="ltv">
+          <StudentLTVAnalysis />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={editDialog.open} onOpenChange={(open) => !open && setEditDialog({ open: false, data: null })}>
         <DialogContent className="max-w-md">
