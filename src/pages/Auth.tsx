@@ -227,18 +227,8 @@ const Auth = () => {
                 community_id: cvaComm.id,
               });
 
-            // Set user role to guest
-            await supabase
-              .from("user_roles")
-              .delete()
-              .eq("user_id", data.user.id);
-            
-            await supabase
-              .from("user_roles")
-              .insert({
-                user_id: data.user.id,
-                role: "guest",
-              });
+            // Update user role to visitor (the default role from handle_new_user is already visitor)
+            // No need to delete and re-insert, just keep the visitor role
           }
         }
 

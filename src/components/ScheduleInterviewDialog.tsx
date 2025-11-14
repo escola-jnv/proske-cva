@@ -38,6 +38,15 @@ export function ScheduleInterviewDialog({
   const minDate = new Date();
   const maxDate = addDays(new Date(), 7);
 
+  // Reset form when dialog closes
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      setSelectedDate(undefined);
+      setSelectedTime("");
+    }
+    onOpenChange(newOpen);
+  };
+
   const handleSchedule = async () => {
     if (!selectedDate || !selectedTime) {
       toast.error("Selecione uma data e horário");
@@ -56,6 +65,8 @@ export function ScheduleInterviewDialog({
       if (error) throw error;
 
       toast.success("Entrevista agendada! Aguarde confirmação do professor.");
+      setSelectedDate(undefined);
+      setSelectedTime("");
       onScheduled();
       onOpenChange(false);
     } catch (error: any) {
@@ -67,7 +78,7 @@ export function ScheduleInterviewDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Agendar Entrevista Inicial</DialogTitle>
@@ -108,14 +119,14 @@ export function ScheduleInterviewDialog({
           )}
 
           <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Depois
+            <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
+              Cancelar
             </Button>
             <Button
               onClick={handleSchedule}
               disabled={!selectedDate || !selectedTime || loading}
             >
-              {loading ? "Agendando..." : "Agendar"}
+              {loading ? "Agendando..." : "Confirmar Agendamento"}
             </Button>
           </div>
         </div>
