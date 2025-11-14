@@ -8,99 +8,95 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Proskë Light Mode - Calm & Welcoming */
-    --background: 210 17% 98%; /* Offwhite #F8F9FA */
-    --foreground: 213 63% 15%; /* Navy Blue for text */
+    /* CVA Light Mode - Black & Orange */
+    --background: 0 0% 100%; /* White */
+    --foreground: 0 0% 5%; /* Almost Black */
 
     --card: 0 0% 100%;
-    --card-foreground: 213 63% 15%;
+    --card-foreground: 0 0% 5%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 213 63% 15%;
+    --popover-foreground: 0 0% 5%;
 
-    --primary: 178 90% 38%; /* Tiffany #0ABAB5 */
-    --primary-foreground: 210 17% 98%;
+    --primary: 25 95% 53%; /* Orange #FF8C00 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 20% 92%;
-    --secondary-foreground: 213 63% 15%;
+    --secondary: 0 0% 10%; /* Dark Gray/Black */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 20% 92%;
-    --muted-foreground: 215 15% 45%; /* Gray-blue for subtle text */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 24 100% 68%; /* Soft Orange #FFA45B */
-    --accent-foreground: 213 63% 15%;
+    --accent: 25 95% 53%; /* Orange */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 17% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 210 20% 88%;
-    --input: 210 20% 88%;
-    --ring: 178 90% 38%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 25 95% 53%;
 
     --radius: 1rem;
 
-    /* Custom Proskë tokens */
-    --navy: 213 63% 15%;
-    --tiffany: 178 90% 38%;
-    --warm-orange: 24 100% 68%;
-    --caption-gray: 210 15% 50%;
+    /* Custom CVA tokens */
+    --cva-orange: 25 95% 53%;
+    --cva-black: 0 0% 5%;
     
     /* Sidebar */
-    --sidebar-background: 210 17% 98%;
-    --sidebar-foreground: 213 63% 15%;
-    --sidebar-primary: 178 90% 38%;
-    --sidebar-primary-foreground: 210 17% 98%;
-    --sidebar-accent: 210 20% 92%;
-    --sidebar-accent-foreground: 213 63% 15%;
-    --sidebar-border: 210 20% 88%;
-    --sidebar-ring: 178 90% 38%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 5%;
+    --sidebar-primary: 25 95% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 5%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 25 95% 53%;
   }
 
   .dark {
-    /* Proskë Dark Mode - Comfortable Night Study */
-    --background: 213 63% 15%; /* Navy Blue #0B1E3F */
-    --foreground: 210 17% 98%; /* Offwhite for text */
+    /* CVA Dark Mode - Black & Orange */
+    --background: 0 0% 5%; /* Deep Black */
+    --foreground: 0 0% 98%; /* Almost White */
 
-    --card: 213 60% 18%;
-    --card-foreground: 210 17% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 213 60% 18%;
-    --popover-foreground: 210 17% 98%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 178 90% 38%; /* Tiffany - stays vibrant in dark */
-    --primary-foreground: 210 17% 98%;
+    --primary: 25 95% 53%; /* Orange */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 213 50% 22%;
-    --secondary-foreground: 210 17% 98%;
+    --secondary: 0 0% 15%; /* Dark Gray */
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 213 50% 22%;
-    --muted-foreground: 210 15% 70%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 24 100% 68%; /* Soft Orange */
-    --accent-foreground: 213 63% 15%;
+    --accent: 25 95% 53%; /* Orange */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 50%;
-    --destructive-foreground: 210 17% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 213 40% 25%;
-    --input: 213 40% 25%;
-    --ring: 178 90% 45%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 25 95% 53%;
 
-    /* Custom tokens for dark mode */
-    --navy: 213 63% 15%;
-    --tiffany: 178 90% 38%;
-    --warm-orange: 24 100% 68%;
-    --caption-gray: 210 15% 65%;
+    /* Custom CVA tokens for dark mode */
+    --cva-orange: 25 95% 53%;
+    --cva-black: 0 0% 5%;
 
     /* Sidebar */
-    --sidebar-background: 213 60% 12%;
-    --sidebar-foreground: 210 17% 98%;
-    --sidebar-primary: 178 90% 38%;
-    --sidebar-primary-foreground: 210 17% 98%;
-    --sidebar-accent: 213 50% 22%;
-    --sidebar-accent-foreground: 210 17% 98%;
-    --sidebar-border: 213 40% 25%;
-    --sidebar-ring: 178 90% 45%;
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 25 95% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 25 95% 53%;
   }
 }
 

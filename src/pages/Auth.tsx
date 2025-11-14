@@ -120,7 +120,7 @@ const Auth = () => {
           await redirectToUserCommunity(user.id);
         }
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -133,7 +133,41 @@ const Auth = () => {
 
         if (error) throw error;
 
-        toast.success("Conta criada! Verifique seu email para confirmar.");
+        // If user was created successfully, add them to CVA community
+        if (data.user) {
+          // Find CVA community
+          const { data: cvaComm } = await supabase
+            .from("communities")
+            .select("id")
+            .ilike("name", "%CVA%")
+            .limit(1)
+            .single();
+
+          if (cvaComm) {
+            // Add user as member of CVA community
+            await supabase
+              .from("community_members")
+              .insert({
+                user_id: data.user.id,
+                community_id: cvaComm.id,
+              });
+
+            // Set user role to guest
+            await supabase
+              .from("user_roles")
+              .delete()
+              .eq("user_id", data.user.id);
+            
+            await supabase
+              .from("user_roles")
+              .insert({
+                user_id: data.user.id,
+                role: "guest",
+              });
+          }
+        }
+
+        toast.success("Bem-vindo à CVA! Você já faz parte da comunidade.");
       }
     } catch (error: any) {
       if (error.message.includes("already registered")) {
