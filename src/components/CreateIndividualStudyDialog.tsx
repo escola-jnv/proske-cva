@@ -41,6 +41,11 @@ export const CreateIndividualStudyDialog = ({
 }: CreateIndividualStudyDialogProps) => {
   const [loading, setLoading] = useState(false);
 
+  // Validate communityId
+  if (!communityId) {
+    console.error("communityId is required for CreateIndividualStudyDialog");
+  }
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -53,6 +58,11 @@ export const CreateIndividualStudyDialog = ({
   const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setLoading(true);
+
+      if (!communityId) {
+        toast.error("Erro: comunidade não identificada");
+        return;
+      }
 
       // Combine date and time
       const [hours, minutes] = values.event_time.split(":");
@@ -67,10 +77,9 @@ export const CreateIndividualStudyDialog = ({
         duration_minutes: values.duration_minutes,
         event_type: "individual_study",
         study_topic: values.study_topic,
-        study_status: "pending",
         created_by: userId,
         community_id: communityId,
-      });
+      } as any);
 
       if (error) throw error;
 

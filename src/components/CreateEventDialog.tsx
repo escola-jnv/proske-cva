@@ -49,6 +49,7 @@ type CreateEventDialogProps = {
   userId: string;
   onSuccess?: () => void;
   isAdmin?: boolean;
+  initialEventType?: "interview" | "mentoring" | "group_study" | "live";
 };
 
 export const CreateEventDialog = ({
@@ -58,6 +59,7 @@ export const CreateEventDialog = ({
   userId,
   onSuccess,
   isAdmin = false,
+  initialEventType = "group_study",
 }: CreateEventDialogProps) => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [users, setUsers] = useState<Array<{ id: string; name: string; email?: string }>>([]);
@@ -69,7 +71,7 @@ export const CreateEventDialog = ({
     event_date: "",
     event_time: "",
     group_ids: [] as string[],
-    event_type: "group_study" as "interview" | "mentoring" | "group_study" | "live",
+    event_type: initialEventType,
     social_media_link: "",
     created_by: userId,
   });
@@ -80,8 +82,10 @@ export const CreateEventDialog = ({
       if (isAdmin) {
         fetchUsers();
       }
+      // Update event_type when dialog opens with new initialEventType
+      setForm(prev => ({ ...prev, event_type: initialEventType }));
     }
-  }, [open, communityId, userId, isAdmin]);
+  }, [open, communityId, userId, isAdmin, initialEventType]);
 
   const fetchGroups = async () => {
     setLoading(true);

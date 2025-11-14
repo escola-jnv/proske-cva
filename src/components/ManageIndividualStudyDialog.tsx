@@ -83,11 +83,10 @@ export const ManageIndividualStudyDialog = ({
       const { error } = await supabase
         .from("events")
         .update({
-          study_status: "completed",
           actual_start_time: actualStart.toISOString(),
           actual_end_time: actualEnd.toISOString(),
           actual_study_notes: values.actual_study_notes,
-        })
+        } as any)
         .eq("id", eventId);
 
       if (error) throw error;
@@ -115,8 +114,7 @@ export const ManageIndividualStudyDialog = ({
         .from("events")
         .update({
           event_date: newDateTime.toISOString(),
-          study_status: "rescheduled",
-        })
+        } as any)
         .eq("id", eventId);
 
       if (error) throw error;
