@@ -2293,14 +2293,20 @@ export default function DevTools() {
                 <div>
                   <Label htmlFor="plan">Plano Requerido (opcional)</Label>
                   <Select
-                    value={editDialog.data.plan_id || ""}
-                    onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), plan_id: value } }))}
+                    value={editDialog.data.plan_id || "none"}
+                    onValueChange={(value) => setEditDialog(prev => ({ 
+                      ...prev, 
+                      data: { 
+                        ...(prev.data || {}), 
+                        plan_id: value === "none" ? undefined : value 
+                      } 
+                    }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Nenhum plano específico" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhum plano específico</SelectItem>
+                      <SelectItem value="none">Nenhum plano específico</SelectItem>
                       {subscriptionPlans.map((plan) => (
                         <SelectItem key={plan.id} value={plan.id}>
                           {plan.name} - R$ {plan.price}
