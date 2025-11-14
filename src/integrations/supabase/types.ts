@@ -1091,6 +1091,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_group_by_role: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_view_event: {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
