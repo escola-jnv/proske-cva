@@ -2100,7 +2100,7 @@ export default function DevTools() {
           setSelectedGroupPlans([]);
         }
       }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {editDialog.data?.id 
@@ -2116,237 +2116,241 @@ export default function DevTools() {
             <DialogDescription>Faça as alterações necessárias</DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto pr-2">
             {editDialog.type === "profile" && editDialog.data && (
-              <>
-                <div>
-                  <Label htmlFor="name">Nome</Label>
-                  <Input
-                    id="name"
-                    value={editDialog.data.name || ""}
-                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), name: e.target.value } }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={editDialog.data.email || ""}
-                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), email: e.target.value } }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="role">Tipo de Usuário</Label>
-                  <Select
-                    value={editDialog.data.role || "student"}
-                    onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), role: value } }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="student">Aluno</SelectItem>
-                      <SelectItem value="teacher">Professor</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="visitor">Visitante</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    value={editDialog.data.phone || ""}
-                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), phone: e.target.value } }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="city">Cidade</Label>
-                  <Input
-                    id="city"
-                    value={editDialog.data.city || ""}
-                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), city: e.target.value } }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    value={editDialog.data.bio || ""}
-                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), bio: e.target.value } }))}
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="avatar_url">Avatar URL</Label>
-                  <Input
-                    id="avatar_url"
-                    type="url"
-                    value={editDialog.data.avatar_url || ""}
-                    onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), avatar_url: e.target.value } }))}
-                    placeholder="https://..."
-                  />
-                </div>
-                
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-sm font-semibold mb-3">Configurações de Plano</h4>
-                  <div className="space-y-4">
+              <Tabs defaultValue="personal" className="w-full">
+                <TabsList className="grid w-full grid-cols-6 mb-4">
+                  <TabsTrigger value="personal">Pessoal</TabsTrigger>
+                  <TabsTrigger value="role">Tipo</TabsTrigger>
+                  <TabsTrigger value="plan">Plano</TabsTrigger>
+                  <TabsTrigger value="monitoring">Monitoria</TabsTrigger>
+                  <TabsTrigger value="study">Estudos</TabsTrigger>
+                  <TabsTrigger value="limits">Limites</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="personal" className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Nome</Label>
+                    <Input
+                      id="name"
+                      value={editDialog.data.name || ""}
+                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), name: e.target.value } }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">E-mail</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={editDialog.data.email || ""}
+                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), email: e.target.value } }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone">Telefone</Label>
+                    <Input
+                      id="phone"
+                      value={editDialog.data.phone || ""}
+                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), phone: e.target.value } }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="city">Cidade</Label>
+                    <Input
+                      id="city"
+                      value={editDialog.data.city || ""}
+                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), city: e.target.value } }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="bio">Bio</Label>
+                    <Textarea
+                      id="bio"
+                      value={editDialog.data.bio || ""}
+                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), bio: e.target.value } }))}
+                      rows={3}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="avatar_url">Avatar URL</Label>
+                    <Input
+                      id="avatar_url"
+                      type="url"
+                      value={editDialog.data.avatar_url || ""}
+                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), avatar_url: e.target.value } }))}
+                      placeholder="https://..."
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="role" className="space-y-4">
+                  <div>
+                    <Label htmlFor="role">Tipo de Usuário</Label>
+                    <Select
+                      value={editDialog.data.role || "student"}
+                      onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), role: value } }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 bg-popover">
+                        <SelectItem value="student">Aluno</SelectItem>
+                        <SelectItem value="teacher">Professor</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="visitor">Visitante</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="plan" className="space-y-4">
+                  <div>
+                    <Label htmlFor="plan">Plano</Label>
+                    <Select
+                      value={editDialog.data.planId || ""}
+                      onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), planId: value } }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o plano" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 bg-popover">
+                        {subscriptionPlans.map((plan) => (
+                          <SelectItem key={plan.id} value={plan.id}>
+                            {plan.name} - R$ {plan.price.toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="customPrice">Valor Customizado (R$)</Label>
+                    <Input
+                      id="customPrice"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editDialog.data.customPrice || 0}
+                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), customPrice: parseFloat(e.target.value) || 0 } }))}
+                      placeholder="Deixe 0 para usar o valor do plano"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="dueDay">Dia de Vencimento (1-31)</Label>
+                    <Input
+                      id="dueDay"
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={editDialog.data.dueDay || 1}
+                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), dueDay: parseInt(e.target.value) || 1 } }))}
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="monitoring" className="space-y-4">
+                  <div>
+                    <Label htmlFor="monitoringFrequency">Frequência</Label>
+                    <Select
+                      value={editDialog.data.monitoringFrequency || ""}
+                      onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringFrequency: value } }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a frequência" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 bg-popover">
+                        <SelectItem value="semanal">Semanal</SelectItem>
+                        <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                        <SelectItem value="mensal">Mensal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="plan">Plano</Label>
+                      <Label htmlFor="monitoringDay">Dia da Semana</Label>
                       <Select
-                        value={editDialog.data.planId || ""}
-                        onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), planId: value } }))}
+                        value={editDialog.data.monitoringDayOfWeek?.toString() || ""}
+                        onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringDayOfWeek: parseInt(value) } }))}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione o plano" />
+                          <SelectValue placeholder="Selecione o dia" />
                         </SelectTrigger>
-                        <SelectContent>
-                          {subscriptionPlans.map((plan) => (
-                            <SelectItem key={plan.id} value={plan.id}>
-                              {plan.name} - R$ {plan.price.toFixed(2)}
-                            </SelectItem>
-                          ))}
+                        <SelectContent className="z-50 bg-popover">
+                          <SelectItem value="0">Domingo</SelectItem>
+                          <SelectItem value="1">Segunda</SelectItem>
+                          <SelectItem value="2">Terça</SelectItem>
+                          <SelectItem value="3">Quarta</SelectItem>
+                          <SelectItem value="4">Quinta</SelectItem>
+                          <SelectItem value="5">Sexta</SelectItem>
+                          <SelectItem value="6">Sábado</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="customPrice">Valor Customizado (R$)</Label>
+                      <Label htmlFor="monitoringTime">Hora</Label>
                       <Input
-                        id="customPrice"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={editDialog.data.customPrice || 0}
-                        onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), customPrice: parseFloat(e.target.value) || 0 } }))}
-                        placeholder="Deixe 0 para usar o valor do plano"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="dueDay">Dia de Vencimento (1-31)</Label>
-                      <Input
-                        id="dueDay"
-                        type="number"
-                        min="1"
-                        max="31"
-                        value={editDialog.data.dueDay || 1}
-                        onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), dueDay: parseInt(e.target.value) || 1 } }))}
+                        id="monitoringTime"
+                        type="time"
+                        value={editDialog.data.monitoringTime || ""}
+                        onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringTime: e.target.value } }))}
                       />
                     </div>
                   </div>
-                </div>
+                </TabsContent>
 
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-sm font-semibold mb-3">Configurações de Monitoria</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="monitoringFrequency">Frequência</Label>
-                      <Select
-                        value={editDialog.data.monitoringFrequency || ""}
-                        onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringFrequency: value } }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a frequência" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="semanal">Semanal</SelectItem>
-                          <SelectItem value="quinzenal">Quinzenal</SelectItem>
-                          <SelectItem value="mensal">Mensal</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="monitoringDay">Dia da Semana</Label>
-                        <Select
-                          value={editDialog.data.monitoringDayOfWeek?.toString() || ""}
-                          onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringDayOfWeek: parseInt(value) } }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o dia" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0">Domingo</SelectItem>
-                            <SelectItem value="1">Segunda</SelectItem>
-                            <SelectItem value="2">Terça</SelectItem>
-                            <SelectItem value="3">Quarta</SelectItem>
-                            <SelectItem value="4">Quinta</SelectItem>
-                            <SelectItem value="5">Sexta</SelectItem>
-                            <SelectItem value="6">Sábado</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="monitoringTime">Hora</Label>
-                        <Input
-                          id="monitoringTime"
-                          type="time"
-                          value={editDialog.data.monitoringTime || ""}
-                          onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monitoringTime: e.target.value } }))}
-                        />
-                      </div>
-                    </div>
+                <TabsContent value="study" className="space-y-4">
+                  <div>
+                    <Label>Objetivos de Estudo</Label>
+                    <Textarea
+                      value={Array.isArray(editDialog.data.studyGoals) ? editDialog.data.studyGoals.join(', ') : ''}
+                      onChange={(e) => setEditDialog(prev => ({ 
+                        ...prev, 
+                        data: { 
+                          ...(prev.data || {}), 
+                          studyGoals: e.target.value.split(',').map((g: string) => g.trim()).filter(Boolean)
+                        } 
+                      }))}
+                      placeholder="Digite os objetivos separados por vírgula"
+                      rows={2}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Separe os objetivos por vírgula</p>
                   </div>
-                </div>
-
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-sm font-semibold mb-3">Configurações de Estudo</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Objetivos de Estudo</Label>
-                      <Textarea
-                        value={Array.isArray(editDialog.data.studyGoals) ? editDialog.data.studyGoals.join(', ') : ''}
-                        onChange={(e) => setEditDialog(prev => ({ 
-                          ...prev, 
-                          data: { 
-                            ...(prev.data || {}), 
-                            studyGoals: e.target.value.split(',').map((g: string) => g.trim()).filter(Boolean)
-                          } 
-                        }))}
-                        placeholder="Digite os objetivos separados por vírgula"
-                        rows={2}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Separe os objetivos por vírgula</p>
-                    </div>
-                    <div>
-                      <Label>Dias de Estudo</Label>
-                      <Textarea
-                        value={Array.isArray(editDialog.data.studyDays) ? editDialog.data.studyDays.join(', ') : ''}
-                        onChange={(e) => setEditDialog(prev => ({ 
-                          ...prev, 
-                          data: { 
-                            ...(prev.data || {}), 
-                            studyDays: e.target.value.split(',').map((d: string) => parseInt(d.trim())).filter((n: number) => !isNaN(n))
-                          } 
-                        }))}
-                        placeholder="0-6 (0=Domingo, 1=Segunda, ..., 6=Sábado)"
-                        rows={2}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Digite números de 0 a 6 separados por vírgula</p>
-                    </div>
-                    <div>
-                      <Label>Horários de Estudo (JSON)</Label>
-                      <Textarea
-                        value={typeof editDialog.data.studySchedule === 'object' ? JSON.stringify(editDialog.data.studySchedule, null, 2) : '{}'}
-                        onChange={(e) => {
-                          try {
-                            const parsed = JSON.parse(e.target.value);
-                            setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), studySchedule: parsed } }));
-                          } catch (err) {
-                            // Invalid JSON, just update the value
-                            setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), studySchedule: e.target.value } }));
-                          }
-                        }}
-                        placeholder='{"0": "20:00", "1": "19:00"}'
-                        rows={3}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Formato: {`{"dia": "hora"}`} (ex: {`{"0": "20:00"}`})</p>
-                    </div>
+                  <div>
+                    <Label>Dias de Estudo</Label>
+                    <Textarea
+                      value={Array.isArray(editDialog.data.studyDays) ? editDialog.data.studyDays.join(', ') : ''}
+                      onChange={(e) => setEditDialog(prev => ({ 
+                        ...prev, 
+                        data: { 
+                          ...(prev.data || {}), 
+                          studyDays: e.target.value.split(',').map((d: string) => parseInt(d.trim())).filter((n: number) => !isNaN(n))
+                        } 
+                      }))}
+                      placeholder="0-6 (0=Domingo, 1=Segunda, ..., 6=Sábado)"
+                      rows={2}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Digite números de 0 a 6 separados por vírgula</p>
                   </div>
-                </div>
+                  <div>
+                    <Label>Horários de Estudo (JSON)</Label>
+                    <Textarea
+                      value={typeof editDialog.data.studySchedule === 'object' ? JSON.stringify(editDialog.data.studySchedule, null, 2) : '{}'}
+                      onChange={(e) => {
+                        try {
+                          const parsed = JSON.parse(e.target.value);
+                          setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), studySchedule: parsed } }));
+                        } catch (err) {
+                          // Invalid JSON, just update the value
+                          setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), studySchedule: e.target.value } }));
+                        }
+                      }}
+                      placeholder='{"0": "20:00", "1": "19:00"}'
+                      rows={3}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Formato: {`{"dia": "hora"}`} (ex: {`{"0": "20:00"}`})</p>
+                  </div>
+                </TabsContent>
 
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-sm font-semibold mb-3">Limite de Envios</h4>
+                <TabsContent value="limits" className="space-y-4">
                   <div>
                     <Label htmlFor="weeklySubmissionsLimit">Tarefas por Semana</Label>
                     <Input
@@ -2357,8 +2361,8 @@ export default function DevTools() {
                       onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), weeklySubmissionsLimit: parseInt(e.target.value) || 0 } }))}
                     />
                   </div>
-                </div>
-              </>
+                </TabsContent>
+              </Tabs>
             )}
 
             {editDialog.type === "community" && editDialog.data && (
@@ -2417,7 +2421,7 @@ export default function DevTools() {
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a comunidade" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-50 bg-popover">
                       {communities.map((community) => (
                         <SelectItem key={community.id} value={community.id}>
                           {community.name}
