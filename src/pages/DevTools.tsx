@@ -463,7 +463,9 @@ export default function DevTools() {
           monitoringDayOfWeek: profileData?.monitoring_day_of_week,
           monitoringTime: profileData?.monitoring_time,
           monitoringFrequency: profileData?.monitoring_frequency,
-          weeklySubmissionsLimit: profileData?.weekly_submissions_limit || 0,
+          monthlyGroupStudiesLimit: profileData?.monthly_group_studies_limit || 0,
+          monthlyTasksLimit: profileData?.monthly_tasks_limit || 0,
+          monthlyMonitoringsLimit: profileData?.monthly_monitorings_limit || 0,
           studyGoals: profileData?.study_goals || [],
           studyDays: profileData?.study_days || [],
           studySchedule: profileData?.study_schedule || {}
@@ -495,7 +497,7 @@ export default function DevTools() {
     try {
       if (type === "profile") {
         // Update profile
-        const { role, planId, customPrice, dueDay, monitoringDayOfWeek, monitoringTime, weeklySubmissionsLimit, monitoringFrequency, studyGoals, studyDays, studySchedule, ...profileData } = data;
+        const { role, planId, customPrice, dueDay, monitoringDayOfWeek, monitoringTime, monitoringFrequency, monthlyGroupStudiesLimit, monthlyTasksLimit, monthlyMonitoringsLimit, studyGoals, studyDays, studySchedule, ...profileData } = data;
         
         console.log("Profile data to update:", {
           name: profileData.name,
@@ -507,7 +509,9 @@ export default function DevTools() {
           monitoring_day_of_week: monitoringDayOfWeek,
           monitoring_time: monitoringTime,
           monitoring_frequency: monitoringFrequency,
-          weekly_submissions_limit: weeklySubmissionsLimit,
+          monthly_group_studies_limit: monthlyGroupStudiesLimit,
+          monthly_tasks_limit: monthlyTasksLimit,
+          monthly_monitorings_limit: monthlyMonitoringsLimit,
           study_goals: studyGoals,
           study_days: studyDays,
           study_schedule: studySchedule
@@ -525,7 +529,9 @@ export default function DevTools() {
             monitoring_day_of_week: monitoringDayOfWeek,
             monitoring_time: monitoringTime,
             monitoring_frequency: monitoringFrequency,
-            weekly_submissions_limit: weeklySubmissionsLimit,
+            monthly_group_studies_limit: monthlyGroupStudiesLimit,
+            monthly_tasks_limit: monthlyTasksLimit,
+            monthly_monitorings_limit: monthlyMonitoringsLimit,
             study_goals: studyGoals,
             study_days: studyDays,
             study_schedule: studySchedule
@@ -2382,13 +2388,36 @@ export default function DevTools() {
 
                 <TabsContent value="limits" className="space-y-4">
                   <div>
-                    <Label htmlFor="weeklySubmissionsLimit">Tarefas por Semana</Label>
+                    <Label htmlFor="monthlyGroupStudiesLimit">Estudos em Grupo por Mês</Label>
                     <Input
-                      id="weeklySubmissionsLimit"
+                      id="monthlyGroupStudiesLimit"
                       type="number"
                       min="0"
-                      value={editDialog.data.weeklySubmissionsLimit || 0}
-                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), weeklySubmissionsLimit: parseInt(e.target.value) || 0 } }))}
+                      value={editDialog.data.monthlyGroupStudiesLimit || 0}
+                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monthlyGroupStudiesLimit: parseInt(e.target.value) || 0 } }))}
+                      placeholder="0 = ilimitado"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="monthlyTasksLimit">Tarefas por Mês</Label>
+                    <Input
+                      id="monthlyTasksLimit"
+                      type="number"
+                      min="0"
+                      value={editDialog.data.monthlyTasksLimit || 0}
+                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monthlyTasksLimit: parseInt(e.target.value) || 0 } }))}
+                      placeholder="0 = ilimitado"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="monthlyMonitoringsLimit">Monitorias por Mês</Label>
+                    <Input
+                      id="monthlyMonitoringsLimit"
+                      type="number"
+                      min="0"
+                      value={editDialog.data.monthlyMonitoringsLimit || 0}
+                      onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), monthlyMonitoringsLimit: parseInt(e.target.value) || 0 } }))}
+                      placeholder="0 = ilimitado"
                     />
                   </div>
                 </TabsContent>
