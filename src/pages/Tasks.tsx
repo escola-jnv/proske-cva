@@ -99,61 +99,67 @@ const Tasks = () => {
     try {
       if (isTeacherOrAdmin) {
         // Fetch all submissions for teachers
-        const {
-          data: pendingData,
-          error: pendingError
-        } = await supabase.from("submissions").select(`
-            *,
-            profiles:student_id (
-              name,
-              avatar_url
-            )
-          `).eq("status", "pending").order("created_at", {
-          ascending: false
-        });
+        const { data: pendingData, error: pendingError } = await supabase
+          .from("submissions")
+          .select("*")
+          .eq("status", "pending")
+          .order("created_at", { ascending: false });
+
         if (pendingError) throw pendingError;
-        const {
-          data: reviewedData,
-          error: reviewedError
-        } = await supabase.from("submissions").select(`
-            *,
-            profiles:student_id (
-              name,
-              avatar_url
-            )
-          `).eq("status", "reviewed").order("reviewed_at", {
-          ascending: false
-        });
+
+        const { data: reviewedData, error: reviewedError } = await supabase
+          .from("submissions")
+          .select("*")
+          .eq("status", "reviewed")
+          .order("reviewed_at", { ascending: false });
+
         if (reviewedError) throw reviewedError;
+
+        // Fetch profiles for all student IDs
+        const studentIds = [
+          ...(pendingData?.map(s => s.student_id) || []),
+          ...(reviewedData?.map(s => s.student_id) || [])
+        ];
+        
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, name, avatar_url")
+          .in("id", studentIds);
+
+        const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+
         setPendingSubmissions(pendingData?.map((s: any) => ({
           ...s,
-          student_name: s.profiles?.name || "Desconhecido",
-          student_avatar: s.profiles?.avatar_url || null
+          student_name: profilesMap.get(s.student_id)?.name || "Desconhecido",
+          student_avatar: profilesMap.get(s.student_id)?.avatar_url || null
         })) || []);
+
         setReviewedSubmissions(reviewedData?.map((s: any) => ({
           ...s,
-          student_name: s.profiles?.name || "Desconhecido",
-          student_avatar: s.profiles?.avatar_url || null
+          student_name: profilesMap.get(s.student_id)?.name || "Desconhecido",
+          student_avatar: profilesMap.get(s.student_id)?.avatar_url || null
         })) || []);
       } else {
         // Fetch only user's submissions for students
-        const {
-          data,
-          error
-        } = await supabase.from("submissions").select(`
-            *,
-            profiles:student_id (
-              name,
-              avatar_url
-            )
-          `).eq("student_id", userId).order("created_at", {
-          ascending: false
-        });
+        const { data, error } = await supabase
+          .from("submissions")
+          .select("*")
+          .eq("student_id", userId)
+          .order("created_at", { ascending: false });
+
         if (error) throw error;
+
+        // Fetch user's own profile
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("name, avatar_url")
+          .eq("id", userId)
+          .single();
+
         setMySubmissions(data?.map((s: any) => ({
           ...s,
-          student_name: s.profiles?.name || "Você",
-          student_avatar: s.profiles?.avatar_url || null
+          student_name: profileData?.name || "Você",
+          student_avatar: profileData?.avatar_url || null
         })) || []);
       }
     } catch (error: any) {

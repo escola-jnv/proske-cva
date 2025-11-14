@@ -32,27 +32,9 @@ import {
   Upload,
   LogOut,
   FileText,
-  GripVertical,
   DollarSign
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 
 type Community = {
   id: string;
@@ -94,17 +76,6 @@ export function AppSidebar() {
   const [userPlan, setUserPlan] = useState<string | null>(null);
   
   const isCollapsed = state === "collapsed";
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   useEffect(() => {
     fetchData();
@@ -313,54 +284,6 @@ export function AppSidebar() {
     return location.pathname.includes(`/courses/${courseId}`);
   };
 
-  const handleDragEnd = async (event: DragEndEvent, communityId: string) => {
-    const { active, over } = event;
-
-    if (!over || active.id === over.id || !userId) {
-      return;
-    }
-
-    const communityGroups = groups.filter(g => g.community_id === communityId);
-    const oldIndex = communityGroups.findIndex((g) => g.id === active.id);
-    const newIndex = communityGroups.findIndex((g) => g.id === over.id);
-
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const reorderedGroups = arrayMove(communityGroups, oldIndex, newIndex);
-    
-    // Update local state immediately
-    const updatedGroups = groups.map(g => {
-      if (g.community_id !== communityId) return g;
-      const newOrder = reorderedGroups.findIndex(rg => rg.id === g.id);
-      return { ...g, order_index: newOrder };
-    });
-    setGroups(updatedGroups);
-
-    // Save to database
-    try {
-      const updates = reorderedGroups.map((group, index) => ({
-        user_id: userId,
-        item_type: 'group',
-        item_id: group.id,
-        order_index: index,
-      }));
-
-      // Upsert all orders
-      const { error } = await supabase
-        .from('user_menu_order')
-        .upsert(updates, { 
-          onConflict: 'user_id,item_type,item_id' 
-        });
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error saving menu order:', error);
-      toast.error('Erro ao salvar ordem');
-      // Revert on error
-      fetchData();
-    }
-  };
-
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -525,32 +448,40 @@ export function AppSidebar() {
                           </SidebarMenuSubItem>
                         ))}
                         
-                        {/* Groups with drag-and-drop */}
-                        <DndContext
-                          sensors={sensors}
-                          collisionDetection={closestCenter}
-                          onDragEnd={(event) => handleDragEnd(event, community.id)}
-                        >
-                          <SortableContext
-                            items={communityGroups.map(g => g.id)}
-                            strategy={verticalListSortingStrategy}
-                          >
-                            {communityGroups.map((group) => {
-                              const isMember = isTeacherOrAdmin || groups.some(g => g.id === group.id);
-                              
-                              return (
-                                <SortableGroupItem
-                                  key={group.id}
-                                  group={group}
-                                  isActive={isActiveGroup(group.id)}
-                                  onClick={() => navigate(`/groups/${group.id}/chat`)}
-                                  userRole={userRole}
-                                  isMember={isMember}
-                                />
-                              );
-                            })}
-                          </SortableContext>
-                        </DndContext>
+                        {/* Groups */}
+                        {communityGroups.map((group) => {
+                          const isMember = isTeacherOrAdmin || groups.some(g => g.id === group.id);
+                          const isRestricted = userRole === 'visitor' && !isMember;
+                          
+                          const handleGroupClick = () => {
+                            if (isRestricted) {
+                              toast.error("Este grupo não está liberado para o seu plano");
+                            } else {
+                              navigate(`/groups/${group.id}/chat`);
+                            }
+                          };
+                          
+                          return (
+                            <SidebarMenuSubItem key={group.id}>
+                              <SidebarMenuSubButton
+                                onClick={handleGroupClick}
+                                isActive={isActiveGroup(group.id)}
+                                className={isRestricted ? "opacity-60 cursor-not-allowed" : ""}
+                              >
+                                <MessageCircle className="h-3 w-3" />
+                                <span className="truncate flex-1">{group.name}</span>
+                                {group.unread_count && group.unread_count > 0 && (
+                                  <Badge 
+                                    variant="destructive" 
+                                    className="h-5 min-w-5 px-1.5 text-xs rounded-full"
+                                  >
+                                    {group.unread_count > 99 ? '99+' : group.unread_count}
+                                  </Badge>
+                                )}
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          );
+                        })}
                       </>
                     )}
                   </div>
@@ -672,73 +603,5 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
-  );
-}
-
-// Sortable Group Item Component
-function SortableGroupItem({ 
-  group, 
-  isActive, 
-  onClick,
-  userRole,
-  isMember
-}: { 
-  group: Group; 
-  isActive: boolean; 
-  onClick: () => void;
-  userRole: string;
-  isMember: boolean;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: group.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  const isRestricted = userRole === 'visitor' && !isMember;
-
-  const handleClick = () => {
-    if (isRestricted) {
-      toast.error("Este grupo não está liberado para o seu plano");
-    } else {
-      onClick();
-    }
-  };
-
-  return (
-    <SidebarMenuSubItem ref={setNodeRef} style={style}>
-      <SidebarMenuSubButton
-        onClick={handleClick}
-        isActive={isActive}
-        className={`relative group/item ${isRestricted ? "opacity-60 cursor-not-allowed" : ""}`}
-      >
-        <div 
-          {...attributes} 
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 hover:bg-muted/50 rounded"
-        >
-          <GripVertical className="h-3 w-3 text-muted-foreground opacity-0 group-hover/item:opacity-100 transition-opacity" />
-        </div>
-        <MessageCircle className="h-3 w-3" />
-        <span className="truncate flex-1">{group.name}</span>
-        {group.unread_count && group.unread_count > 0 && (
-          <Badge 
-            variant="destructive" 
-            className="h-5 min-w-5 px-1.5 text-xs rounded-full"
-          >
-            {group.unread_count > 99 ? '99+' : group.unread_count}
-          </Badge>
-        )}
-      </SidebarMenuSubButton>
-    </SidebarMenuSubItem>
   );
 }
