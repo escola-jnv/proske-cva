@@ -161,14 +161,7 @@ export function AppSidebar() {
           .order("created_at", { ascending: false });
         setCourses(coursesData || []);
       } else {
-        // Students see groups they have access to + locked groups (ghost)
-        const { data: membershipData } = await supabase
-          .from("group_members")
-          .select("group_id")
-          .eq("user_id", user.id);
-
-        const memberGroupIds = membershipData?.map((m) => m.group_id) || [];
-
+        // Students see only groups they have access to via plans
         // Fetch all visible groups
         const { data: allGroupsData } = await supabase
           .from("conversation_groups")
@@ -208,11 +201,11 @@ export function AppSidebar() {
           ]) || []
         );
 
-        // Determine which groups user has access to
+        // Determine which groups user has access to based ONLY on their plan
         groupsData = allGroupsData?.map((g: any) => {
           const planReq = planLinkMap.get(g.id);
-          const isMember = memberGroupIds.includes(g.id);
-          const hasAccess = isMember || !planReq || planReq.plan_id === userPlanId;
+          // User has access if: no plan required OR user has the required plan
+          const hasAccess = !planReq || planReq.plan_id === userPlanId;
           
           return {
             ...g,

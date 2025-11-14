@@ -217,23 +217,52 @@ const GroupChat = () => {
     try {
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       
-      const { data: membersData, error } = await supabase
-        .from("group_members")
+      // Get plan requirements for this group
+      const { data: planLinks } = await supabase
+        .from("plan_default_groups")
         .select(`
-          user_id
+          plan_id,
+          subscription_plans (
+            id,
+            name
+          )
         `)
         .eq("group_id", grpId);
 
-      if (error) throw error;
+      // If group has no plan requirements, show all active users
+      if (!planLinks || planLinks.length === 0) {
+        const { data: allProfiles } = await supabase
+          .from("profiles")
+          .select("id, name, avatar_url, last_active_at")
+          .gte("last_active_at", twentyFourHoursAgo);
+        
+        const online = allProfiles?.map((profile: any) => ({
+          id: profile.id,
+          name: profile.name,
+          avatar_url: profile.avatar_url,
+        })) || [];
+        
+        setOnlineUsers(online);
+        return;
+      }
 
-      if (!membersData || membersData.length === 0) {
+      // Get all users who have subscriptions to plans that give access to this group
+      const planIds = planLinks.map(link => link.plan_id);
+      
+      const { data: subscriptionsData } = await supabase
+        .from("user_subscriptions")
+        .select("user_id")
+        .in("plan_id", planIds)
+        .eq("status", "active");
+
+      if (!subscriptionsData || subscriptionsData.length === 0) {
         setOnlineUsers([]);
         return;
       }
 
-      const userIds = membersData.map(m => m.user_id);
+      const userIds = subscriptionsData.map(s => s.user_id);
 
-      // Fetch profiles separately
+      // Fetch profiles for users with active subscriptions
       const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
         .select("id, name, avatar_url, last_active_at")
