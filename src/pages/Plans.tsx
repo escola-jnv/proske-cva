@@ -14,8 +14,8 @@ type SubscriptionPlan = {
   price: number;
   description: string | null;
   billing_frequency: string | null;
-  monitoring_frequency: string | null;
-  weekly_corrections_limit: number | null;
+  monthly_corrections_limit: number | null;
+  monthly_monitorings_limit: number | null;
   checkout_url: string | null;
 };
 
@@ -224,7 +224,7 @@ const Plans = () => {
                 </div>
 
                 {/* Tasks Progress */}
-                {(activeSubscription.plan as any).weekly_corrections_limit > 0 && (
+                {(activeSubscription.plan as any).monthly_corrections_limit > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
@@ -232,14 +232,18 @@ const Plans = () => {
                         <span className="font-medium">Tarefas enviadas este mês</span>
                       </div>
                       <span className="text-muted-foreground">
-                        {stats.tasksSubmitted} tarefas
+                        {stats.tasksSubmitted} / {(activeSubscription.plan as any).monthly_corrections_limit}
                       </span>
                     </div>
+                    <Progress 
+                      value={Math.min((stats.tasksSubmitted / (activeSubscription.plan as any).monthly_corrections_limit) * 100, 100)} 
+                      className="h-2" 
+                    />
                   </div>
                 )}
 
                 {/* Monitorings Progress */}
-                {(activeSubscription.plan as any).monitoring_frequency && (
+                {(activeSubscription.plan as any).monthly_monitorings_limit > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
@@ -247,9 +251,13 @@ const Plans = () => {
                         <span className="font-medium">Monitorias realizadas este mês</span>
                       </div>
                       <span className="text-muted-foreground">
-                        {stats.monitoringsCompleted} monitorias
+                        {stats.monitoringsCompleted} / {(activeSubscription.plan as any).monthly_monitorings_limit}
                       </span>
                     </div>
+                    <Progress 
+                      value={Math.min((stats.monitoringsCompleted / (activeSubscription.plan as any).monthly_monitorings_limit) * 100, 100)} 
+                      className="h-2" 
+                    />
                   </div>
                 )}
               </CardContent>
@@ -297,22 +305,19 @@ const Plans = () => {
                           {plan.description}
                         </p>
                       )}
-                      {plan.monitoring_frequency && (
+                      {plan.monthly_monitorings_limit !== null && plan.monthly_monitorings_limit > 0 && (
                         <div className="text-sm">
-                          <span className="font-medium">Monitorias: </span>
+                          <span className="font-medium">Monitorias por mês: </span>
                           <span className="text-muted-foreground">
-                            {plan.monitoring_frequency === "weekly" ? "Semanais" :
-                             plan.monitoring_frequency === "biweekly" ? "Quinzenais" :
-                             plan.monitoring_frequency === "monthly" ? "Mensais" :
-                             plan.monitoring_frequency}
+                            {plan.monthly_monitorings_limit}
                           </span>
                         </div>
                       )}
-                      {plan.weekly_corrections_limit !== null && plan.weekly_corrections_limit > 0 && (
+                      {plan.monthly_corrections_limit !== null && plan.monthly_corrections_limit > 0 && (
                         <div className="text-sm">
-                          <span className="font-medium">Correções por semana: </span>
+                          <span className="font-medium">Correções por mês: </span>
                           <span className="text-muted-foreground">
-                            {plan.weekly_corrections_limit}
+                            {plan.monthly_corrections_limit}
                           </span>
                         </div>
                       )}
