@@ -32,8 +32,8 @@ type Group = {
   community_id: string;
   unread_count?: number;
   order_index?: number;
-  required_plan_id?: string | null;
-  required_plan_name?: string | null;
+  required_plan_ids?: string[];
+  required_plan_names?: string[];
   has_access: boolean;
 };
 
@@ -62,9 +62,9 @@ export function AppSidebar() {
   const [userPlanId, setUserPlanId] = useState<string | null>(null);
   const [upgradePlanDialog, setUpgradePlanDialog] = useState<{
     open: boolean;
-    planName: string;
+    planNames: string[];
     groupName: string;
-  }>({ open: false, planName: "", groupName: "" });
+  }>({ open: false, planNames: [], groupName: "" });
   
   const isCollapsed = state === "collapsed";
 
@@ -191,26 +191,32 @@ export function AppSidebar() {
             )
           `);
 
-        const planLinkMap = new Map(
-          planLinks?.map(link => [
-            link.group_id, 
-            { 
-              plan_id: (link.subscription_plans as any)?.id,
-              plan_name: (link.subscription_plans as any)?.name 
-            }
-          ]) || []
-        );
+        // Group all plan IDs by group_id (since a group can have multiple plans)
+        const planLinkMap = new Map<string, { plan_ids: string[], plan_names: string[] }>();
+        planLinks?.forEach(link => {
+          const groupId = link.group_id;
+          const planId = (link.subscription_plans as any)?.id;
+          const planName = (link.subscription_plans as any)?.name;
+          
+          if (!planLinkMap.has(groupId)) {
+            planLinkMap.set(groupId, { plan_ids: [], plan_names: [] });
+          }
+          
+          const groupPlans = planLinkMap.get(groupId)!;
+          if (planId) groupPlans.plan_ids.push(planId);
+          if (planName) groupPlans.plan_names.push(planName);
+        });
 
         // Determine which groups user has access to based ONLY on their plan
         groupsData = allGroupsData?.map((g: any) => {
           const planReq = planLinkMap.get(g.id);
-          // User has access if: no plan required OR user has the required plan
-          const hasAccess = !planReq || planReq.plan_id === userPlanId;
+          // User has access if: no plan required OR user has ANY of the required plans
+          const hasAccess = !planReq || planReq.plan_ids.length === 0 || planReq.plan_ids.includes(userPlanId);
           
           return {
             ...g,
-            required_plan_id: planReq?.plan_id || null,
-            required_plan_name: planReq?.plan_name || null,
+            required_plan_ids: planReq?.plan_ids || [],
+            required_plan_names: planReq?.plan_names || [],
             has_access: hasAccess
           };
         });
@@ -308,7 +314,7 @@ export function AppSidebar() {
     if (!hasAccess) {
       setUpgradePlanDialog({
         open: true,
-        planName: group.required_plan_name || "Plano Premium",
+        planNames: group.required_plan_names || ["Plano Premium"],
         groupName: group.name
       });
     } else {
@@ -456,7 +462,7 @@ export function AppSidebar() {
       <UpgradePlanDialog
         open={upgradePlanDialog.open}
         onOpenChange={(open) => setUpgradePlanDialog({ ...upgradePlanDialog, open })}
-        planName={upgradePlanDialog.planName}
+        planNames={upgradePlanDialog.planNames}
         groupName={upgradePlanDialog.groupName}
       />
     </Sidebar>

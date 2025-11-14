@@ -20,7 +20,7 @@ interface Group {
   community_id: string;
   unread_count?: number;
   has_access: boolean;
-  required_plan_name?: string | null;
+  required_plan_names?: string[];
 }
 
 interface Course {

@@ -196,13 +196,14 @@ const GroupChat = () => {
       // Fetch group
       const { data: groupData, error: groupError } = await supabase
         .from("conversation_groups")
-        .select("*")
+        .select("id, name, description, community_id, allowed_message_roles")
         .eq("id", grpId)
         .single();
 
       if (groupError) throw groupError;
       
-      setGroup(groupData);
+      // Type assertion since types haven't been regenerated yet
+      setGroup(groupData as unknown as Group);
 
       // Fetch user role
       const { data: roleData } = await supabase
@@ -215,7 +216,7 @@ const GroupChat = () => {
       setUserRole(currentUserRole);
 
       // Check if user can send messages
-      const allowedRoles = groupData.allowed_message_roles || [];
+      const allowedRoles = (groupData as any).allowed_message_roles || [];
       const canSend = allowedRoles.includes(currentUserRole);
       setCanSendMessages(canSend);
 

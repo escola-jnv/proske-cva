@@ -3,13 +3,13 @@ import { SidebarMenuSubItem, SidebarMenuSubButton } from "@/components/ui/sideba
 import { Badge } from "@/components/ui/badge";
 
 interface SidebarGroupItemProps {
-  group: {
-    id: string;
-    name: string;
-    unread_count?: number;
-    has_access: boolean;
-    required_plan_name?: string | null;
-  };
+    group: {
+      id: string;
+      name: string;
+      unread_count?: number;
+      has_access: boolean;
+      required_plan_names?: string[];
+    };
   isActive: boolean;
   onClick: () => void;
 }
