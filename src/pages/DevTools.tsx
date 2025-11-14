@@ -92,7 +92,7 @@ type Group = {
   description?: string;
   community_id: string;
   community_name?: string;
-  students_can_message: boolean;
+  allowed_message_roles: string[];
   is_visible: boolean;
   member_count?: number;
   online_count?: number;
@@ -572,7 +572,7 @@ export default function DevTools() {
               name: data.name,
               description: data.description,
               community_id: data.community_id,
-              students_can_message: data.students_can_message,
+              allowed_message_roles: data.allowed_message_roles || ['admin', 'teacher', 'student', 'visitor'],
               is_visible: data.is_visible
             };
             break;
@@ -1638,7 +1638,7 @@ export default function DevTools() {
                           name: "",
                           description: "",
                           community_id: "",
-                          students_can_message: true,
+                          allowed_message_roles: ['admin', 'teacher', 'student', 'visitor'],
                           is_visible: true
                         }
                       });
@@ -1669,7 +1669,7 @@ export default function DevTools() {
                     <TableHead>Membros</TableHead>
                     <TableHead>Online (2h)</TableHead>
                     <TableHead>Msg/Hora</TableHead>
-                    <TableHead>Pode Enviar</TableHead>
+                    <TableHead>Quem Pode Enviar</TableHead>
                     <TableHead>Visível</TableHead>
                     <TableHead className="w-[100px]">Ações</TableHead>
                   </TableRow>
@@ -1700,9 +1700,12 @@ export default function DevTools() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={group.students_can_message ? "default" : "outline"}>
-                            {group.students_can_message ? "Sim" : "Não"}
-                          </Badge>
+                          <div className="flex flex-wrap gap-1">
+                            {group.allowed_message_roles?.includes('admin') && <Badge variant="default">Admin</Badge>}
+                            {group.allowed_message_roles?.includes('teacher') && <Badge variant="default">Professor</Badge>}
+                            {group.allowed_message_roles?.includes('student') && <Badge variant="default">Aluno</Badge>}
+                            {group.allowed_message_roles?.includes('visitor') && <Badge variant="default">Visitante</Badge>}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant={group.is_visible ? "default" : "outline"}>
@@ -2354,16 +2357,67 @@ export default function DevTools() {
                     Se nenhum plano for selecionado, o grupo estará acessível a todos
                   </p>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="students_can_message"
-                    checked={editDialog.data.students_can_message ?? true}
-                    onCheckedChange={(checked) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), students_can_message: checked } }))}
-                  />
-                  <Label htmlFor="students_can_message" className="cursor-pointer">
-                    Alunos podem enviar mensagens
-                </Label>
-              </div>
+                <div className="space-y-2">
+                  <Label>Quem pode enviar mensagens</Label>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="role_admin"
+                        checked={editDialog.data.allowed_message_roles?.includes('admin') ?? true}
+                        onCheckedChange={(checked) => {
+                          const currentRoles = editDialog.data.allowed_message_roles || [];
+                          const newRoles = checked 
+                            ? [...currentRoles.filter((r: string) => r !== 'admin'), 'admin']
+                            : currentRoles.filter((r: string) => r !== 'admin');
+                          setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), allowed_message_roles: newRoles } }));
+                        }}
+                      />
+                      <Label htmlFor="role_admin" className="cursor-pointer">Admin</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="role_teacher"
+                        checked={editDialog.data.allowed_message_roles?.includes('teacher') ?? true}
+                        onCheckedChange={(checked) => {
+                          const currentRoles = editDialog.data.allowed_message_roles || [];
+                          const newRoles = checked 
+                            ? [...currentRoles.filter((r: string) => r !== 'teacher'), 'teacher']
+                            : currentRoles.filter((r: string) => r !== 'teacher');
+                          setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), allowed_message_roles: newRoles } }));
+                        }}
+                      />
+                      <Label htmlFor="role_teacher" className="cursor-pointer">Professores</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="role_student"
+                        checked={editDialog.data.allowed_message_roles?.includes('student') ?? true}
+                        onCheckedChange={(checked) => {
+                          const currentRoles = editDialog.data.allowed_message_roles || [];
+                          const newRoles = checked 
+                            ? [...currentRoles.filter((r: string) => r !== 'student'), 'student']
+                            : currentRoles.filter((r: string) => r !== 'student');
+                          setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), allowed_message_roles: newRoles } }));
+                        }}
+                      />
+                      <Label htmlFor="role_student" className="cursor-pointer">Alunos</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="role_visitor"
+                        checked={editDialog.data.allowed_message_roles?.includes('visitor') ?? true}
+                        onCheckedChange={(checked) => {
+                          const currentRoles = editDialog.data.allowed_message_roles || [];
+                          const newRoles = checked 
+                            ? [...currentRoles.filter((r: string) => r !== 'visitor'), 'visitor']
+                            : currentRoles.filter((r: string) => r !== 'visitor');
+                          setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), allowed_message_roles: newRoles } }));
+                        }}
+                      />
+                      <Label htmlFor="role_visitor" className="cursor-pointer">Visitantes</Label>
+                    </div>
+                  </div>
+                </div>
             </>
           )}
 
