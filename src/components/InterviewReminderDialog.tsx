@@ -19,7 +19,7 @@ interface InterviewReminderDialogProps {
 
 export function InterviewReminderDialog({ userId }: InterviewReminderDialogProps) {
   const location = useLocation();
-  const { hasScheduledInterview, isVisitor, loading } = useInterviewSchedule(userId);
+  const { hasScheduledInterview, isVisitor, loading, refresh } = useInterviewSchedule(userId);
   const [showReminder, setShowReminder] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
 
@@ -27,12 +27,10 @@ export function InterviewReminderDialog({ userId }: InterviewReminderDialogProps
     // Show reminder when route changes if visitor hasn't scheduled interview
     if (!loading && isVisitor && !hasScheduledInterview) {
       setShowReminder(true);
+    } else {
+      setShowReminder(false);
     }
   }, [location.pathname, loading, isVisitor, hasScheduledInterview]);
-
-  if (loading || !isVisitor || hasScheduledInterview) {
-    return null;
-  }
 
   const handleScheduleClick = () => {
     setShowReminder(false);
@@ -41,7 +39,8 @@ export function InterviewReminderDialog({ userId }: InterviewReminderDialogProps
 
   const handleScheduled = () => {
     setShowSchedule(false);
-    // Will re-check schedule on next route change
+    // Refresh interview status to hide the popup
+    refresh();
   };
 
   return (
