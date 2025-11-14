@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -24,19 +24,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
+import { format } from "date-fns";
 
 const formSchema = z.object({
   video_url: z.string().url("URL inválida").refine(
     (url) => url.includes("youtube.com") || url.includes("youtu.be"),
     "Deve ser um link do YouTube"
   ),
-  recording_date: z.string().min(1, "Data obrigatória"),
+  recording_date: z.string().optional(),
   task_name: z.string().min(3, "Nome da tarefa deve ter pelo menos 3 caracteres"),
-  song_name: z.string().min(1, "Nome da música é obrigatório"),
-  harmonic_field: z.string().min(1, "Campo Harmônico é obrigatório"),
-  effective_key: z.string().min(1, "Tom Efetivo é obrigatório"),
-  bpm: z.string().min(1, "BPM é obrigatório"),
-  melodic_reference: z.string().min(1, "Referência melódica é obrigatória"),
+  song_name: z.string().optional(),
+  harmonic_field: z.string().optional(),
+  effective_key: z.string().optional(),
+  bpm: z.string().optional(),
+  melodic_reference: z.string().optional(),
   extra_notes: z.string().optional(),
 });
 
@@ -49,13 +50,14 @@ interface SubmitTaskDialogProps {
 export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [userName, setUserName] = useState("");
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       video_url: "",
-      recording_date: "",
+      recording_date: format(new Date(), "yyyy-MM-dd"),
       task_name: "",
       song_name: "",
       harmonic_field: "",
@@ -65,6 +67,62 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
       extra_notes: "",
     },
   });
+
+  useEffect(() => {
+    const fetchUserName = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("id", user.id)
+          .single();
+        
+        if (profile) {
+          setUserName(profile.name);
+        }
+      }
+    };
+    
+    if (open) {
+      fetchUserName();
+    }
+  }, [open]);
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map(word => word.charAt(0).toUpperCase())
+      .join("");
+  };
+
+  const generateTaskCode = () => {
+    const values = form.watch();
+    const date = values.recording_date;
+    const taskName = values.task_name;
+    const songName = values.song_name;
+    const bpm = values.bpm;
+    const melodicRef = values.melodic_reference;
+    const harmonicField = values.harmonic_field;
+    const effectiveKey = values.effective_key;
+
+    if (!date || !userName) return "";
+
+    const dateFormatted = format(new Date(date), "yyMMdd");
+    const initials = getInitials(userName);
+    
+    let code = `${dateFormatted} - ${initials}`;
+    
+    if (songName) code += ` - ${songName}`;
+    if (bpm) code += ` - ${bpm}bpm`;
+    if (melodicRef) code += ` - ${melodicRef}`;
+    if (harmonicField) code += ` - CH:${harmonicField}`;
+    if (effectiveKey) code += ` - TE:${effectiveKey}`;
+    
+    return code;
+  };
+
+  const taskCode = generateTaskCode();
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
@@ -76,13 +134,13 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
         community_id: communityId,
         student_id: user.id,
         video_url: values.video_url,
-        recording_date: values.recording_date,
+        recording_date: values.recording_date || format(new Date(), "yyyy-MM-dd"),
         task_name: values.task_name,
-        song_name: values.song_name,
-        harmonic_field: values.harmonic_field,
-        effective_key: values.effective_key,
-        bpm: parseInt(values.bpm),
-        melodic_reference: values.melodic_reference,
+        song_name: values.song_name || null,
+        harmonic_field: values.harmonic_field || null,
+        effective_key: values.effective_key || null,
+        bpm: values.bpm ? parseInt(values.bpm) : null,
+        melodic_reference: values.melodic_reference || null,
         extra_notes: values.extra_notes || null,
       });
 
@@ -121,14 +179,36 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
             Preencha as informações da sua tarefa para enviar ao professor.
           </DialogDescription>
         </DialogHeader>
+        
+        {taskCode && (
+          <div className="p-4 bg-muted rounded-lg border border-border">
+            <p className="text-sm font-medium text-muted-foreground mb-1">Código da Tarefa:</p>
+            <p className="text-base font-mono font-semibold text-foreground">{taskCode}</p>
+          </div>
+        )}
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="recording_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Data de Gravação</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="task_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome da Tarefa</FormLabel>
+                  <FormLabel>Nome da Tarefa *</FormLabel>
                   <FormControl>
                     <Input placeholder="Ex: Monitoria 01" {...field} />
                   </FormControl>
@@ -137,6 +217,23 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
               )}
             />
             
+            <FormField
+              control={form.control}
+              name="video_url"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Link do YouTube *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="https://youtube.com/watch?v=..."
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="song_name"
@@ -150,36 +247,6 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
                 </FormItem>
               )}
             />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="harmonic_field"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Campo Harmônico (CH)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Dó Maior" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="effective_key"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tom Efetivo</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: C" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             <FormField
               control={form.control}
@@ -200,9 +267,23 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
               name="melodic_reference"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Referência Melódica</FormLabel>
+                  <FormLabel>Ritmo</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Tom Jobim" {...field} />
+                    <Input placeholder="Ex: Canção, Samba, Bossa Nova" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="harmonic_field"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Campo Harmônico (CH)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: G" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -211,29 +292,12 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
             
             <FormField
               control={form.control}
-              name="video_url"
+              name="effective_key"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Link do Vídeo (YouTube)</FormLabel>
+                  <FormLabel>Tom Efetivo (TE)</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="https://youtube.com/watch?v=..."
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="recording_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data da Gravação</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
+                    <Input placeholder="Ex: Ab" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
