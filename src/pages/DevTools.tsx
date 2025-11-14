@@ -206,6 +206,7 @@ export default function DevTools() {
   }>({ open: false, mode: "create", data: null });
   
   const [selectedDefaultGroups, setSelectedDefaultGroups] = useState<string[]>([]);
+  const [selectedGroupPlans, setSelectedGroupPlans] = useState<string[]>([]);
   
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [bulkEditDialog, setBulkEditDialog] = useState<{
@@ -462,6 +463,16 @@ export default function DevTools() {
           weeklySubmissionsLimit: profileData?.weekly_submissions_limit || 0
         } 
       });
+    } else if (type === "group" && data.id) {
+      // Fetch plan links for the group
+      const { data: planLinks } = await supabase
+        .from("plan_default_groups")
+        .select("plan_id")
+        .eq("group_id", data.id);
+      
+      const linkedPlans = planLinks?.map(link => link.plan_id) || [];
+      setSelectedGroupPlans(linkedPlans);
+      setEditDialog({ open: true, type, data: { ...data } });
     } else {
       setEditDialog({ open: true, type, data: { ...data } });
     }
@@ -599,22 +610,24 @@ export default function DevTools() {
 
           if (error) throw error;
           
-          // Update plan link for groups
-          if (type === "group" && data.plan_id !== undefined) {
+          // Update plan links for groups
+          if (type === "group") {
             // Remove existing plan links
             await supabase
               .from("plan_default_groups")
               .delete()
               .eq("group_id", data.id);
             
-            // Add new plan link if plan is selected
-            if (data.plan_id) {
+            // Add new plan links for selected plans
+            if (selectedGroupPlans.length > 0) {
+              const planLinks = selectedGroupPlans.map(plan_id => ({
+                plan_id,
+                group_id: data.id
+              }));
+              
               await supabase
                 .from("plan_default_groups")
-                .insert({
-                  plan_id: data.plan_id,
-                  group_id: data.id
-                });
+                .insert(planLinks);
             }
           }
         } else {
@@ -630,20 +643,23 @@ export default function DevTools() {
 
           if (error) throw error;
           
-          // Add plan link for new groups
-          if (type === "group" && data.plan_id && insertedData && 'id' in insertedData) {
+          // Add plan links for new groups
+          if (type === "group" && selectedGroupPlans.length > 0 && insertedData && 'id' in insertedData) {
+            const planLinks = selectedGroupPlans.map(plan_id => ({
+              plan_id,
+              group_id: (insertedData as any).id
+            }));
+            
             await supabase
               .from("plan_default_groups")
-              .insert({
-                plan_id: data.plan_id,
-                group_id: (insertedData as any).id
-              });
+              .insert(planLinks);
           }
         }
       }
 
       toast.success("Atualizado com sucesso!");
       setEditDialog({ open: false, type: null, data: null });
+      setSelectedGroupPlans([]);
       await fetchAllData();
     } catch (error: any) {
       console.error("Error saving:", error);
@@ -992,6 +1008,14 @@ export default function DevTools() {
       prev.includes(groupId) 
         ? prev.filter(id => id !== groupId)
         : [...prev, groupId]
+    );
+  };
+
+  const togglePlanSelection = (planId: string) => {
+    setSelectedGroupPlans(prev => 
+      prev.includes(planId) 
+        ? prev.filter(id => id !== planId)
+        : [...prev, planId]
     );
   };
 
@@ -1606,6 +1630,7 @@ export default function DevTools() {
                 <div className="flex items-center gap-3">
                   <Button
                     onClick={() => {
+                      setSelectedGroupPlans([]);
                       setEditDialog({ 
                         open: true, 
                         type: "group", 
@@ -2056,7 +2081,12 @@ export default function DevTools() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={editDialog.open} onOpenChange={(open) => !open && setEditDialog({ open: false, type: null, data: null })}>
+      <Dialog open={editDialog.open} onOpenChange={(open) => {
+        if (!open) {
+          setEditDialog({ open: false, type: null, data: null });
+          setSelectedGroupPlans([]);
+        }
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
@@ -2291,29 +2321,38 @@ export default function DevTools() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="plan">Plano Requerido (opcional)</Label>
-                  <Select
-                    value={editDialog.data.plan_id || "none"}
-                    onValueChange={(value) => setEditDialog(prev => ({ 
-                      ...prev, 
-                      data: { 
-                        ...(prev.data || {}), 
-                        plan_id: value === "none" ? undefined : value 
-                      } 
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Nenhum plano específico" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum plano específico</SelectItem>
-                      {subscriptionPlans.map((plan) => (
-                        <SelectItem key={plan.id} value={plan.id}>
-                          {plan.name} - R$ {plan.price}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Planos Requeridos (opcional)</Label>
+                  <div className="border rounded-md p-3 max-h-60 overflow-y-auto space-y-2">
+                    {subscriptionPlans.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        Nenhum plano disponível
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Selecione os planos que terão acesso a este grupo:
+                        </p>
+                        {subscriptionPlans.map((plan) => (
+                          <div key={plan.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`plan-${plan.id}`}
+                              checked={selectedGroupPlans.includes(plan.id)}
+                              onCheckedChange={() => togglePlanSelection(plan.id)}
+                            />
+                            <label
+                              htmlFor={`plan-${plan.id}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                            >
+                              {plan.name} - R$ {plan.price}
+                            </label>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Se nenhum plano for selecionado, o grupo estará acessível a todos
+                  </p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -2370,7 +2409,10 @@ export default function DevTools() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialog({ open: false, type: null, data: null })}>
+            <Button variant="outline" onClick={() => {
+              setEditDialog({ open: false, type: null, data: null });
+              setSelectedGroupPlans([]);
+            }}>
               Cancelar
             </Button>
             <Button onClick={handleSave}>Salvar</Button>
