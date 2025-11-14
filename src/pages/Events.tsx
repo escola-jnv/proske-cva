@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EventCard } from "@/components/EventCard";
-import { ArrowLeft, Calendar as CalendarIcon } from "lucide-react";
+import { CreateIndividualStudyDialog } from "@/components/CreateIndividualStudyDialog";
+import { ArrowLeft, Calendar as CalendarIcon, Plus } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import { isFuture } from "date-fns";
@@ -21,6 +22,7 @@ type Event = {
   group_names: string[];
   created_by: string;
   community_id: string;
+  study_status?: string;
 };
 
 const Events = () => {
@@ -29,6 +31,8 @@ const Events = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [createStudyDialogOpen, setCreateStudyDialogOpen] = useState(false);
+  const [defaultCommunityId, setDefaultCommunityId] = useState<string>("");
 
   useEffect(() => {
     const {
@@ -66,7 +70,7 @@ const Events = () => {
       
       setUserRoles(rolesData?.map(r => r.role) || []);
 
-      // Fetch events where user is a participant
+      // Fetch events where user is a participant OR individual studies created by user
       const { data: eventsData, error } = await supabase
         .from("events")
         .select(`
@@ -79,12 +83,13 @@ const Events = () => {
           social_media_link,
           created_by,
           community_id,
-          event_participants!inner(status),
+          study_status,
+          event_participants(status),
           event_groups(
             conversation_groups(name)
           )
         `)
-        .eq("event_participants.user_id", userId)
+        .or(`event_participants.user_id.eq.${userId},and(event_type.eq.individual_study,created_by.eq.${userId})`)
         .order("event_date", { ascending: true });
 
       if (error) throw error;
@@ -100,11 +105,18 @@ const Events = () => {
         social_media_link: event.social_media_link,
         created_by: event.created_by,
         community_id: event.community_id,
-        my_status: event.event_participants[0]?.status || "pending",
+        study_status: event.study_status,
+        my_status: event.event_participants?.[0]?.status || "pending",
         group_names: event.event_groups?.map((eg: any) => eg.conversation_groups?.name).filter(Boolean) || [],
       }));
 
       setEvents(transformedEvents);
+
+      // Get default community for creating individual studies
+      if (transformedEvents.length > 0) {
+        setDefaultCommunityId(transformedEvents[0].community_id);
+      }
+    
     } catch (error: any) {
       console.error("Error fetching events:", error);
       toast.error("Erro ao carregar eventos");
@@ -139,11 +151,17 @@ const Events = () => {
               Visualize e gerencie seus eventos
             </p>
           </div>
-          {!userRoles.includes('visitor') && (
-            <Button onClick={() => navigate("/communities")}>
-              Criar Evento
+          <div className="flex gap-2">
+            <Button onClick={() => setCreateStudyDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Estudo Individual
             </Button>
-          )}
+            {!userRoles.includes('visitor') && (
+              <Button onClick={() => navigate("/communities")}>
+                Criar Evento
+              </Button>
+            )}
+          </div>
         </nav>
       </header>
 
@@ -205,6 +223,14 @@ const Events = () => {
           </Tabs>
         </div>
       </main>
+
+      <CreateIndividualStudyDialog
+        open={createStudyDialogOpen}
+        onOpenChange={setCreateStudyDialogOpen}
+        userId={user?.id || ""}
+        communityId={defaultCommunityId}
+        onSuccess={() => fetchEvents(user?.id || "")}
+      />
     </div>
   );
 };
