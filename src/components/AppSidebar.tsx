@@ -21,19 +21,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Hash,
+  MessageCircle,
   BookOpen,
   Settings,
-  GraduationCap,
   Calendar,
-  DollarSign,
+  CreditCard,
   Users,
   MessageSquare,
   CalendarDays,
   Upload,
   LogOut,
   FileText,
-  GripVertical
+  GripVertical,
+  DollarSign
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -448,6 +448,22 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        {/* Assinatura - Destaque no topo */}
+        <SidebarGroup className="border-b border-border pb-4 mb-4">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => navigate("/plans")}
+                isActive={location.pathname === "/plans"}
+                className="bg-primary/10 hover:bg-primary/20 text-primary font-medium"
+              >
+                <CreditCard className="h-4 w-4" />
+                {!isCollapsed && <span>Assinatura</span>}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+
         {/* Communities and Groups */}
         <SidebarGroup>
           <SidebarGroupLabel>
@@ -503,7 +519,7 @@ export function AppSidebar() {
                               onClick={() => navigate(`/courses/${course.id}`)}
                               isActive={isActiveCourse(course.id)}
                             >
-                              <GraduationCap className="h-3 w-3" />
+                              <BookOpen className="h-3 w-3" />
                               <span className="truncate">{course.name}</span>
                             </SidebarMenuSubButton>
                           </SidebarMenuSubItem>
@@ -554,21 +570,6 @@ export function AppSidebar() {
               >
                 <FileText className="h-4 w-4" />
                 {!isCollapsed && <span>Tarefas</span>}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-
-        {/* Planos */}
-        <SidebarGroup>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => navigate("/plans")}
-                isActive={location.pathname === "/plans"}
-              >
-                <DollarSign className="h-4 w-4" />
-                {!isCollapsed && <span>Planos</span>}
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -727,7 +728,7 @@ function SortableGroupItem({
         >
           <GripVertical className="h-3 w-3 text-muted-foreground opacity-0 group-hover/item:opacity-100 transition-opacity" />
         </div>
-        <Hash className="h-3 w-3" />
+        <MessageCircle className="h-3 w-3" />
         <span className="truncate flex-1">{group.name}</span>
         {group.unread_count && group.unread_count > 0 && (
           <Badge 

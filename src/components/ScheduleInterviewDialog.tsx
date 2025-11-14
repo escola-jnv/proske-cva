@@ -56,12 +56,12 @@ export function ScheduleInterviewDialog({
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("interview_schedules").insert({
+      const { error } = await supabase.from("interview_schedules" as any).insert({
         user_id: userId,
         scheduled_date: format(selectedDate, "yyyy-MM-dd"),
         scheduled_time: selectedTime,
         status: "pending",
-      });
+      } as any);
 
       if (error) throw error;
 
