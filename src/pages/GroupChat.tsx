@@ -9,7 +9,6 @@ import { ProfileModal } from "@/components/ProfileModal";
 import { GroupInfoModal } from "@/components/GroupInfoModal";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
@@ -410,11 +409,7 @@ const GroupChat = () => {
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="px-4 py-3 flex items-center gap-3">
-          {isMobile && (
-            <SidebarTrigger className="shrink-0" />
-          )}
-          
-          <Avatar 
+          <Avatar
             className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
             onClick={() => setGroupInfoModalOpen(true)}
           >

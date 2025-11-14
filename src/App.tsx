@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { NotificationBar } from "@/components/NotificationBar";
 import { InterviewReminderDialog } from "@/components/InterviewReminderDialog";
@@ -68,6 +68,10 @@ const AppContent = () => {
         <div className="flex-1 flex flex-col">
           <NotificationBar />
           <InterviewReminderDialog userId={userId} />
+          {/* Mobile Sidebar Trigger - Persistente */}
+          <div className="md:hidden sticky top-0 z-40 bg-background border-b border-border p-2">
+            <SidebarTrigger />
+          </div>
           <main className="flex-1">
             <Routes>
               <Route path="/communities" element={<Communities />} />
