@@ -16,6 +16,8 @@ type EventCardProps = {
     description: string | null;
     event_date: string;
     duration_minutes: number;
+    event_type?: string;
+    social_media_link?: string;
     group_names?: string[];
     my_status?: string;
     created_by?: string;
@@ -59,6 +61,21 @@ export const EventCard = ({ event, userId, userRoles = [], onUpdate }: EventCard
     }
   };
 
+  const getEventTypeBadge = () => {
+    switch (event.event_type) {
+      case "interview":
+        return <Badge variant="default" className="bg-blue-500">Entrevista</Badge>;
+      case "mentoring":
+        return <Badge variant="default" className="bg-purple-500">Monitoria</Badge>;
+      case "group_study":
+        return <Badge variant="default" className="bg-orange-500">Estudo em Grupo</Badge>;
+      case "live":
+        return <Badge variant="default" className="bg-pink-500">Live</Badge>;
+      default:
+        return null;
+    }
+  };
+
   const handleUpdateStatus = async (status: "accepted" | "declined") => {
     try {
       const { error } = await supabase
@@ -86,11 +103,24 @@ export const EventCard = ({ event, userId, userRoles = [], onUpdate }: EventCard
         <div className="space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
-              <h3 className="font-semibold text-lg">{event.title}</h3>
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <h3 className="font-semibold text-lg">{event.title}</h3>
+                {getEventTypeBadge()}
+              </div>
               {event.description && (
                 <p className="text-sm text-muted-foreground mt-1">
                   {event.description}
                 </p>
+              )}
+              {event.event_type === 'live' && event.social_media_link && (
+                <a 
+                  href={event.social_media_link} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline mt-1 block"
+                >
+                  🔗 Link da Live
+                </a>
               )}
             </div>
             <div className="flex items-center gap-2">
