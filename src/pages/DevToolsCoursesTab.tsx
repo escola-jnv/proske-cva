@@ -76,6 +76,16 @@ export function DevToolsCoursesTab({
                   className="pl-8"
                 />
               </div>
+              <Button 
+                onClick={() => {
+                  alert("Para criar um curso:\n\n1. Vá para a aba 'Comunidades'\n2. Clique em 'Gerenciar' na comunidade desejada\n3. Clique em 'Criar Curso'\n\nOu use o botão abaixo para ir direto:");
+                  window.open('/communities', '_blank');
+                }}
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Criar Curso
+              </Button>
             </div>
           </div>
         </CardHeader>
