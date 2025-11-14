@@ -28,6 +28,26 @@ type UserSubscription = {
   plan: SubscriptionPlan;
 };
 
+type Course = {
+  id: string;
+  name: string;
+  description?: string;
+  community_id: string;
+  cover_image_url?: string;
+  price?: number;
+  checkout_url?: string;
+  is_visible: boolean;
+  created_by: string;
+};
+
+type UserCourseAccess = {
+  id: string;
+  user_id: string;
+  course_id: string;
+  start_date: string;
+  end_date: string;
+};
+
 type SubscriptionStats = {
   daysRemaining: number;
   totalDays: number;
@@ -35,12 +55,19 @@ type SubscriptionStats = {
   monitoringsCompleted: number;
 };
 
+type CourseAccess = {
+  course: Course;
+  daysRemaining: number;
+};
+
 const Plans = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [activeSubscription, setActiveSubscription] = useState<UserSubscription | null>(null);
   const [stats, setStats] = useState<SubscriptionStats | null>(null);
+  const [courseAccess, setCourseAccess] = useState<CourseAccess[]>([]);
 
   useEffect(() => {
     checkAuthAndFetchPlans();
@@ -57,8 +84,10 @@ const Plans = () => {
 
       await Promise.all([
         fetchPlans(),
+        fetchCourses(),
         fetchActiveSubscription(user.id),
-        fetchStats(user.id)
+        fetchStats(user.id),
+        fetchCourseAccess(user.id),
       ]);
     } catch (error: any) {
       console.error("Error:", error);
@@ -80,6 +109,24 @@ const Plans = () => {
     } catch (error: any) {
       console.error("Error fetching plans:", error);
       toast.error("Erro ao carregar planos");
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("is_visible", true)
+        .not("price", "is", null)
+        .gt("price", 0)
+        .order("name", { ascending: true });
+
+      if (error) throw error;
+      setCourses(data || []);
+    } catch (error: any) {
+      console.error("Error fetching courses:", error);
+      toast.error("Erro ao carregar cursos");
     }
   };
 
@@ -157,6 +204,48 @@ const Plans = () => {
       });
     } catch (error: any) {
       console.error("Error fetching stats:", error);
+    }
+  };
+
+  const fetchCourseAccess = async (userId: string) => {
+    try {
+      const now = new Date();
+      
+      const { data, error } = await supabase
+        .from("user_course_access")
+        .select(`
+          *,
+          courses (
+            id,
+            name,
+            description,
+            cover_image_url,
+            price,
+            checkout_url,
+            is_visible,
+            community_id,
+            created_by
+          )
+        `)
+        .eq("user_id", userId)
+        .gt("end_date", now.toISOString())
+        .order("end_date", { ascending: true });
+
+      if (error) throw error;
+
+      const accessWithDays = data?.map((access: any) => {
+        const endDate = new Date(access.end_date);
+        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
+        return {
+          course: access.courses,
+          daysRemaining,
+        };
+      }).filter((access) => access.course) || [];
+
+      setCourseAccess(accessWithDays);
+    } catch (error: any) {
+      console.error("Error fetching course access:", error);
     }
   };
 
@@ -347,6 +436,94 @@ const Plans = () => {
               </div>
             )}
           </div>
+
+          {/* Course Access */}
+          {courseAccess.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-xl font-medium mb-4">Meus Cursos</h2>
+              <div className="space-y-4">
+                {courseAccess.map(({ course, daysRemaining }) => (
+                  <Card key={course.id}>
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-medium">{course.name}</h3>
+                          {course.description && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {course.description}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-4 mt-4">
+                            <Badge variant="outline">
+                              {daysRemaining} dias restantes
+                            </Badge>
+                            <Button
+                              variant="default"
+                              onClick={() => navigate(`/courses/${course.id}`)}
+                            >
+                              Acessar Curso
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Available Courses */}
+          {courses.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-xl font-medium mb-4">Cursos Disponíveis</h2>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {courses.map((course) => {
+                  const hasAccess = courseAccess.some((access) => access.course.id === course.id);
+                  
+                  return (
+                    <Card key={course.id} className="flex flex-col">
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          {course.name}
+                          {course.price && (
+                            <Badge variant="secondary" className="ml-2">
+                              R$ {course.price.toFixed(2)}
+                            </Badge>
+                          )}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="flex-1">
+                        {course.description && (
+                          <p className="text-sm text-muted-foreground">
+                            {course.description}
+                          </p>
+                        )}
+                      </CardContent>
+                      {course.checkout_url && !hasAccess && (
+                        <CardFooter>
+                          <Button 
+                            className="w-full" 
+                            onClick={() => window.open(course.checkout_url!, '_blank')}
+                          >
+                            Comprar Curso
+                            <ExternalLink className="ml-2 h-4 w-4" />
+                          </Button>
+                        </CardFooter>
+                      )}
+                      {hasAccess && (
+                        <CardFooter>
+                          <Badge variant="default" className="w-full justify-center py-2">
+                            Você possui acesso
+                          </Badge>
+                        </CardFooter>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>

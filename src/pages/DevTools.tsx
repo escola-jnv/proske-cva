@@ -41,11 +41,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Pencil, Trash2, Users, FolderOpen, MessageSquare, Calendar, Search, Upload, FileText, Plus, DollarSign } from "lucide-react";
+import { Loader2, Pencil, Trash2, Users, FolderOpen, MessageSquare, Calendar, Search, Upload, FileText, Plus, DollarSign, BookOpen } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { CreateEventDialog } from "@/components/CreateEventDialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ManageCourseAccessDialog } from "@/components/ManageCourseAccessDialog";
+import { DevToolsCoursesTab } from "./DevToolsCoursesTab";
 
 type Profile = {
   id: string;
@@ -107,6 +109,29 @@ type Event = {
   created_by: string;
 };
 
+type Course = {
+  id: string;
+  name: string;
+  description?: string;
+  community_id: string;
+  cover_image_url?: string;
+  price?: number;
+  checkout_url?: string;
+  is_visible: boolean;
+  created_by: string;
+};
+
+type UserCourseAccess = {
+  id: string;
+  user_id: string;
+  course_id: string;
+  course_name?: string;
+  user_name?: string;
+  start_date: string;
+  end_date: string;
+  granted_by: string;
+};
+
 export default function DevTools() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -118,18 +143,31 @@ export default function DevTools() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [courseAccess, setCourseAccess] = useState<UserCourseAccess[]>([]);
   
   const [searchTerm, setSearchTerm] = useState("");
   
   const [editDialog, setEditDialog] = useState<{
     open: boolean;
-    type: "profile" | "community" | "group" | "event" | null;
+    type: "profile" | "community" | "group" | "event" | "course" | null;
     data: any | null;
   }>({ open: false, type: null, data: null });
+  
+  const [courseAccessDialog, setCourseAccessDialog] = useState<{
+    open: boolean;
+    userId: string | null;
+    userName: string | null;
+  }>({ open: false, userId: null, userName: null });
+  
+  const [courseAccessForm, setCourseAccessForm] = useState<{
+    course_id: string;
+    end_date: string;
+  }>({ course_id: "", end_date: "" });
 
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
-    type: "profile" | "community" | "group" | "event" | null;
+    type: "profile" | "community" | "group" | "event" | "course" | "course_access" | null;
     id: string | null;
   }>({ open: false, type: null, id: null });
 
@@ -224,7 +262,7 @@ export default function DevTools() {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [profilesRes, communitiesRes, groupsRes, eventsRes, coursesRes, plansRes] = await Promise.all([
+      const [profilesRes, communitiesRes, groupsRes, eventsRes, coursesRes, plansRes, courseAccessRes] = await Promise.all([
         supabase.from("profiles").select("*").order("name"),
         supabase.from("communities").select("*").order("name"),
         supabase.from("conversation_groups").select(`
@@ -234,11 +272,28 @@ export default function DevTools() {
           )
         `).order("name"),
         supabase.from("events").select("*").order("event_date", { ascending: false }),
-        supabase.from("courses").select("id, name").order("name"),
+        supabase.from("courses").select("*").order("name"),
         supabase.from("subscription_plans").select("*").order("name"),
+        supabase.from("user_course_access").select(`
+          *,
+          courses (name),
+          profiles (name)
+        `).order("end_date", { ascending: false }),
       ]);
 
-      if (coursesRes.data) setAvailableCourses(coursesRes.data);
+      if (coursesRes.data) {
+        setAvailableCourses(coursesRes.data);
+        setCourses(coursesRes.data);
+      }
+      
+      if (courseAccessRes.data) {
+        const formattedAccess = courseAccessRes.data.map((access: any) => ({
+          ...access,
+          course_name: access.courses?.name,
+          user_name: access.profiles?.name,
+        }));
+        setCourseAccess(formattedAccess);
+      }
       
       // Fetch plans with default groups
       if (plansRes.data) {
@@ -376,7 +431,7 @@ export default function DevTools() {
     }
   };
 
-  const handleEdit = async (type: "profile" | "community" | "group" | "event", data: any) => {
+  const handleEdit = async (type: "profile" | "community" | "group" | "event" | "course", data: any) => {
     if (type === "profile") {
       // Fetch subscription data for the user
       const { data: subscription } = await supabase
@@ -520,6 +575,18 @@ export default function DevTools() {
               community_id: data.community_id
             };
             break;
+          case "course":
+            table = "courses";
+            updateData = {
+              name: data.name,
+              description: data.description,
+              community_id: data.community_id,
+              cover_image_url: data.cover_image_url,
+              price: data.price || 0,
+              checkout_url: data.checkout_url,
+              is_visible: data.is_visible
+            };
+            break;
         }
 
         // Check if creating (no id) or updating (has id)
@@ -553,7 +620,7 @@ export default function DevTools() {
     }
   };
 
-  const handleDelete = (type: "profile" | "community" | "group" | "event", id: string) => {
+  const handleDelete = (type: "profile" | "community" | "group" | "event" | "course" | "course_access", id: string) => {
     setDeleteDialog({ open: true, type, id });
   };
 
@@ -1271,6 +1338,7 @@ export default function DevTools() {
           <TabsTrigger value="communities">Comunidades</TabsTrigger>
           <TabsTrigger value="groups">Grupos</TabsTrigger>
           <TabsTrigger value="events">Eventos</TabsTrigger>
+          <TabsTrigger value="courses">Cursos</TabsTrigger>
           <TabsTrigger value="plans">Planos</TabsTrigger>
           <TabsTrigger value="import">Importação CSV</TabsTrigger>
         </TabsList>
@@ -1610,6 +1678,19 @@ export default function DevTools() {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="courses" className="space-y-4">
+          <DevToolsCoursesTab
+            courses={courses}
+            courseAccess={courseAccess}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onManageAccess={(userId, userName) => setCourseAccessDialog({ open: true, userId, userName })}
+            onCreateCourse={() => navigate("/courses/create")}
+          />
         </TabsContent>
 
         <TabsContent value="events" className="space-y-4">
