@@ -8,7 +8,9 @@ export function useInterviewSchedule(userId: string | null) {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const checkInterviewSchedule = async () => {
+    console.log("useInterviewSchedule - checking for userId:", userId);
     if (!userId) {
+      console.log("useInterviewSchedule - no userId, setting loading to false");
       setLoading(false);
       return;
     }
@@ -20,10 +22,14 @@ export function useInterviewSchedule(userId: string | null) {
         .select("role")
         .eq("user_id", userId);
 
+      console.log("useInterviewSchedule - user roles:", roles);
+
       const isUserVisitor = roles?.some((r) => r.role === "visitor" as any) || false;
+      console.log("useInterviewSchedule - isUserVisitor:", isUserVisitor);
       setIsVisitor(isUserVisitor);
 
       if (!isUserVisitor) {
+        console.log("useInterviewSchedule - not a visitor, hiding popup");
         setHasScheduledInterview(true);
         setLoading(false);
         return;
@@ -36,7 +42,11 @@ export function useInterviewSchedule(userId: string | null) {
         .eq("user_id", userId)
         .in("status", ["pending", "confirmed"]) as any;
 
-      setHasScheduledInterview((schedules?.length || 0) > 0);
+      console.log("useInterviewSchedule - schedules:", schedules);
+
+      const hasScheduled = (schedules?.length || 0) > 0;
+      console.log("useInterviewSchedule - hasScheduled:", hasScheduled);
+      setHasScheduledInterview(hasScheduled);
     } catch (error) {
       console.error("Error checking interview schedule:", error);
       setHasScheduledInterview(true); // Don't show popup on error
@@ -50,6 +60,7 @@ export function useInterviewSchedule(userId: string | null) {
   }, [userId, refreshKey]);
 
   const refresh = () => {
+    console.log("useInterviewSchedule - refreshing");
     setRefreshKey(prev => prev + 1);
   };
 

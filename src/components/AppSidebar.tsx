@@ -83,6 +83,7 @@ export function AppSidebar() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isTeacherOrAdmin, setIsTeacherOrAdmin] = useState(false);
   const [userProfile, setUserProfile] = useState<{
     name: string;
     avatar_url: string | null;
@@ -136,6 +137,7 @@ export function AppSidebar() {
       const isTeacherOrAdmin = userRoles?.some(
         (r) => r.role === "teacher" || r.role === "admin"
       );
+      setIsTeacherOrAdmin(isTeacherOrAdmin);
 
       const admin = userRoles?.some((r) => r.role === "admin");
       setIsAdmin(admin || false);
@@ -145,8 +147,8 @@ export function AppSidebar() {
         setUserRole('admin');
       } else if (userRoles?.some((r) => r.role === "teacher")) {
         setUserRole('teacher');
-      } else if (userRoles?.some((r) => r.role === "guest")) {
-        setUserRole('guest');
+      } else if (userRoles?.some((r) => r.role === "visitor" as any)) {
+        setUserRole('visitor');
       } else {
         setUserRole('student');
       }
@@ -518,14 +520,20 @@ export function AppSidebar() {
                             items={communityGroups.map(g => g.id)}
                             strategy={verticalListSortingStrategy}
                           >
-                            {communityGroups.map((group) => (
-                              <SortableGroupItem
-                                key={group.id}
-                                group={group}
-                                isActive={isActiveGroup(group.id)}
-                                onClick={() => navigate(`/groups/${group.id}/chat`)}
-                              />
-                            ))}
+                            {communityGroups.map((group) => {
+                              const isMember = isTeacherOrAdmin || groups.some(g => g.id === group.id);
+                              
+                              return (
+                                <SortableGroupItem
+                                  key={group.id}
+                                  group={group}
+                                  isActive={isActiveGroup(group.id)}
+                                  onClick={() => navigate(`/groups/${group.id}/chat`)}
+                                  userRole={userRole}
+                                  isMember={isMember}
+                                />
+                              );
+                            })}
                           </SortableContext>
                         </DndContext>
                       </>
@@ -671,11 +679,15 @@ export function AppSidebar() {
 function SortableGroupItem({ 
   group, 
   isActive, 
-  onClick 
+  onClick,
+  userRole,
+  isMember
 }: { 
   group: Group; 
   isActive: boolean; 
   onClick: () => void;
+  userRole: string;
+  isMember: boolean;
 }) {
   const {
     attributes,
@@ -692,12 +704,22 @@ function SortableGroupItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const isRestricted = userRole === 'visitor' && !isMember;
+
+  const handleClick = () => {
+    if (isRestricted) {
+      toast.error("Este grupo não está liberado para o seu plano");
+    } else {
+      onClick();
+    }
+  };
+
   return (
     <SidebarMenuSubItem ref={setNodeRef} style={style}>
       <SidebarMenuSubButton
-        onClick={onClick}
+        onClick={handleClick}
         isActive={isActive}
-        className="relative group/item"
+        className={`relative group/item ${isRestricted ? "opacity-60 cursor-not-allowed" : ""}`}
       >
         <div 
           {...attributes} 

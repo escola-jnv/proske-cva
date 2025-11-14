@@ -220,21 +220,33 @@ const GroupChat = () => {
       const { data: membersData, error } = await supabase
         .from("group_members")
         .select(`
-          user_id,
-          profiles!inner(id, name, avatar_url, last_active_at)
+          user_id
         `)
-        .eq("group_id", grpId)
-        .gte("profiles.last_active_at", twentyFourHoursAgo);
+        .eq("group_id", grpId);
 
       if (error) throw error;
 
-      const online = membersData
-        ?.map((m: any) => ({
-          id: m.profiles.id,
-          name: m.profiles.name,
-          avatar_url: m.profiles.avatar_url,
-        }))
-        .filter(Boolean) || [];
+      if (!membersData || membersData.length === 0) {
+        setOnlineUsers([]);
+        return;
+      }
+
+      const userIds = membersData.map(m => m.user_id);
+
+      // Fetch profiles separately
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, name, avatar_url, last_active_at")
+        .in("id", userIds)
+        .gte("last_active_at", twentyFourHoursAgo);
+
+      if (profilesError) throw profilesError;
+
+      const online = profilesData?.map((profile: any) => ({
+        id: profile.id,
+        name: profile.name,
+        avatar_url: profile.avatar_url,
+      })) || [];
 
       setOnlineUsers(online);
     } catch (error: any) {
