@@ -109,23 +109,23 @@ export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data, error} = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
         .single();
 
       if (error) throw error;
-      setProfile(data);
+      setProfile(data as any); // Cast needed until types are regenerated
       setFormData({ 
         name: data.name || "", 
         phone: data.phone || "",
         city: data.city || ""
       });
       setAvatarUrl(data.avatar_url);
-      setStudyGoals(Array.isArray(data.study_goals) ? data.study_goals : []);
-      setStudyDays(Array.isArray(data.study_days) ? data.study_days : []);
-      const schedule = data.study_schedule;
+      setStudyGoals(Array.isArray((data as any).study_goals) ? (data as any).study_goals : []);
+      setStudyDays(Array.isArray((data as any).study_days) ? (data as any).study_days : []);
+      const schedule = (data as any).study_schedule;
       setStudySchedule(
         schedule && typeof schedule === 'object' && !Array.isArray(schedule) 
           ? schedule as Record<number, string>

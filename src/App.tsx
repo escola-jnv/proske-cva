@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +7,8 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { NotificationBar } from "@/components/NotificationBar";
+import { InterviewReminderDialog } from "@/components/InterviewReminderDialog";
+import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Communities from "./pages/Communities";
@@ -26,8 +29,21 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const location = useLocation();
+  const [userId, setUserId] = useState<string | null>(null);
   
   const showSidebar = !["/", "/auth"].includes(location.pathname);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id || null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUserId(session?.user?.id || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   if (!showSidebar) {
     return (
@@ -45,6 +61,7 @@ const AppContent = () => {
         <AppSidebar />
         <div className="flex-1 flex flex-col">
           <NotificationBar />
+          <InterviewReminderDialog userId={userId} />
           <main className="flex-1">
             <Routes>
               <Route path="/communities" element={<Communities />} />
