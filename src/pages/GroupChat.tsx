@@ -43,6 +43,7 @@ type Group = {
   name: string;
   description: string | null;
   community_id: string;
+  allowed_message_roles: string[];
 };
 
 const GroupChat = () => {
@@ -65,6 +66,8 @@ const GroupChat = () => {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [groupInfoModalOpen, setGroupInfoModalOpen] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Array<{id: string, name: string, avatar_url: string | null}>>([]);
+  const [userRole, setUserRole] = useState<string>('visitor');
+  const [canSendMessages, setCanSendMessages] = useState(true);
   const isMobile = useIsMobile();
 
   // Track user activity
@@ -198,18 +201,29 @@ const GroupChat = () => {
         .single();
 
       if (groupError) throw groupError;
-
+      
       setGroup(groupData);
 
-      // Fetch messages
-      await fetchMessages(grpId);
-      
-      // Fetch online users
-      await fetchOnlineUsers(grpId);
+      // Fetch user role
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .single();
+
+      const currentUserRole = roleData?.role || 'visitor';
+      setUserRole(currentUserRole);
+
+      // Check if user can send messages
+      const allowedRoles = groupData.allowed_message_roles || [];
+      const canSend = allowedRoles.includes(currentUserRole);
+      setCanSendMessages(canSend);
+
+      fetchMessages(grpId);
+      fetchOnlineUsers(grpId);
     } catch (error: any) {
       console.error("Error fetching group:", error);
       toast.error("Erro ao carregar grupo");
-      navigate("/communities");
     }
   };
 
@@ -565,22 +579,30 @@ const GroupChat = () => {
 
       {/* Input Area */}
       <div className="border-t border-border bg-card p-4">
-        <form
-          onSubmit={handleSendMessage}
-          className="container mx-auto max-w-4xl flex gap-2"
-        >
-          <Input
-            ref={inputRef}
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Digite uma mensagem..."
-            className="flex-1"
-            disabled={sending}
-          />
-          <Button type="submit" size="icon" disabled={sending || !newMessage.trim()}>
-            <Send className="h-5 w-5" />
-          </Button>
-        </form>
+        {!canSendMessages ? (
+          <div className="container mx-auto max-w-4xl text-center py-2">
+            <p className="text-sm text-muted-foreground">
+              Você não tem permissão para enviar mensagens neste grupo
+            </p>
+          </div>
+        ) : (
+          <form
+            onSubmit={handleSendMessage}
+            className="container mx-auto max-w-4xl flex gap-2"
+          >
+            <Input
+              ref={inputRef}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Digite uma mensagem..."
+              className="flex-1"
+              disabled={sending}
+            />
+            <Button type="submit" size="icon" disabled={sending || !newMessage.trim()}>
+              <Send className="h-5 w-5" />
+            </Button>
+          </form>
+        )}
       </div>
 
       <ProfileModal
