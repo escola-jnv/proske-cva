@@ -14,13 +14,19 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   event_date: z.date({
     required_error: "Data é obrigatória",
+  }).refine((date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date >= today;
+  }, {
+    message: "Não é possível cadastrar estudos em datas passadas",
   }),
   event_time: z.string().min(1, "Hora é obrigatória"),
-  duration_minutes: z.coerce.number().min(15, "Duração mínima de 15 minutos"),
   study_topic: z.string().min(1, "Tópico de estudo é obrigatório"),
 });
 
@@ -49,7 +55,6 @@ export const CreateIndividualStudyDialog = ({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      duration_minutes: 60,
       study_topic: "",
       event_time: "",
     },
@@ -69,12 +74,12 @@ export const CreateIndividualStudyDialog = ({
       const eventDateTime = new Date(values.event_date);
       eventDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-      // Create individual study event
+      // Create individual study event (fixed 60 minutes duration)
       const { error } = await supabase.from("events").insert({
         title: "Estudo Individual",
         description: values.study_topic,
         event_date: eventDateTime.toISOString(),
-        duration_minutes: values.duration_minutes,
+        duration_minutes: 60,
         event_type: "individual_study",
         study_topic: values.study_topic,
         created_by: userId,
@@ -132,7 +137,13 @@ export const CreateIndividualStudyDialog = ({
                         selected={field.value}
                         onSelect={field.onChange}
                         locale={ptBR}
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          return date < today;
+                        }}
                         initialFocus
+                        className={cn("pointer-events-auto")}
                       />
                     </PopoverContent>
                   </Popover>
@@ -149,20 +160,6 @@ export const CreateIndividualStudyDialog = ({
                   <FormLabel>Hora</FormLabel>
                   <FormControl>
                     <Input type="time" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="duration_minutes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Duração (minutos)</FormLabel>
-                  <FormControl>
-                    <Input type="number" min="15" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
