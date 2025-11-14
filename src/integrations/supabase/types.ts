@@ -428,6 +428,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "student_ltv_analysis"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       interview_schedules: {
@@ -470,11 +477,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "interview_schedules_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "student_ltv_analysis"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "interview_schedules_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_schedules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "student_ltv_analysis"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -1084,11 +1105,50 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "student_ltv_analysis"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      student_ltv_analysis: {
+        Row: {
+          city: string | null
+          current_plan_id: string | null
+          current_plan_name: string | null
+          current_plan_price: number | null
+          customer_since: string | null
+          days_to_next_payment: number | null
+          due_day: number | null
+          email: string | null
+          ltv: number | null
+          months_active: number | null
+          phone: string | null
+          projected_12m_revenue: number | null
+          student_name: string | null
+          subscription_end_date: string | null
+          subscription_start_date: string | null
+          subscription_status: string | null
+          total_paid: number | null
+          total_pending: number | null
+          user_id: string | null
+          user_role: Database["public"]["Enums"]["app_role"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["current_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_access_group_by_role: {
