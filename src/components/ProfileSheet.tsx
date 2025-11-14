@@ -7,22 +7,49 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Save, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
 
+const STUDY_GOALS = [
+  "Tocar em Casa",
+  "Tocar em Visitas/Células",
+  "Ensinar",
+  "Tocar na Igreja",
+  "Tocar em Hospital/Asilos",
+  "Tocar em Eventos",
+  "Gravar",
+  "Compor",
+];
+
+const WEEK_DAYS = [
+  { value: 1, label: "Segunda" },
+  { value: 2, label: "Terça" },
+  { value: 3, label: "Quarta" },
+  { value: 4, label: "Quinta" },
+  { value: 5, label: "Sexta" },
+  { value: 6, label: "Sábado" },
+  { value: 0, label: "Domingo" },
+];
+
 const profileSchema = z.object({
   name: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
   phone: z.string().trim().regex(/^\(\d{2}\)\s?\d{4,5}-\d{4}$/, "Formato inválido. Use: (11) 99999-9999").optional().or(z.literal("")),
+  city: z.string().trim().optional().or(z.literal("")),
 });
 
 type Profile = {
   id: string;
   name: string;
   phone: string | null;
+  city: string | null;
   avatar_url: string | null;
   bio: string | null;
+  study_goals: string[] | null;
+  study_days: number[] | null;
+  study_schedule: any;
 };
 
 type UserRole = {
@@ -54,9 +81,12 @@ export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
   const [groups, setGroups] = useState<ConversationGroup[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [formData, setFormData] = useState({ name: "", phone: "" });
-  const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+  const [formData, setFormData] = useState({ name: "", phone: "", city: "" });
+  const [errors, setErrors] = useState<{ name?: string; phone?: string; city?: string }>({});
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [studyGoals, setStudyGoals] = useState<string[]>([]);
+  const [studyDays, setStudyDays] = useState<number[]>([]);
+  const [studySchedule, setStudySchedule] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (user?.id && open) {
@@ -87,8 +117,20 @@ export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
 
       if (error) throw error;
       setProfile(data);
-      setFormData({ name: data.name || "", phone: data.phone || "" });
+      setFormData({ 
+        name: data.name || "", 
+        phone: data.phone || "",
+        city: data.city || ""
+      });
       setAvatarUrl(data.avatar_url);
+      setStudyGoals(Array.isArray(data.study_goals) ? data.study_goals : []);
+      setStudyDays(Array.isArray(data.study_days) ? data.study_days : []);
+      const schedule = data.study_schedule;
+      setStudySchedule(
+        schedule && typeof schedule === 'object' && !Array.isArray(schedule) 
+          ? schedule as Record<number, string>
+          : {}
+      );
     } catch (error: any) {
       console.error("Error fetching profile:", error);
     }
@@ -199,6 +241,28 @@ export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
     setFormData({ ...formData, phone: formatted });
   };
 
+  const toggleStudyGoal = (goal: string) => {
+    setStudyGoals(prev =>
+      prev.includes(goal) ? prev.filter(g => g !== goal) : [...prev, goal]
+    );
+  };
+
+  const toggleStudyDay = (day: number) => {
+    setStudyDays(prev => {
+      if (prev.includes(day)) {
+        const newSchedule = { ...studySchedule };
+        delete newSchedule[day];
+        setStudySchedule(newSchedule);
+        return prev.filter(d => d !== day);
+      }
+      return [...prev, day];
+    });
+  };
+
+  const handleScheduleChange = (day: number, time: string) => {
+    setStudySchedule(prev => ({ ...prev, [day]: time }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
@@ -212,6 +276,10 @@ export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
         .update({
           name: validated.name,
           phone: validated.phone || null,
+          city: validated.city || null,
+          study_goals: studyGoals.length > 0 ? studyGoals : null,
+          study_days: studyDays.length > 0 ? studyDays : null,
+          study_schedule: Object.keys(studySchedule).length > 0 ? studySchedule : null,
         })
         .eq("id", user?.id);
 
@@ -219,7 +287,15 @@ export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
 
       toast.success("Perfil atualizado com sucesso!");
       if (profile) {
-        setProfile({ ...profile, name: validated.name, phone: validated.phone || null });
+        setProfile({ 
+          ...profile, 
+          name: validated.name, 
+          phone: validated.phone || null,
+          city: validated.city || null,
+          study_goals: studyGoals.length > 0 ? studyGoals : null,
+          study_days: studyDays.length > 0 ? studyDays : null,
+          study_schedule: Object.keys(studySchedule).length > 0 ? studySchedule : {},
+        });
       }
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -446,6 +522,87 @@ export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
                   <p className="text-sm text-destructive">{errors.phone}</p>
                 )}
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="city">Cidade</Label>
+                <Input
+                  id="city"
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="Sua cidade"
+                  className={errors.city ? "border-destructive" : ""}
+                />
+                {errors.city && (
+                  <p className="text-sm text-destructive">{errors.city}</p>
+                )}
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <Label>Objetivo de estudo</Label>
+                <div className="grid grid-cols-1 gap-3">
+                  {STUDY_GOALS.map((goal) => (
+                    <div key={goal} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`goal-${goal}`}
+                        checked={studyGoals.includes(goal)}
+                        onCheckedChange={() => toggleStudyGoal(goal)}
+                      />
+                      <Label
+                        htmlFor={`goal-${goal}`}
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        {goal}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <Label>Dias da Semana que vai estudar</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {WEEK_DAYS.map((day) => (
+                    <div key={day.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`profile-day-${day.value}`}
+                        checked={studyDays.includes(day.value)}
+                        onCheckedChange={() => toggleStudyDay(day.value)}
+                      />
+                      <Label
+                        htmlFor={`profile-day-${day.value}`}
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        {day.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {studyDays.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <Label>Horário de estudo</Label>
+                  <div className="grid gap-3">
+                    {studyDays.sort((a, b) => {
+                      const order = [1, 2, 3, 4, 5, 6, 0];
+                      return order.indexOf(a) - order.indexOf(b);
+                    }).map((day) => {
+                      const dayLabel = WEEK_DAYS.find(d => d.value === day)?.label;
+                      return (
+                        <div key={day} className="flex items-center gap-3">
+                          <Label className="w-20 text-sm">{dayLabel}</Label>
+                          <Input
+                            type="time"
+                            value={studySchedule[day] || ""}
+                            onChange={(e) => handleScheduleChange(day, e.target.value)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <Button type="submit" disabled={saving} className="w-full gap-2">
