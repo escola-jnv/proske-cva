@@ -3,11 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Calendar, Clock, Check, X, Edit } from "lucide-react";
+import { Calendar, Clock, Check, X, Edit, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { format, isPast, isToday, isTomorrow, isThisWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditEventDialog } from "./EditEventDialog";
+import { ManageIndividualStudyDialog } from "./ManageIndividualStudyDialog";
 
 type EventCardProps = {
   event: {
@@ -22,6 +23,7 @@ type EventCardProps = {
     my_status?: string;
     created_by?: string;
     community_id?: string;
+    study_status?: string;
   };
   userId: string;
   userRoles?: string[];
@@ -30,10 +32,12 @@ type EventCardProps = {
 
 export const EventCard = ({ event, userId, userRoles = [], onUpdate }: EventCardProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [manageStudyDialogOpen, setManageStudyDialogOpen] = useState(false);
   const eventDate = new Date(event.event_date);
   const isPastEvent = isPast(eventDate);
+  const isIndividualStudy = event.event_type === "individual_study";
   
-  const canEdit = !isPastEvent && (
+  const canEdit = !isPastEvent && !isIndividualStudy && (
     event.created_by === userId || 
     userRoles.includes('teacher') || 
     userRoles.includes('admin')
@@ -47,6 +51,17 @@ export const EventCard = ({ event, userId, userRoles = [], onUpdate }: EventCard
   };
 
   const getStatusBadge = () => {
+    if (isIndividualStudy) {
+      switch (event.study_status) {
+        case "completed":
+          return <Badge className="bg-green-500 hover:bg-green-600">Realizado</Badge>;
+        case "rescheduled":
+          return <Badge className="bg-yellow-500 hover:bg-yellow-600">Reagendado</Badge>;
+        default:
+          return <Badge variant="outline">Pendente</Badge>;
+      }
+    }
+    
     if (isPastEvent) {
       return <Badge variant="secondary">Finalizado</Badge>;
     }
@@ -71,6 +86,8 @@ export const EventCard = ({ event, userId, userRoles = [], onUpdate }: EventCard
         return <Badge variant="default" className="bg-orange-500">Estudo em Grupo</Badge>;
       case "live":
         return <Badge variant="default" className="bg-pink-500">Live</Badge>;
+      case "individual_study":
+        return <Badge variant="default" className="bg-teal-500">Estudo Individual</Badge>;
       default:
         return null;
     }
@@ -160,7 +177,20 @@ export const EventCard = ({ event, userId, userRoles = [], onUpdate }: EventCard
           </div>
         )}
 
-        {!isPastEvent && event.my_status !== "accepted" && event.my_status !== "declined" && (
+        {isIndividualStudy && !isPastEvent && event.study_status === "pending" && (
+          <div className="pt-2">
+            <Button
+              size="sm"
+              className="w-full gap-2"
+              onClick={() => setManageStudyDialogOpen(true)}
+            >
+              <BookOpen className="h-4 w-4" />
+              Gerenciar Estudo
+            </Button>
+          </div>
+        )}
+
+        {!isIndividualStudy && !isPastEvent && event.my_status !== "accepted" && event.my_status !== "declined" && (
           <div className="flex gap-2 pt-2">
             <Button
               size="sm"
@@ -192,6 +222,16 @@ export const EventCard = ({ event, userId, userRoles = [], onUpdate }: EventCard
           eventId={event.id}
           communityId={event.community_id}
           userId={userId}
+          onSuccess={onUpdate}
+        />
+      )}
+
+      {isIndividualStudy && (
+        <ManageIndividualStudyDialog
+          open={manageStudyDialogOpen}
+          onOpenChange={setManageStudyDialogOpen}
+          eventId={event.id}
+          eventDate={event.event_date}
           onSuccess={onUpdate}
         />
       )}
