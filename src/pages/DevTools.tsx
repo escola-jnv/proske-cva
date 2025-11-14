@@ -836,6 +836,35 @@ export default function DevTools() {
     }
   };
 
+  const handlePlanChange = async (planId: string) => {
+    // Update planId
+    setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), planId } }));
+
+    // Fetch plan limits and update fields
+    try {
+      const { data: planData } = await supabase
+        .from("subscription_plans")
+        .select("monthly_group_studies_limit, monthly_corrections_limit, monthly_monitorings_limit")
+        .eq("id", planId)
+        .single();
+
+      if (planData) {
+        setEditDialog(prev => ({
+          ...prev,
+          data: {
+            ...(prev.data || {}),
+            planId,
+            monthlyGroupStudiesLimit: planData.monthly_group_studies_limit || 0,
+            monthlyTasksLimit: planData.monthly_corrections_limit || 0,
+            monthlyMonitoringsLimit: planData.monthly_monitorings_limit || 0,
+          }
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching plan limits:", error);
+    }
+  };
+
   const handleUpdateSubscription = async (planId: string, endDate: string) => {
     const { userId } = subscriptionDialog;
     if (!userId) return;
@@ -2375,7 +2404,7 @@ export default function DevTools() {
                     <Label htmlFor="plan">Plano</Label>
                     <Select
                       value={editDialog.data.planId || ""}
-                      onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), planId: value } }))}
+                      onValueChange={handlePlanChange}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o plano" />
