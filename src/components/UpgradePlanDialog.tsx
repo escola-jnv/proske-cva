@@ -13,14 +13,14 @@ import { Crown } from "lucide-react";
 interface UpgradePlanDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  planName: string;
+  planNames: string[];
   groupName: string;
 }
 
 export function UpgradePlanDialog({
   open,
   onOpenChange,
-  planName,
+  planNames,
   groupName,
 }: UpgradePlanDialogProps) {
   const navigate = useNavigate();
@@ -29,6 +29,10 @@ export function UpgradePlanDialog({
     onOpenChange(false);
     navigate("/plans");
   };
+
+  const planText = planNames.length > 1 
+    ? `um dos seguintes planos: ${planNames.join(', ')}`
+    : `o plano ${planNames[0]}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -44,7 +48,7 @@ export function UpgradePlanDialog({
           </DialogTitle>
           <DialogDescription className="text-center">
             Para acessar o grupo <span className="font-semibold text-foreground">"{groupName}"</span>, 
-            você precisa adquirir o plano <span className="font-semibold text-primary">"{planName}"</span>.
+            você precisa adquirir <span className="font-semibold text-primary">{planText}</span>.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="sm:justify-center gap-2">
