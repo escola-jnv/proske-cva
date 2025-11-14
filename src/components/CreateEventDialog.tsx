@@ -30,6 +30,10 @@ const eventSchema = z.object({
   event_date: z.string().min(1, "Selecione uma data"),
   event_time: z.string().min(1, "Selecione uma hora"),
   group_ids: z.array(z.string()).min(1, "Selecione pelo menos um grupo"),
+  event_type: z.enum(['interview', 'mentoring', 'group_study', 'live'], {
+    required_error: "Selecione um tipo de evento"
+  }),
+  social_media_link: z.string().url("Link inválido").optional().or(z.literal("")),
 });
 
 type Group = {
@@ -65,6 +69,8 @@ export const CreateEventDialog = ({
     event_date: "",
     event_time: "",
     group_ids: [] as string[],
+    event_type: "group_study" as "interview" | "mentoring" | "group_study" | "live",
+    social_media_link: "",
     created_by: userId,
   });
 
@@ -168,6 +174,8 @@ export const CreateEventDialog = ({
           duration_minutes: 60, // Fixed duration
           created_by: form.created_by,
           community_id: communityId,
+          event_type: validated.event_type,
+          social_media_link: validated.social_media_link || null,
         })
         .select()
         .single();
@@ -221,6 +229,8 @@ export const CreateEventDialog = ({
         event_date: "",
         event_time: "",
         group_ids: [],
+        event_type: "group_study",
+        social_media_link: "",
         created_by: userId,
       });
       onOpenChange(false);
@@ -289,6 +299,40 @@ export const CreateEventDialog = ({
               rows={3}
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="event_type">Tipo de Evento *</Label>
+            <Select
+              value={form.event_type}
+              onValueChange={(value: any) => setForm({ ...form, event_type: value })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="interview">Entrevista (Onboarding)</SelectItem>
+                <SelectItem value="mentoring">Monitoria (Aluno x Professor)</SelectItem>
+                <SelectItem value="group_study">Estudo em Grupo</SelectItem>
+                <SelectItem value="live">Live (Redes Sociais)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {form.event_type === 'live' && (
+            <div className="space-y-2">
+              <Label htmlFor="social_media_link">Link da Rede Social</Label>
+              <Input
+                id="social_media_link"
+                type="url"
+                value={form.social_media_link}
+                onChange={(e) => setForm({ ...form, social_media_link: e.target.value })}
+                placeholder="https://instagram.com/... ou youtube.com/..."
+              />
+              <p className="text-xs text-muted-foreground">
+                Insira o link do Instagram, TikTok ou YouTube onde a live será realizada
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

@@ -15,6 +15,8 @@ type Event = {
   description: string | null;
   event_date: string;
   duration_minutes: number;
+  event_type: string;
+  social_media_link: string | null;
   my_status: string;
   group_names: string[];
   created_by: string;
@@ -73,6 +75,8 @@ const Events = () => {
           description,
           event_date,
           duration_minutes,
+          event_type,
+          social_media_link,
           created_by,
           community_id,
           event_participants!inner(status),
@@ -92,6 +96,8 @@ const Events = () => {
         description: event.description,
         event_date: event.event_date,
         duration_minutes: event.duration_minutes,
+        event_type: event.event_type,
+        social_media_link: event.social_media_link,
         created_by: event.created_by,
         community_id: event.community_id,
         my_status: event.event_participants[0]?.status || "pending",
