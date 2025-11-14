@@ -488,15 +488,37 @@ export default function DevTools() {
         }
       } else {
         let table: string = "";
+        let updateData: any = {};
+        
         switch (type) {
           case "community":
             table = "communities";
+            updateData = {
+              name: data.name,
+              subject: data.subject,
+              description: data.description,
+              cover_image_url: data.cover_image_url
+            };
             break;
           case "group":
             table = "conversation_groups";
+            updateData = {
+              name: data.name,
+              description: data.description,
+              community_id: data.community_id,
+              students_can_message: data.students_can_message,
+              is_visible: data.is_visible
+            };
             break;
           case "event":
             table = "events";
+            updateData = {
+              title: data.title,
+              description: data.description,
+              event_date: data.event_date,
+              duration_minutes: data.duration_minutes,
+              community_id: data.community_id
+            };
             break;
         }
 
@@ -505,14 +527,14 @@ export default function DevTools() {
           // Update existing
           const { error } = await supabase
             .from(table as any)
-            .update(data)
+            .update(updateData)
             .eq("id", data.id);
 
           if (error) throw error;
         } else {
           // Create new - add created_by
           const { data: { user } } = await supabase.auth.getUser();
-          const newData = { ...data, created_by: user?.id };
+          const newData = { ...updateData, created_by: user?.id };
           
           const { error } = await supabase
             .from(table as any)

@@ -14,8 +14,8 @@ type SubscriptionPlan = {
   price: number;
   description: string | null;
   billing_frequency: string | null;
-  monthly_corrections_limit: number | null;
-  monthly_monitorings_limit: number | null;
+  monthly_corrections_limit?: number | null;
+  monthly_monitorings_limit?: number | null;
   checkout_url: string | null;
 };
 
