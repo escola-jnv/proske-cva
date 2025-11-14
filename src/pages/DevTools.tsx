@@ -2362,20 +2362,10 @@ export default function DevTools() {
                   />
                   <Label htmlFor="students_can_message" className="cursor-pointer">
                     Alunos podem enviar mensagens
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="is_visible"
-                    checked={editDialog.data.is_visible ?? true}
-                    onCheckedChange={(checked) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), is_visible: checked } }))}
-                  />
-                  <Label htmlFor="is_visible" className="cursor-pointer">
-                    Grupo visível
-                  </Label>
-                </div>
-              </>
-            )}
+                </Label>
+              </div>
+            </>
+          )}
 
             {editDialog.type === "event" && editDialog.data && (
               <>
