@@ -274,7 +274,7 @@ export default function DevTools() {
         supabase.from("events").select("*").order("event_date", { ascending: false }),
         supabase.from("courses").select("*").order("name"),
         supabase.from("subscription_plans").select("*").order("name"),
-        supabase.from("user_course_access").select(`
+        supabase.from("user_course_access" as any).select(`
           *,
           courses (name),
           profiles (name)
@@ -1689,7 +1689,6 @@ export default function DevTools() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onManageAccess={(userId, userName) => setCourseAccessDialog({ open: true, userId, userName })}
-            onCreateCourse={() => navigate("/courses/create")}
           />
         </TabsContent>
 

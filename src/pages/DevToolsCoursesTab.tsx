@@ -36,7 +36,6 @@ type DevToolsCoursesTabProps = {
   onEdit: (type: "course", data: Course) => void;
   onDelete: (type: "course" | "course_access", id: string) => void;
   onManageAccess: (userId: string, userName: string) => void;
-  onCreateCourse: () => void;
 };
 
 export function DevToolsCoursesTab({
@@ -47,7 +46,6 @@ export function DevToolsCoursesTab({
   onEdit,
   onDelete,
   onManageAccess,
-  onCreateCourse,
 }: DevToolsCoursesTabProps) {
   const filteredCourses = courses.filter((c) =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -78,10 +76,6 @@ export function DevToolsCoursesTab({
                   className="pl-8"
                 />
               </div>
-              <Button onClick={onCreateCourse}>
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Curso
-              </Button>
             </div>
           </div>
         </CardHeader>

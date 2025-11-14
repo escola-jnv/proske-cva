@@ -212,7 +212,7 @@ const Plans = () => {
       const now = new Date();
       
       const { data, error } = await supabase
-        .from("user_course_access")
+        .from("user_course_access" as any)
         .select(`
           *,
           courses (

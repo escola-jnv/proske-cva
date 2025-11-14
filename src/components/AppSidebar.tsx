@@ -200,7 +200,7 @@ export function AppSidebar() {
 
         // Fetch courses the user has active access to
         const { data: courseAccessData } = await supabase
-          .from("user_course_access")
+          .from("user_course_access" as any)
           .select(`
             course_id,
             end_date,
