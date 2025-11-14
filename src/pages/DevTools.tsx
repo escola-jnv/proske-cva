@@ -75,6 +75,7 @@ type SubscriptionPlan = {
   billing_frequency?: string;
   monthly_corrections_limit?: number;
   monthly_monitorings_limit?: number;
+  monthly_group_studies_limit?: number;
   checkout_url?: string;
   default_groups?: string[];
 };
@@ -843,7 +844,7 @@ export default function DevTools() {
       // Get plan details to copy limits
       const { data: planData } = await supabase
         .from("subscription_plans")
-        .select("monthly_corrections_limit, monthly_monitorings_limit")
+        .select("monthly_corrections_limit, monthly_monitorings_limit, monthly_group_studies_limit")
         .eq("id", planId)
         .single();
 
@@ -868,7 +869,7 @@ export default function DevTools() {
         await supabase
           .from("profiles")
           .update({
-            monthly_group_studies_limit: 0, // Planos não têm limite de estudos em grupo por enquanto
+            monthly_group_studies_limit: planData.monthly_group_studies_limit || 0,
             monthly_tasks_limit: planData.monthly_corrections_limit || 0,
             monthly_monitorings_limit: planData.monthly_monitorings_limit || 0,
           })
@@ -933,6 +934,7 @@ export default function DevTools() {
         billing_frequency: "monthly",
         monthly_corrections_limit: 0,
         monthly_monitorings_limit: 0,
+        monthly_group_studies_limit: 0,
         checkout_url: "",
         default_groups: []
       }
@@ -962,6 +964,10 @@ export default function DevTools() {
         toast.error("Limite de monitorias não pode ser negativo");
         return;
       }
+      if ((data.monthly_group_studies_limit ?? 0) < 0) {
+        toast.error("Limite de estudos em grupo não pode ser negativo");
+        return;
+      }
 
       let planId = data.id;
 
@@ -976,6 +982,7 @@ export default function DevTools() {
             billing_frequency: data.billing_frequency,
             monthly_corrections_limit: data.monthly_corrections_limit,
             monthly_monitorings_limit: data.monthly_monitorings_limit,
+            monthly_group_studies_limit: data.monthly_group_studies_limit,
             checkout_url: data.checkout_url
           })
           .eq("id", data.id);
@@ -992,6 +999,7 @@ export default function DevTools() {
             billing_frequency: data.billing_frequency,
             monthly_corrections_limit: data.monthly_corrections_limit,
             monthly_monitorings_limit: data.monthly_monitorings_limit,
+            monthly_group_studies_limit: data.monthly_group_studies_limit,
             checkout_url: data.checkout_url
           })
           .select()
@@ -1946,8 +1954,9 @@ export default function DevTools() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Valor</TableHead>
                     <TableHead>Cobrança</TableHead>
-                    <TableHead>Monitorias</TableHead>
-                    <TableHead>Correções/Semana</TableHead>
+                    <TableHead>Estudos/Mês</TableHead>
+                    <TableHead>Monitorias/Mês</TableHead>
+                    <TableHead>Tarefas/Mês</TableHead>
                     <TableHead>Grupos Padrão</TableHead>
                     <TableHead className="w-[100px]">Ações</TableHead>
                   </TableRow>
@@ -1986,12 +1995,17 @@ export default function DevTools() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {plan.monthly_monitorings_limit || 0} monitorias/mês
+                            {plan.monthly_group_studies_limit || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {plan.monthly_monitorings_limit || 0}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant="default">
-                            {plan.monthly_corrections_limit || 0} correções/mês
+                            {plan.monthly_corrections_limit || 0}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -2914,6 +2928,21 @@ export default function DevTools() {
             </div>
 
             <div>
+              <Label htmlFor="group-studies-limit">Estudos em Grupo por Mês *</Label>
+              <Input
+                id="group-studies-limit"
+                type="number"
+                min="0"
+                value={planDialog.data?.monthly_group_studies_limit || 0}
+                onChange={(e) => setPlanDialog(prev => ({ 
+                  ...prev, 
+                  data: { ...(prev.data || {} as SubscriptionPlan), monthly_group_studies_limit: parseInt(e.target.value) || 0 } 
+                }))}
+                placeholder="0 = ilimitado"
+              />
+            </div>
+
+            <div>
               <Label htmlFor="monitorings-limit">Monitorias por Mês *</Label>
               <Input
                 id="monitorings-limit"
@@ -2924,12 +2953,12 @@ export default function DevTools() {
                   ...prev, 
                   data: { ...(prev.data || {} as SubscriptionPlan), monthly_monitorings_limit: parseInt(e.target.value) || 0 } 
                 }))}
-                placeholder="0"
+                placeholder="0 = ilimitado"
               />
             </div>
 
             <div>
-              <Label htmlFor="corrections-limit">Correções por Mês *</Label>
+              <Label htmlFor="corrections-limit">Tarefas por Mês *</Label>
               <Input
                 id="corrections-limit"
                 type="number"
@@ -2939,7 +2968,7 @@ export default function DevTools() {
                   ...prev, 
                   data: { ...(prev.data || {} as SubscriptionPlan), monthly_corrections_limit: parseInt(e.target.value) || 0 } 
                 }))}
-                placeholder="0"
+                placeholder="0 = ilimitado"
               />
             </div>
 
