@@ -70,8 +70,8 @@ type SubscriptionPlan = {
   price: number;
   description?: string;
   billing_frequency?: string;
-  monitoring_frequency?: string;
-  weekly_corrections_limit?: number;
+  monthly_corrections_limit?: number;
+  monthly_monitorings_limit?: number;
   checkout_url?: string;
   default_groups?: string[];
 };
@@ -735,11 +735,11 @@ export default function DevTools() {
         price: 0, 
         description: "", 
         billing_frequency: "monthly",
-        monitoring_frequency: "none",
-        weekly_corrections_limit: 0,
+        monthly_corrections_limit: 0,
+        monthly_monitorings_limit: 0,
         checkout_url: "",
         default_groups: []
-      } 
+      }
     });
     setSelectedDefaultGroups([]);
   };
@@ -758,8 +758,12 @@ export default function DevTools() {
         toast.error("Valor não pode ser negativo");
         return;
       }
-      if ((data.weekly_corrections_limit ?? 0) < 0) {
+      if ((data.monthly_corrections_limit ?? 0) < 0) {
         toast.error("Limite de correções não pode ser negativo");
+        return;
+      }
+      if ((data.monthly_monitorings_limit ?? 0) < 0) {
+        toast.error("Limite de monitorias não pode ser negativo");
         return;
       }
 
@@ -774,8 +778,8 @@ export default function DevTools() {
             price: data.price,
             description: data.description,
             billing_frequency: data.billing_frequency,
-            monitoring_frequency: data.monitoring_frequency,
-            weekly_corrections_limit: data.weekly_corrections_limit,
+            monthly_corrections_limit: data.monthly_corrections_limit,
+            monthly_monitorings_limit: data.monthly_monitorings_limit,
             checkout_url: data.checkout_url
           })
           .eq("id", data.id);
@@ -790,8 +794,8 @@ export default function DevTools() {
             price: data.price,
             description: data.description,
             billing_frequency: data.billing_frequency,
-            monitoring_frequency: data.monitoring_frequency,
-            weekly_corrections_limit: data.weekly_corrections_limit,
+            monthly_corrections_limit: data.monthly_corrections_limit,
+            monthly_monitorings_limit: data.monthly_monitorings_limit,
             checkout_url: data.checkout_url
           })
           .select()
@@ -1759,16 +1763,12 @@ export default function DevTools() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {plan.monitoring_frequency === "weekly" && "Semanal"}
-                            {plan.monitoring_frequency === "biweekly" && "Quinzenal"}
-                            {plan.monitoring_frequency === "monthly" && "Mensal"}
-                            {plan.monitoring_frequency === "none" && "Sem monitorias"}
-                            {!plan.monitoring_frequency && "-"}
+                            {plan.monthly_monitorings_limit || 0} monitorias/mês
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant="default">
-                            {plan.weekly_corrections_limit || 0} correções
+                            {plan.monthly_corrections_limit || 0} correções/mês
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -2387,36 +2387,30 @@ export default function DevTools() {
             </div>
 
             <div>
-              <Label htmlFor="monitoring-frequency">Frequência de Monitorias</Label>
-              <Select
-                value={planDialog.data?.monitoring_frequency || "none"}
-                onValueChange={(value) => setPlanDialog(prev => ({ 
+              <Label htmlFor="monitorings-limit">Monitorias por Mês *</Label>
+              <Input
+                id="monitorings-limit"
+                type="number"
+                min="0"
+                value={planDialog.data?.monthly_monitorings_limit || 0}
+                onChange={(e) => setPlanDialog(prev => ({ 
                   ...prev, 
-                  data: { ...(prev.data || {} as SubscriptionPlan), monitoring_frequency: value } 
+                  data: { ...(prev.data || {} as SubscriptionPlan), monthly_monitorings_limit: parseInt(e.target.value) || 0 } 
                 }))}
-              >
-                <SelectTrigger id="monitoring-frequency">
-                  <SelectValue placeholder="Selecione a frequência" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem monitorias</SelectItem>
-                  <SelectItem value="weekly">Semanal</SelectItem>
-                  <SelectItem value="biweekly">Quinzenal</SelectItem>
-                  <SelectItem value="monthly">Mensal</SelectItem>
-                </SelectContent>
-              </Select>
+                placeholder="0"
+              />
             </div>
 
             <div>
-              <Label htmlFor="corrections-limit">Limite de Correções por Semana *</Label>
+              <Label htmlFor="corrections-limit">Correções por Mês *</Label>
               <Input
                 id="corrections-limit"
                 type="number"
                 min="0"
-                value={planDialog.data?.weekly_corrections_limit || 0}
+                value={planDialog.data?.monthly_corrections_limit || 0}
                 onChange={(e) => setPlanDialog(prev => ({ 
                   ...prev, 
-                  data: { ...(prev.data || {} as SubscriptionPlan), weekly_corrections_limit: parseInt(e.target.value) || 0 } 
+                  data: { ...(prev.data || {} as SubscriptionPlan), monthly_corrections_limit: parseInt(e.target.value) || 0 } 
                 }))}
                 placeholder="0"
               />
