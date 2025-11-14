@@ -35,11 +35,15 @@ const AppContent = () => {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserId(session?.user?.id || null);
+      const uid = session?.user?.id || null;
+      console.log("App.tsx - Setting userId:", uid);
+      setUserId(uid);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUserId(session?.user?.id || null);
+      const uid = session?.user?.id || null;
+      console.log("App.tsx - Auth state changed, userId:", uid);
+      setUserId(uid);
     });
 
     return () => subscription.unsubscribe();

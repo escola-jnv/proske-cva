@@ -24,20 +24,32 @@ export function InterviewReminderDialog({ userId }: InterviewReminderDialogProps
   const [showSchedule, setShowSchedule] = useState(false);
 
   useEffect(() => {
+    console.log("InterviewReminderDialog - Effect triggered", {
+      pathname: location.pathname,
+      loading,
+      isVisitor,
+      hasScheduledInterview,
+      userId
+    });
+
     // Show reminder when route changes if visitor hasn't scheduled interview
     if (!loading && isVisitor && !hasScheduledInterview) {
+      console.log("InterviewReminderDialog - Showing reminder");
       setShowReminder(true);
     } else {
+      console.log("InterviewReminderDialog - Hiding reminder");
       setShowReminder(false);
     }
-  }, [location.pathname, loading, isVisitor, hasScheduledInterview]);
+  }, [location.pathname, loading, isVisitor, hasScheduledInterview, userId]);
 
   const handleScheduleClick = () => {
+    console.log("InterviewReminderDialog - Schedule clicked");
     setShowReminder(false);
     setShowSchedule(true);
   };
 
   const handleScheduled = () => {
+    console.log("InterviewReminderDialog - Interview scheduled");
     setShowSchedule(false);
     // Refresh interview status to hide the popup
     refresh();
