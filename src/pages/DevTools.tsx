@@ -48,6 +48,7 @@ import { CreateEventDialog } from "@/components/CreateEventDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ManageCourseAccessDialog } from "@/components/ManageCourseAccessDialog";
 import { DevToolsCoursesTab } from "./DevToolsCoursesTab";
+import DevToolsMenuTab from "./DevToolsMenuTab";
 
 type Profile = {
   id: string;
@@ -1429,6 +1430,7 @@ export default function DevTools() {
           <TabsTrigger value="events">Eventos</TabsTrigger>
           <TabsTrigger value="courses">Cursos</TabsTrigger>
           <TabsTrigger value="plans">Planos</TabsTrigger>
+          <TabsTrigger value="menu">Menu</TabsTrigger>
           <TabsTrigger value="import">Importação CSV</TabsTrigger>
         </TabsList>
 
@@ -1998,6 +2000,10 @@ export default function DevTools() {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="menu" className="space-y-4">
+          <DevToolsMenuTab />
         </TabsContent>
 
         <TabsContent value="import" className="space-y-4">
