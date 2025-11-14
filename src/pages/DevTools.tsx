@@ -840,6 +840,13 @@ export default function DevTools() {
     if (!userId) return;
 
     try {
+      // Get plan details to copy limits
+      const { data: planData } = await supabase
+        .from("subscription_plans")
+        .select("monthly_corrections_limit, monthly_monitorings_limit")
+        .eq("id", planId)
+        .single();
+
       // Cancel current subscription
       if (subscriptionDialog.currentSubscription) {
         await supabase
@@ -856,10 +863,22 @@ export default function DevTools() {
         status: "active",
       });
 
+      // Update user limits based on plan
+      if (planData) {
+        await supabase
+          .from("profiles")
+          .update({
+            monthly_group_studies_limit: 0, // Planos não têm limite de estudos em grupo por enquanto
+            monthly_tasks_limit: planData.monthly_corrections_limit || 0,
+            monthly_monitorings_limit: planData.monthly_monitorings_limit || 0,
+          })
+          .eq("id", userId);
+      }
+
       // Add user to default groups
       await addUserToDefaultGroups(userId, planId);
 
-      toast.success("Assinatura atualizada com sucesso!");
+      toast.success("Assinatura e limites atualizados com sucesso!");
       setSubscriptionDialog({ open: false, userId: null, userName: null, currentSubscription: null });
       await fetchAllData();
     } catch (error: any) {
@@ -1436,6 +1455,7 @@ export default function DevTools() {
           <TabsTrigger value="events">Eventos</TabsTrigger>
           <TabsTrigger value="courses">Cursos</TabsTrigger>
           <TabsTrigger value="plans">Planos</TabsTrigger>
+          <TabsTrigger value="limits">Limites</TabsTrigger>
           <TabsTrigger value="menu">Menu</TabsTrigger>
           <TabsTrigger value="import">Importação CSV</TabsTrigger>
         </TabsList>
@@ -1998,6 +2018,103 @@ export default function DevTools() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="limits" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Limites de Usuários</CardTitle>
+                  <CardDescription>Configure limites individuais de cada aluno</CardDescription>
+                </div>
+                <div className="relative w-64">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar usuários..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Plano Atual</TableHead>
+                    <TableHead className="text-center">Estudos em Grupo/Mês</TableHead>
+                    <TableHead className="text-center">Tarefas/Mês</TableHead>
+                    <TableHead className="text-center">Monitorias/Mês</TableHead>
+                    <TableHead className="text-center">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredProfiles.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center">
+                        Nenhum usuário encontrado
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredProfiles.map((profile) => (
+                      <TableRow key={profile.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={profile.avatar_url || ""} />
+                              <AvatarFallback>
+                                {profile.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            {profile.name}
+                          </div>
+                        </TableCell>
+                        <TableCell>{profile.email || "-"}</TableCell>
+                        <TableCell>
+                          {profile.subscription ? (
+                            <Badge variant="default">
+                              {profile.subscription.plan_name}
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">Sem plano</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline">
+                            {(profile as any).monthly_group_studies_limit || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline">
+                            {(profile as any).monthly_tasks_limit || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline">
+                            {(profile as any).monthly_monitorings_limit || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit("profile", profile)}
+                            title="Editar limites"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
