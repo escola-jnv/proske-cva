@@ -794,6 +794,9 @@ export type Database = {
           monitoring_day_of_week: number | null
           monitoring_frequency: string | null
           monitoring_time: string | null
+          monthly_group_studies_limit: number | null
+          monthly_monitorings_limit: number | null
+          monthly_tasks_limit: number | null
           name: string
           phone: string | null
           study_days: number[] | null
@@ -813,6 +816,9 @@ export type Database = {
           monitoring_day_of_week?: number | null
           monitoring_frequency?: string | null
           monitoring_time?: string | null
+          monthly_group_studies_limit?: number | null
+          monthly_monitorings_limit?: number | null
+          monthly_tasks_limit?: number | null
           name: string
           phone?: string | null
           study_days?: number[] | null
@@ -832,6 +838,9 @@ export type Database = {
           monitoring_day_of_week?: number | null
           monitoring_frequency?: string | null
           monitoring_time?: string | null
+          monthly_group_studies_limit?: number | null
+          monthly_monitorings_limit?: number | null
+          monthly_tasks_limit?: number | null
           name?: string
           phone?: string | null
           study_days?: number[] | null
