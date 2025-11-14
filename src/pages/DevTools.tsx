@@ -453,7 +453,8 @@ export default function DevTools() {
         open: true, 
         type, 
         data: { 
-          ...data,
+          id: data.id,
+          role: data.role,
           ...profileData,
           planId: subscription?.plan_id || "",
           customPrice: subscription?.custom_price || subscription?.subscription_plans?.price || 0,
