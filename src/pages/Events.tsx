@@ -4,9 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EventCard } from "@/components/EventCard";
-import { CreateIndividualStudyDialog } from "@/components/CreateIndividualStudyDialog";
 import { CreateEventMenu } from "@/components/CreateEventMenu";
-import { ArrowLeft, Calendar as CalendarIcon, Plus } from "lucide-react";
+import { ArrowLeft, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import { isFuture } from "date-fns";
@@ -32,7 +31,6 @@ const Events = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<string[]>([]);
-  const [createStudyDialogOpen, setCreateStudyDialogOpen] = useState(false);
   const [defaultCommunityId, setDefaultCommunityId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,53 +62,41 @@ const Events = () => {
   const fetchEvents = async (userId: string) => {
     try {
       // Fetch user roles
-      const rolesQuery = supabase.from("user_roles").select("role").eq("user_id", userId);
-      const rolesResult: any = await rolesQuery;
-      setUserRoles(rolesResult.data?.map((r: any) => r.role) || []);
+      const rolesResponse: any = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+      
+      setUserRoles(rolesResponse.data?.map((r: any) => r.role) || []);
 
-      // Fetch regular events where user is a participant  
-      const participantEventsQuery = supabase.from("events");
-      const participantResult: any = await participantEventsQuery.select(`
-        id,
-        title,
-        description,
-        event_date,
-        duration_minutes,
-        event_type,
-        social_media_link,
-        created_by,
-        community_id,
-        study_status,
-        event_participants!inner(status),
-        event_groups(conversation_groups(name))
-      `).eq("event_participants.user_id", userId).neq("event_type", "individual_study");
+      // Fetch regular events
+      const participantQuery: any = supabase.from("events");
+      const participantResponse: any = await participantQuery
+        .select("*, event_participants!inner(status), event_groups(conversation_groups(name))")
+        .eq("event_participants.user_id", userId)
+        .neq("event_type", "individual_study");
 
-      if (participantResult.error) throw participantResult.error;
+      if (participantResponse.error) throw participantResponse.error;
 
-      // Fetch individual studies created by user
-      const studiesEventsQuery = supabase.from("events");
-      const studiesResult: any = await studiesEventsQuery.select(`
-        id,
-        title,
-        description,
-        event_date,
-        duration_minutes,
-        event_type,
-        social_media_link,
-        created_by,
-        community_id,
-        study_status
-      `).eq("event_type", "individual_study").eq("created_by", userId);
+      // Fetch individual studies
+      const studiesQuery: any = supabase.from("events");
+      const studiesResponse: any = await studiesQuery
+        .select("*")
+        .eq("event_type", "individual_study")
+        .eq("created_by", userId);
 
-      if (studiesResult.error) throw studiesResult.error;
+      if (studiesResponse.error) throw studiesResponse.error;
 
-      // Combine and sort
-      const participantEvents = participantResult.data || [];
-      const individualStudies = studiesResult.data || [];
-      const allEvents: any[] = [...participantEvents, ...individualStudies];
-      const sortedEvents = allEvents.sort((a, b) => 
+      // Combine
+      const pEvents: any[] = participantResponse.data || [];
+      const sEvents: any[] = studiesResponse.data || [];
+      const combined = [...pEvents, ...sEvents];
+      
+      combined.sort((a, b) => 
         new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
       );
+
+      const sortedEvents = combined;
 
       // Transform data
       const transformedEvents = sortedEvents.map((event: any) => ({
@@ -176,23 +162,14 @@ const Events = () => {
               Visualize e gerencie seus eventos
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setCreateStudyDialogOpen(true)}
-              disabled={!defaultCommunityId}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Estudo Individual
-            </Button>
-            {!userRoles.includes('visitor') && defaultCommunityId && (
-              <CreateEventMenu
-                communityId={defaultCommunityId}
-                userId={user?.id || ""}
-                isAdmin={userRoles.includes('admin')}
-                onSuccess={() => fetchEvents(user?.id || "")}
-              />
-            )}
-          </div>
+          {!userRoles.includes('visitor') && defaultCommunityId && (
+            <CreateEventMenu
+              communityId={defaultCommunityId}
+              userId={user?.id || ""}
+              isAdmin={userRoles.includes('admin')}
+              onSuccess={() => fetchEvents(user?.id || "")}
+            />
+          )}
         </nav>
       </header>
 
@@ -254,16 +231,6 @@ const Events = () => {
           </Tabs>
         </div>
       </main>
-
-      {defaultCommunityId && (
-        <CreateIndividualStudyDialog
-          open={createStudyDialogOpen}
-          onOpenChange={setCreateStudyDialogOpen}
-          userId={user?.id || ""}
-          communityId={defaultCommunityId}
-          onSuccess={() => fetchEvents(user?.id || "")}
-        />
-      )}
     </div>
   );
 };

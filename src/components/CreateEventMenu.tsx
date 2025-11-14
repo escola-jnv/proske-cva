@@ -4,10 +4,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Calendar, Users, Video, BookOpen } from "lucide-react";
+import { Plus, Calendar, Users, Video, BookOpen, BookMarked } from "lucide-react";
 import { CreateEventDialog } from "./CreateEventDialog";
+import { CreateIndividualStudyDialog } from "./CreateIndividualStudyDialog";
 
 type CreateEventMenuProps = {
   communityId: string;
@@ -22,7 +24,8 @@ export const CreateEventMenu = ({
   isAdmin = false,
   onSuccess,
 }: CreateEventMenuProps) => {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [studyDialogOpen, setStudyDialogOpen] = useState(false);
   const [selectedEventType, setSelectedEventType] = useState<
     "interview" | "mentoring" | "group_study" | "live"
   >("group_study");
@@ -31,7 +34,11 @@ export const CreateEventMenu = ({
     type: "interview" | "mentoring" | "group_study" | "live"
   ) => {
     setSelectedEventType(type);
-    setDialogOpen(true);
+    setEventDialogOpen(true);
+  };
+
+  const handleIndividualStudy = () => {
+    setStudyDialogOpen(true);
   };
 
   return (
@@ -44,6 +51,11 @@ export const CreateEventMenu = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem onClick={handleIndividualStudy}>
+            <BookMarked className="h-4 w-4 mr-2" />
+            Estudo Individual
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => handleEventTypeSelect("group_study")}>
             <Users className="h-4 w-4 mr-2" />
             Estudo em Grupo
@@ -64,12 +76,20 @@ export const CreateEventMenu = ({
       </DropdownMenu>
 
       <CreateEventDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={eventDialogOpen}
+        onOpenChange={setEventDialogOpen}
         communityId={communityId}
         userId={userId}
         isAdmin={isAdmin}
         initialEventType={selectedEventType}
+        onSuccess={onSuccess}
+      />
+
+      <CreateIndividualStudyDialog
+        open={studyDialogOpen}
+        onOpenChange={setStudyDialogOpen}
+        userId={userId}
+        communityId={communityId}
         onSuccess={onSuccess}
       />
     </>
