@@ -934,6 +934,7 @@ export type Database = {
           id: string
           monitoring_frequency: string | null
           monthly_corrections_limit: number | null
+          monthly_group_studies_limit: number | null
           monthly_monitorings_limit: number | null
           name: string
           price: number
@@ -948,6 +949,7 @@ export type Database = {
           id?: string
           monitoring_frequency?: string | null
           monthly_corrections_limit?: number | null
+          monthly_group_studies_limit?: number | null
           monthly_monitorings_limit?: number | null
           name: string
           price: number
@@ -962,6 +964,7 @@ export type Database = {
           id?: string
           monitoring_frequency?: string | null
           monthly_corrections_limit?: number | null
+          monthly_group_studies_limit?: number | null
           monthly_monitorings_limit?: number | null
           name?: string
           price?: number
