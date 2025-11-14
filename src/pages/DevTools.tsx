@@ -487,10 +487,31 @@ export default function DevTools() {
     const { type, data } = editDialog;
     if (!type || !data) return;
 
+    console.log("=== handleSave called ===");
+    console.log("Type:", type);
+    console.log("Data:", data);
+
     try {
       if (type === "profile") {
         // Update profile
         const { role, planId, customPrice, dueDay, monitoringDayOfWeek, monitoringTime, weeklySubmissionsLimit, monitoringFrequency, studyGoals, studyDays, studySchedule, ...profileData } = data;
+        
+        console.log("Profile data to update:", {
+          name: profileData.name,
+          email: profileData.email,
+          phone: profileData.phone,
+          city: profileData.city,
+          bio: profileData.bio,
+          avatar_url: profileData.avatar_url,
+          monitoring_day_of_week: monitoringDayOfWeek,
+          monitoring_time: monitoringTime,
+          monitoring_frequency: monitoringFrequency,
+          weekly_submissions_limit: weeklySubmissionsLimit,
+          study_goals: studyGoals,
+          study_days: studyDays,
+          study_schedule: studySchedule
+        });
+        
         const { error: profileError } = await supabase
           .from("profiles")
           .update({
@@ -510,6 +531,8 @@ export default function DevTools() {
           })
           .eq("id", data.id);
 
+        console.log("Profile update result:", profileError);
+        
         if (profileError) throw profileError;
 
         // Update role
