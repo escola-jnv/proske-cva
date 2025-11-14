@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
@@ -10,32 +10,15 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   SidebarHeader,
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { 
-  MessageCircle,
-  BookOpen,
-  Settings,
-  Calendar,
-  CreditCard,
-  Users,
-  MessageSquare,
-  CalendarDays,
-  Upload,
-  LogOut,
-  FileText,
-  DollarSign
-} from "lucide-react";
+import { LogOut, FileText, DollarSign, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
+import { SidebarUserHeader } from "@/components/sidebar/SidebarUserHeader";
+import { SidebarCommunitySection } from "@/components/sidebar/SidebarCommunitySection";
 
 type Community = {
   id: string;
@@ -63,7 +46,6 @@ type Course = {
 export function AppSidebar() {
   const { state } = useSidebar();
   const navigate = useNavigate();
-  const location = useLocation();
   const [communities, setCommunities] = useState<Community[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -74,7 +56,6 @@ export function AppSidebar() {
     name: string;
     avatar_url: string | null;
   } | null>(null);
-  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('student');
   const [userPlan, setUserPlan] = useState<string | null>(null);
@@ -109,7 +90,7 @@ export function AppSidebar() {
         setUserProfile(profileData);
       }
 
-      // Check if user is teacher or admin
+      // Check user roles
       const { data: userRoles } = await supabase
         .from("user_roles")
         .select("role")
@@ -303,9 +284,6 @@ export function AppSidebar() {
         // Sort by custom order
         groupsWithUnread.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
-        const totalUnread = groupsWithUnread.reduce((sum, g) => sum + (g.unread_count || 0), 0);
-        setTotalUnreadCount(totalUnread);
-
         const communitiesMap = new Map<string, Community>();
         groupsData.forEach((g: any) => {
           if (g.communities) {
@@ -331,12 +309,18 @@ export function AppSidebar() {
     }
   };
 
-  const isActiveGroup = (groupId: string) => {
-    return location.pathname.includes(`/groups/${groupId}`);
-  };
-
-  const isActiveCourse = (courseId: string) => {
-    return location.pathname.includes(`/courses/${courseId}`);
+  const handleGroupClick = (group: Group) => {
+    const hasAccess = group.has_access !== false;
+    
+    if (!hasAccess) {
+      setUpgradePlanDialog({
+        open: true,
+        planName: group.required_plan_name || "Plano Premium",
+        groupName: group.name
+      });
+    } else {
+      navigate(`/groups/${group.id}/chat`);
+    }
   };
 
   const handleLogout = async () => {
@@ -365,88 +349,37 @@ export function AppSidebar() {
     <Sidebar className={isCollapsed ? "w-14" : "w-64"}>
       {/* User Profile Header */}
       <SidebarHeader>
-        <div className="flex flex-col gap-2 p-3 cursor-pointer hover:bg-muted/50 rounded-md transition-colors" onClick={() => navigate("/profile")}>
-          {isCollapsed ? (
-            <Avatar className="h-8 w-8 mx-auto">
-              <AvatarImage src={userProfile?.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/10">
-                {userProfile?.name?.charAt(0).toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <>
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={userProfile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary/10">
-                    {userProfile?.name?.charAt(0).toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">
-                    {userProfile?.name || "Usuário"}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2 flex-wrap ml-1">
-                {/* Role Badge */}
-                <Badge 
-                  variant={
-                    userRole === 'admin' ? 'default' : 
-                    userRole === 'teacher' ? 'secondary' : 
-                    userRole === 'visitor' ? 'outline' : 
-                    'outline'
-                  }
-                  className={
-                    userRole === 'admin' ? 'bg-destructive text-destructive-foreground' :
-                    userRole === 'teacher' ? 'bg-primary text-primary-foreground' :
-                    userRole === 'visitor' ? 'border-muted-foreground/50' :
-                    'border-muted-foreground/30'
-                  }
-                >
-                   {userRole === 'admin' ? '👑 Admin' :
-                   userRole === 'teacher' ? '📚 Professor' :
-                   userRole === 'visitor' ? '👤 Visitante' :
-                   '🎓 Aluno'}
-                </Badge>
-
-                {/* Plan Badge */}
-                {userPlan && (
-                  <Badge 
-                    variant="secondary"
-                    className="bg-accent text-accent-foreground"
-                  >
-                    💎 {userPlan}
-                  </Badge>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+        <SidebarUserHeader
+          userProfile={userProfile}
+          userRole={userRole}
+          userPlan={userPlan}
+          isCollapsed={isCollapsed}
+          onClick={() => navigate("/profile")}
+        />
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Assinatura - Destaque no topo */}
-        <SidebarGroup className="border-b border-border pb-4 mb-4">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => navigate("/plans")}
-                isActive={location.pathname === "/plans"}
-                className="bg-primary/10 hover:bg-primary/20 text-primary font-medium"
-              >
-                <CreditCard className="h-4 w-4" />
-                {!isCollapsed && <span>Assinatura</span>}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+        {/* Assinatura */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Menu</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => navigate("/plans")}
+                  className="bg-primary/10 hover:bg-primary/20 font-semibold"
+                >
+                  <span className="text-primary">💎</span>
+                  {!isCollapsed && <span>Assinatura</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Communities and Groups */}
+        {/* Comunidades */}
         <SidebarGroup>
-          <SidebarGroupLabel>
-            {!isCollapsed && "Comunidades"}
-          </SidebarGroupLabel>
+          <SidebarGroupLabel>Comunidades</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {communities.map((community) => {
@@ -458,91 +391,14 @@ export function AppSidebar() {
                 );
 
                 return (
-                  <div key={community.id}>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton 
-                        className="w-full cursor-pointer"
-                        onClick={() => navigate(`/communities/${community.id}/manage`)}
-                        isActive={location.pathname.includes(`/communities/${community.id}/manage`)}
-                      >
-                        <div className="flex items-center gap-2 flex-1">
-                          <BookOpen className="h-4 w-4 flex-shrink-0" />
-                          {!isCollapsed && (
-                            <span className="flex-1 truncate text-left font-semibold">
-                              {community.name}
-                            </span>
-                          )}
-                        </div>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    
-                    {/* Grupos e Cursos - Todos na mesma hierarquia */}
-                    {!isCollapsed && (
-                      <>
-                        {/* Agenda */}
-                        <SidebarMenuItem>
-                          <SidebarMenuButton
-                            onClick={() => navigate("/events")}
-                            isActive={location.pathname === "/events"}
-                          >
-                            <Calendar className="h-3 w-3" />
-                            <span>Agenda</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-
-                        {/* Courses */}
-                        {communityCourses.map((course) => (
-                          <SidebarMenuSubItem key={course.id}>
-                            <SidebarMenuSubButton
-                              onClick={() => navigate(`/courses/${course.id}`)}
-                              isActive={isActiveCourse(course.id)}
-                            >
-                              <BookOpen className="h-3 w-3" />
-                              <span className="truncate">{course.name}</span>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                        
-                        {/* Groups */}
-                        {communityGroups.map((group) => {
-                          const hasAccess = group.has_access !== false;
-                          
-                          const handleGroupClick = () => {
-                            if (!hasAccess) {
-                              setUpgradePlanDialog({
-                                open: true,
-                                planName: group.required_plan_name || "Plano Premium",
-                                groupName: group.name
-                              });
-                            } else {
-                              navigate(`/groups/${group.id}/chat`);
-                            }
-                          };
-                          
-                          return (
-                            <SidebarMenuSubItem key={group.id}>
-                              <SidebarMenuSubButton
-                                onClick={handleGroupClick}
-                                isActive={isActiveGroup(group.id) && hasAccess}
-                                className={!hasAccess ? "opacity-40 hover:opacity-60 transition-opacity" : ""}
-                              >
-                                <MessageCircle className="h-3 w-3" />
-                                <span className="truncate flex-1">{group.name}</span>
-                                 {hasAccess && group.unread_count && group.unread_count > 0 && (
-                                  <Badge 
-                                    variant="destructive" 
-                                    className="ml-auto h-5 min-w-[20px] flex items-center justify-center text-xs px-1.5"
-                                  >
-                                    {group.unread_count > 99 ? "99+" : group.unread_count}
-                                  </Badge>
-                                )}
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          );
-                        })}
-                      </>
-                    )}
-                  </div>
+                  <SidebarCommunitySection
+                    key={community.id}
+                    community={community}
+                    groups={communityGroups}
+                    courses={communityCourses}
+                    isCollapsed={isCollapsed}
+                    onGroupClick={handleGroupClick}
+                  />
                 );
               })}
             </SidebarMenu>
@@ -555,7 +411,6 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => navigate("/tasks")}
-                isActive={location.pathname === "/tasks"}
               >
                 <FileText className="h-4 w-4" />
                 {!isCollapsed && <span>Tarefas</span>}
@@ -564,89 +419,33 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* Admin Tools */}
+        {/* Admin Tools - Apenas para Admins */}
         {isAdmin && (
           <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => navigate("/financial")}
-                  isActive={location.pathname === "/financial"}
                 >
                   <DollarSign className="h-4 w-4" />
                   {!isCollapsed && <span>Financeiro</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => navigate("/dev-tools")}
-                  isActive={location.pathname === "/dev-tools"}
                 >
                   <Settings className="h-4 w-4" />
-                  {!isCollapsed && <span>Dev Tools</span>}
+                  {!isCollapsed && <span>DevTools</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              
-              {!isCollapsed && (
-                <SidebarMenuSub>
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      onClick={() => navigate("/dev-tools?tab=users")}
-                      isActive={location.pathname === "/dev-tools" && location.search.includes("tab=users")}
-                    >
-                      <Users className="h-3 w-3" />
-                      <span>Usuários</span>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                  
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      onClick={() => navigate("/dev-tools?tab=communities")}
-                      isActive={location.pathname === "/dev-tools" && location.search.includes("tab=communities")}
-                    >
-                      <BookOpen className="h-3 w-3" />
-                      <span>Comunidades</span>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                  
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      onClick={() => navigate("/dev-tools?tab=groups")}
-                      isActive={location.pathname === "/dev-tools" && location.search.includes("tab=groups")}
-                    >
-                      <MessageSquare className="h-3 w-3" />
-                      <span>Grupos</span>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                  
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      onClick={() => navigate("/dev-tools?tab=events")}
-                      isActive={location.pathname === "/dev-tools" && location.search.includes("tab=events")}
-                    >
-                      <CalendarDays className="h-3 w-3" />
-                      <span>Eventos</span>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                  
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      onClick={() => navigate("/dev-tools?tab=import")}
-                      isActive={location.pathname === "/dev-tools" && location.search.includes("tab=import")}
-                    >
-                      <Upload className="h-3 w-3" />
-                      <span>Importação</span>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                </SidebarMenuSub>
-              )}
             </SidebarMenu>
           </SidebarGroup>
         )}
       </SidebarContent>
 
-      {/* Logout Footer */}
+      {/* Footer com Logout */}
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
