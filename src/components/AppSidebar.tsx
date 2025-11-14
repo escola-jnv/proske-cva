@@ -168,7 +168,7 @@ export function AppSidebar() {
           .order("created_at", { ascending: false });
         setCourses(coursesData || []);
       } else {
-        // Students see only their groups
+        // Students see only their groups and courses with access
         const { data: membershipData } = await supabase
           .from("group_members")
           .select("group_id")
@@ -198,20 +198,29 @@ export function AppSidebar() {
           .in("id", groupIds);
         groupsData = data;
 
-        // Students see all courses in their communities
-        const communityIds = data?.map((g: any) => {
-          const comm = Array.isArray(g.communities) ? g.communities[0] : g.communities;
-          return comm?.id;
-        }).filter(Boolean) || [];
+        // Fetch courses the user has active access to
+        const { data: courseAccessData } = await supabase
+          .from("user_course_access")
+          .select(`
+            course_id,
+            end_date,
+            courses (
+              id,
+              name,
+              community_id
+            )
+          `)
+          .eq("user_id", user.id)
+          .gt("end_date", new Date().toISOString());
 
-        if (communityIds.length > 0) {
-          const { data: coursesData } = await supabase
-            .from("courses")
-            .select("id, name, community_id")
-            .in("community_id", communityIds)
-            .order("created_at", { ascending: false });
-          setCourses(coursesData || []);
-        }
+        const accessibleCourses = courseAccessData
+          ?.map((access: any) => ({
+            ...access.courses,
+            access_end_date: access.end_date,
+          }))
+          .filter((course) => course.id) || [];
+
+        setCourses(accessibleCourses);
       }
 
       if (groupsData) {
