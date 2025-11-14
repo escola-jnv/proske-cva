@@ -116,23 +116,37 @@ export function AppSidebar() {
       }
 
       // Fetch user's active subscription plan
-      const { data: subscriptionData } = await supabase
-        .from('user_subscriptions')
-        .select(`
-          plan_id,
-          subscription_plans (
-            id,
-            name
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .single();
+      try {
+        const { data: subscriptionData, error: subError } = await supabase
+          .from('user_subscriptions')
+          .select(`
+            plan_id,
+            subscription_plans (
+              id,
+              name
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .single();
 
-      if (subscriptionData?.subscription_plans) {
-        const planData: any = subscriptionData.subscription_plans;
-        setUserPlan(planData.name);
-        setUserPlanId(subscriptionData.plan_id);
+        if (subError) {
+          console.error('❌ Error fetching subscription:', subError);
+        }
+
+        if (subscriptionData?.subscription_plans) {
+          const planData: any = subscriptionData.subscription_plans;
+          setUserPlan(planData.name);
+          setUserPlanId(subscriptionData.plan_id);
+          console.log('✅ User Plan loaded:', {
+            planName: planData.name,
+            planId: subscriptionData.plan_id
+          });
+        } else {
+          console.warn('⚠️ No active subscription found for user');
+        }
+      } catch (error) {
+        console.error('❌ Exception fetching subscription:', error);
       }
 
       let groupsData;
@@ -211,7 +225,18 @@ export function AppSidebar() {
         groupsData = allGroupsData?.map((g: any) => {
           const planReq = planLinkMap.get(g.id);
           // User has access if: no plan required OR user has ANY of the required plans
-          const hasAccess = !planReq || planReq.plan_ids.length === 0 || planReq.plan_ids.includes(userPlanId);
+          // CRITICAL: Check userPlanId is not null before using includes()
+          const hasAccess = !planReq || 
+                           planReq.plan_ids.length === 0 || 
+                           (userPlanId !== null && planReq.plan_ids.includes(userPlanId));
+          
+          console.log(`🔍 Group "${g.name}" access check:`, {
+            groupId: g.id,
+            userPlanId,
+            requiredPlanIds: planReq?.plan_ids || [],
+            requiredPlanNames: planReq?.plan_names || [],
+            hasAccess
+          });
           
           return {
             ...g,
