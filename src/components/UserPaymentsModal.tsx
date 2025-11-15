@@ -413,7 +413,7 @@ export function UserPaymentsModal({
               <div>
                 <Label htmlFor="payment_method">Método de Pagamento</Label>
                 <Select
-                  value={formData.payment_method || ""}
+                  value={formData.payment_method}
                   onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
                 >
                   <SelectTrigger>
@@ -558,7 +558,7 @@ export function UserPaymentsModal({
               <div>
                 <Label htmlFor="edit_payment_method">Método de Pagamento</Label>
                 <Select
-                  value={formData.payment_method || ""}
+                  value={formData.payment_method}
                   onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
                 >
                   <SelectTrigger>
@@ -588,7 +588,7 @@ export function UserPaymentsModal({
             <div>
               <Label htmlFor="edit_status">Status</Label>
               <Select
-                value={formData.status || ""}
+                value={formData.status || "pending"}
                 onValueChange={(value) => setFormData({ ...formData, status: value })}
               >
                 <SelectTrigger>
