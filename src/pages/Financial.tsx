@@ -287,12 +287,16 @@ export default function Financial() {
       if (!plan) throw new Error("Plano não encontrado");
 
       // Get user's subscription to determine due day
-      const { data: subscription } = await supabase
+      const { data: subscription, error: subError } = await supabase
         .from("user_subscriptions")
         .select("due_day")
         .eq("user_id", userId)
         .eq("plan_id", planId)
-        .single();
+        .maybeSingle();
+
+      if (subError) {
+        console.error("Error fetching subscription:", subError);
+      }
 
       const dueDay = subscription?.due_day || 10; // Default to day 10 if not set
 

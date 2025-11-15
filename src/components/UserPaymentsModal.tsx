@@ -96,6 +96,7 @@ export function UserPaymentsModal({
 
   const [createDialog, setCreateDialog] = useState(false);
   const [formData, setFormData] = useState<any>({});
+  const [isGenerating, setIsGenerating] = useState(false);
 
   if (!user) return null;
 
@@ -105,11 +106,14 @@ export function UserPaymentsModal({
       return;
     }
 
+    setIsGenerating(true);
     try {
       await onGenerate12Months(user.id, userActivePlan.id);
       toast.success("12 meses de cobranças criadas com sucesso!");
     } catch (error) {
       toast.error("Erro ao criar cobranças");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -161,7 +165,7 @@ export function UserPaymentsModal({
       paid_at: payment.paid_at ? payment.paid_at.split("T")[0] : "",
       status: payment.status,
       description: payment.description,
-      plan_id: payment.plan_id || "",
+      plan_id: payment.plan_id || undefined,
       payment_method: payment.payment_method,
       fees: payment.fees,
     });
@@ -214,11 +218,14 @@ export function UserPaymentsModal({
           <div className="space-y-6">
             {/* Action Buttons */}
             <div className="flex gap-2">
-              <Button onClick={handleGenerate12Months} disabled={!userActivePlan}>
+              <Button onClick={handleGenerate12Months} disabled={!userActivePlan || isGenerating}>
                 <Calendar className="mr-2 h-4 w-4" />
-                Criar 12 Meses
+                {isGenerating ? "Gerando..." : "Criar 12 Meses"}
               </Button>
-              <Button onClick={() => setCreateDialog(true)}>
+              <Button onClick={() => {
+                setFormData({});
+                setCreateDialog(true);
+              }}>
                 <Plus className="mr-2 h-4 w-4" />
                 Criar Cobrança
               </Button>
@@ -364,14 +371,14 @@ export function UserPaymentsModal({
             <div>
               <Label htmlFor="plan_id">Plano</Label>
               <Select
-                value={formData.plan_id || ""}
-                onValueChange={(value) => setFormData({ ...formData, plan_id: value })}
+                value={formData.plan_id}
+                onValueChange={(value) => setFormData({ ...formData, plan_id: value === "none" ? undefined : value })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione o plano" />
+                  <SelectValue placeholder="Selecione o plano (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {plans.map((plan) => (
                     <SelectItem key={plan.id} value={plan.id}>
                       {plan.name} - {formatCurrency(plan.price)}
@@ -509,14 +516,14 @@ export function UserPaymentsModal({
             <div>
               <Label htmlFor="edit_plan_id">Plano</Label>
               <Select
-                value={formData.plan_id || ""}
-                onValueChange={(value) => setFormData({ ...formData, plan_id: value })}
+                value={formData.plan_id}
+                onValueChange={(value) => setFormData({ ...formData, plan_id: value === "none" ? undefined : value })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione o plano" />
+                  <SelectValue placeholder="Selecione o plano (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {plans.map((plan) => (
                     <SelectItem key={plan.id} value={plan.id}>
                       {plan.name} - {formatCurrency(plan.price)}
