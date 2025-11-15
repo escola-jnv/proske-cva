@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
@@ -14,11 +14,11 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { LogOut, FileText, DollarSign, Settings } from "lucide-react";
+import { LogOut, FileText, DollarSign, Settings, MessageSquare, Calendar, GraduationCap, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
 import { SidebarUserHeader } from "@/components/sidebar/SidebarUserHeader";
-import { SidebarCommunitySection } from "@/components/sidebar/SidebarCommunitySection";
+import { Badge } from "@/components/ui/badge";
 
 type Community = {
   id: string;
@@ -41,11 +41,14 @@ type Course = {
   id: string;
   name: string;
   community_id: string;
+  has_access?: boolean;
+  required_plan_names?: string[];
 };
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const navigate = useNavigate();
+  const location = useLocation();
   const [communities, setCommunities] = useState<Community[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -246,29 +249,31 @@ export function AppSidebar() {
           };
         });
 
-        // Fetch courses the user has active access to
+        // Fetch all courses with plan requirements
+        const { data: allCoursesData } = await supabase
+          .from("courses")
+          .select("id, name, community_id, is_visible")
+          .eq("is_visible", true)
+          .order("name");
+
+        // Fetch course access for this user
         const { data: courseAccessData } = await supabase
           .from("user_course_access" as any)
-          .select(`
-            course_id,
-            end_date,
-            courses (
-              id,
-              name,
-              community_id
-            )
-          `)
+          .select("course_id, end_date")
           .eq("user_id", user.id)
           .gt("end_date", new Date().toISOString());
 
-        const accessibleCourses = courseAccessData
-          ?.map((access: any) => ({
-            ...access.courses,
-            access_end_date: access.end_date,
-          }))
-          .filter((course) => course.id) || [];
+        const accessibleCourseIds = new Set(
+          courseAccessData?.map((access: any) => access.course_id) || []
+        );
 
-        setCourses(accessibleCourses);
+        const coursesWithAccess = allCoursesData?.map((course: any) => ({
+          ...course,
+          has_access: accessibleCourseIds.has(course.id),
+          required_plan_names: accessibleCourseIds.has(course.id) ? [] : ["Acesso necessário"]
+        })) || [];
+
+        setCourses(coursesWithAccess);
       }
 
       if (groupsData) {
@@ -401,33 +406,103 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Comunidades */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Comunidades</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {communities.map((community) => {
-                const communityGroups = groups.filter(
-                  (g) => g.community_id === community.id
-                );
-                const communityCourses = courses.filter(
-                  (c) => c.community_id === community.id
-                );
+        {/* Grupos */}
+        {groups.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Grupos</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {groups.map((group) => (
+                  <SidebarMenuItem key={group.id}>
+                    <SidebarMenuButton
+                      onClick={() => handleGroupClick(group)}
+                      isActive={location.pathname.includes(`/groups/${group.id}`)}
+                      disabled={!group.has_access}
+                      className={!group.has_access ? "opacity-50 cursor-not-allowed" : ""}
+                    >
+                      <div className="flex items-center gap-2 flex-1">
+                        {!group.has_access && <Lock className="h-3 w-3" />}
+                        <MessageSquare className="h-4 w-4" />
+                        {!isCollapsed && (
+                          <>
+                            <span className="flex-1">{group.name}</span>
+                            {group.unread_count && group.unread_count > 0 && (
+                              <Badge variant="destructive" className="ml-auto">
+                                {group.unread_count}
+                              </Badge>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-                return (
-                  <SidebarCommunitySection
-                    key={community.id}
-                    community={community}
-                    groups={communityGroups}
-                    courses={communityCourses}
-                    isCollapsed={isCollapsed}
-                    onGroupClick={handleGroupClick}
-                  />
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Tarefas e Eventos */}
+        {communities.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Atividades</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => navigate(`/communities/${communities[0].id}/tasks`)}
+                    isActive={location.pathname.includes('/tasks')}
+                  >
+                    <FileText className="h-4 w-4" />
+                    {!isCollapsed && <span>Tarefas</span>}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => navigate(`/communities/${communities[0].id}/events`)}
+                    isActive={location.pathname.includes('/events')}
+                  >
+                    <Calendar className="h-4 w-4" />
+                    {!isCollapsed && <span>Eventos</span>}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Cursos */}
+        {courses.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Cursos</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {courses.map((course) => (
+                  <SidebarMenuItem key={course.id}>
+                    <SidebarMenuButton
+                      onClick={() => {
+                        if (course.has_access) {
+                          navigate(`/courses/${course.id}`);
+                        } else {
+                          toast.error("Você não tem acesso a este curso");
+                        }
+                      }}
+                      isActive={location.pathname.includes(`/courses/${course.id}`)}
+                      disabled={!course.has_access}
+                      className={!course.has_access ? "opacity-50 cursor-not-allowed" : ""}
+                    >
+                      <div className="flex items-center gap-2 flex-1">
+                        {!course.has_access && <Lock className="h-3 w-3" />}
+                        <GraduationCap className="h-4 w-4" />
+                        {!isCollapsed && <span className="flex-1">{course.name}</span>}
+                      </div>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Admin Tools - Apenas para Admins */}
         {isAdmin && (
