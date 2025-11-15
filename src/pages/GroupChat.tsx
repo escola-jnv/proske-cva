@@ -441,9 +441,9 @@ const GroupChat = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-dvh flex flex-col bg-background overflow-hidden">
       {/* Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-10">
+      <header className="border-b border-border bg-card flex-shrink-0 z-10">
         <div className="px-4 py-3 flex items-center gap-3">
           <Avatar
             className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
@@ -480,7 +480,7 @@ const GroupChat = () => {
       </header>
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 px-4 py-6" ref={scrollRef}>
+      <ScrollArea className="flex-1 min-h-0 px-4 py-6" ref={scrollRef}>
         <div className="max-w-4xl mx-auto space-y-1">
           {messages.map((message, index) => {
             const isOwn = message.user_id === user?.id;
@@ -600,7 +600,7 @@ const GroupChat = () => {
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="border-t border-border bg-card p-4">
+      <div className="border-t border-border bg-card p-4 flex-shrink-0">
         {!canSendMessages ? (
           <div className="container mx-auto max-w-4xl text-center py-2">
             <p className="text-sm text-muted-foreground">
