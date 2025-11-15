@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { FileText } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 import { toast } from "sonner";
 import { SubmitTaskDialog } from "@/components/SubmitTaskDialog";
 import { SubmissionCard } from "@/components/SubmissionCard";
 import { ReviewSubmissionDialog } from "@/components/ReviewSubmissionDialog";
 import { ViewSubmissionDialog } from "@/components/ViewSubmissionDialog";
+import { Input } from "@/components/ui/input";
 
 type Submission = {
   id: string;
@@ -36,11 +37,12 @@ export default function CommunityTasks() {
   const { communityId } = useParams();
   const [loading, setLoading] = useState(true);
   const [isTeacher, setIsTeacher] = useState(false);
-  const [pendingSubmissions, setPendingSubmissions] = useState<SubmissionWithProfile[]>([]);
+  const [allSubmissions, setAllSubmissions] = useState<SubmissionWithProfile[]>([]);
   const [mySubmissions, setMySubmissions] = useState<SubmissionWithProfile[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithProfile | null>(null);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
@@ -75,7 +77,6 @@ export default function CommunityTasks() {
           .from("submissions")
           .select("*")
           .eq("community_id", commId)
-          .eq("status", "pending")
           .order("created_at", { ascending: false });
 
         if (error) throw error;
@@ -96,7 +97,7 @@ export default function CommunityTasks() {
           })
         );
 
-        setPendingSubmissions(submissionsWithProfiles);
+        setAllSubmissions(submissionsWithProfiles);
       } else {
         const { data: submissionsData, error } = await supabase
           .from("submissions")
@@ -144,119 +145,128 @@ export default function CommunityTasks() {
     }
   };
 
+  const filteredSubmissions = (isTeacher ? allSubmissions : mySubmissions).filter(sub => 
+    sub.task_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    sub.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    sub.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const pendingSubmissions = filteredSubmissions.filter(s => s.status === "pending");
+  const reviewedSubmissions = filteredSubmissions.filter(s => s.status === "reviewed");
+
   if (loading) return <div className="container mx-auto px-6 py-12">Carregando...</div>;
 
   return (
     <div className="container mx-auto px-6 py-12">
-      <div className="max-w-4xl mx-auto space-y-8">
-        {isTeacher ? (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-medium">Tarefas para Correção</h2>
-            {pendingSubmissions.length > 0 ? (
-              <div className="space-y-2">
-                {pendingSubmissions.map((submission) => (
-                  <SubmissionCard
-                    key={submission.id}
-                    taskName={submission.task_name}
-                    studentName={submission.student_name}
-                    createdAt={submission.created_at}
-                    status={submission.status}
-                    onClick={() => {
-                      setSelectedSubmission(submission);
+      <div className="max-w-4xl mx-auto">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Tarefas para Correção</h1>
+              <p className="text-muted-foreground mt-2">
+                {isTeacher 
+                  ? "Visualize e corrija as tarefas enviadas pelos alunos"
+                  : "Acompanhe suas tarefas enviadas e corrigidas"}
+              </p>
+            </div>
+            {!isTeacher && <SubmitTaskDialog communityId={communityId} />}
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por tarefa, aluno ou código..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-6 mt-8">
+          {pendingSubmissions.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Pendentes ({pendingSubmissions.length})</h2>
+              {pendingSubmissions.map((submission) => (
+                <SubmissionCard
+                  key={submission.id}
+                  taskId={submission.id}
+                  taskName={submission.task_name}
+                  studentName={isTeacher ? submission.student_name : undefined}
+                  studentAvatar={isTeacher ? submission.student_avatar : undefined}
+                  createdAt={submission.created_at}
+                  status={submission.status}
+                  grade={submission.grade}
+                  onClick={() => {
+                    setSelectedSubmission(submission);
+                    if (isTeacher) {
                       setReviewDialogOpen(true);
-                    }}
-                  />
-                ))}
-              </div>
-            ) : (
-              <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
-                <FileText className="h-12 w-12 mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground text-center">
-                  Não há tarefas pendentes para correção.
-                </p>
-              </Card>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-medium">Minhas Tarefas</h2>
-              {communityId && <SubmitTaskDialog communityId={communityId} />}
+                    } else {
+                      setViewDialogOpen(true);
+                    }
+                  }}
+                />
+              ))}
             </div>
+          )}
 
-            <div className="space-y-6">
-              {mySubmissions.filter(s => s.status === "pending").length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium text-muted-foreground">Aguardando Correção</h3>
-                  {mySubmissions
-                    .filter(s => s.status === "pending")
-                    .map((submission) => (
-                      <SubmissionCard
-                        key={submission.id}
-                        taskName={submission.task_name}
-                        createdAt={submission.created_at}
-                        status={submission.status}
-                        onClick={() => {
-                          setSelectedSubmission(submission);
-                          setViewDialogOpen(true);
-                        }}
-                      />
-                    ))}
-                </div>
-              )}
-
-              {mySubmissions.filter(s => s.status === "reviewed").length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium text-muted-foreground">Corrigidas</h3>
-                  {mySubmissions
-                    .filter(s => s.status === "reviewed")
-                    .map((submission) => (
-                      <SubmissionCard
-                        key={submission.id}
-                        taskName={submission.task_name}
-                        createdAt={submission.created_at}
-                        status={submission.status}
-                        grade={submission.grade}
-                        onClick={() => {
-                          setSelectedSubmission(submission);
-                          setViewDialogOpen(true);
-                        }}
-                      />
-                    ))}
-                </div>
-              )}
-
-              {mySubmissions.length === 0 && (
-                <Card className="p-12 flex flex-col items-center justify-center border-2 border-dashed">
-                  <FileText className="h-12 w-12 mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground text-center mb-4">
-                    Você ainda não enviou nenhuma tarefa.
-                  </p>
-                  {communityId && <SubmitTaskDialog communityId={communityId} />}
-                </Card>
-              )}
+          {reviewedSubmissions.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Corrigidas ({reviewedSubmissions.length})</h2>
+              {reviewedSubmissions.map((submission) => (
+                <SubmissionCard
+                  key={submission.id}
+                  taskId={submission.id}
+                  taskName={submission.task_name}
+                  studentName={isTeacher ? submission.student_name : undefined}
+                  studentAvatar={isTeacher ? submission.student_avatar : undefined}
+                  createdAt={submission.created_at}
+                  status={submission.status}
+                  grade={submission.grade}
+                  onClick={() => {
+                    setSelectedSubmission(submission);
+                    setViewDialogOpen(true);
+                  }}
+                />
+              ))}
             </div>
-          </div>
+          )}
+
+          {pendingSubmissions.length === 0 && reviewedSubmissions.length === 0 && (
+            <Card className="p-8 text-center">
+              <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">
+                {searchQuery ? "Nenhuma tarefa encontrada" : "Nenhuma tarefa"}
+              </h3>
+              <p className="text-muted-foreground">
+                {searchQuery 
+                  ? "Tente ajustar sua busca para encontrar tarefas."
+                  : isTeacher 
+                    ? "Não há tarefas no momento."
+                    : "Você ainda não enviou nenhuma tarefa."}
+              </p>
+            </Card>
+          )}
+        </div>
+
+        {selectedSubmission && (
+          <>
+            <ReviewSubmissionDialog
+              open={reviewDialogOpen}
+              onOpenChange={setReviewDialogOpen}
+              submission={selectedSubmission}
+              studentName={selectedSubmission.student_name}
+              studentAvatar={selectedSubmission.student_avatar}
+              onReviewComplete={handleReviewComplete}
+            />
+            <ViewSubmissionDialog
+              open={viewDialogOpen}
+              onOpenChange={setViewDialogOpen}
+              submission={selectedSubmission}
+            />
+          </>
         )}
       </div>
-
-      {selectedSubmission && (
-        <>
-          <ReviewSubmissionDialog
-            open={reviewDialogOpen}
-            onOpenChange={setReviewDialogOpen}
-            submission={selectedSubmission}
-            studentName={selectedSubmission.student_name}
-            studentAvatar={selectedSubmission.student_avatar}
-            onReviewComplete={handleReviewComplete}
-          />
-          <ViewSubmissionDialog
-            open={viewDialogOpen}
-            onOpenChange={setViewDialogOpen}
-            submission={selectedSubmission}
-          />
-        </>
-      )}
     </div>
   );
 }
