@@ -854,6 +854,73 @@ export default function DevTools() {
     }
   };
 
+  const handleQuickUpdateRole = async (userId: string, newRole: string) => {
+    try {
+      // Deletar role atual
+      await supabase.from("user_roles").delete().eq("user_id", userId);
+      
+      // Inserir nova role
+      const { error } = await supabase
+        .from("user_roles")
+        .insert([{ user_id: userId, role: newRole as any }]);
+
+      if (error) throw error;
+
+      toast.success("Tipo de usuário atualizado!");
+      await fetchAllData();
+    } catch (error: any) {
+      console.error("Error updating role:", error);
+      toast.error(error.message || "Erro ao atualizar tipo");
+    }
+  };
+
+  const handleQuickUpdatePlan = async (userId: string, planId: string) => {
+    try {
+      // Verificar se já tem assinatura ativa
+      const { data: currentSub } = await supabase
+        .from("user_subscriptions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .maybeSingle();
+
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 1);
+
+      if (currentSub) {
+        // Atualizar assinatura existente
+        const { error } = await supabase
+          .from("user_subscriptions")
+          .update({ 
+            plan_id: planId,
+            end_date: endDate.toISOString()
+          })
+          .eq("id", currentSub.id);
+
+        if (error) throw error;
+      } else {
+        // Criar nova assinatura
+        const { error } = await supabase
+          .from("user_subscriptions")
+          .insert({
+            user_id: userId,
+            plan_id: planId,
+            start_date: new Date().toISOString(),
+            end_date: endDate.toISOString(),
+            status: "active"
+          });
+
+        if (error) throw error;
+      }
+
+      toast.success("Plano atualizado!");
+      await fetchAllData();
+    } catch (error: any) {
+      console.error("Error updating plan:", error);
+      toast.error(error.message || "Erro ao atualizar plano");
+    }
+  };
+
   const handleManageSubscription = async (userId: string, userName: string) => {
     try {
       // Fetch current subscription
@@ -1551,7 +1618,7 @@ export default function DevTools() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Usuários</CardTitle>
-                  <CardDescription>Clique em um usuário para editar</CardDescription>
+                  <CardDescription>Clique no nome para editar detalhes completos</CardDescription>
                 </div>
                 <div className="relative w-64">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -1571,8 +1638,8 @@ export default function DevTools() {
                     <TableHead>Avatar</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Plano</TableHead>
+                    <TableHead className="w-[140px]">Tipo</TableHead>
+                    <TableHead className="w-[180px]">Plano</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1584,38 +1651,55 @@ export default function DevTools() {
                     </TableRow>
                   ) : (
                     filteredProfiles.map((profile) => (
-                      <TableRow 
-                        key={profile.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleEdit("profile", profile)}
-                      >
+                      <TableRow key={profile.id}>
                         <TableCell>
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={profile.avatar_url || ""} alt={profile.name} />
                             <AvatarFallback>{profile.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                           </Avatar>
                         </TableCell>
-                        <TableCell className="font-medium">{profile.name}</TableCell>
+                        <TableCell 
+                          className="font-medium cursor-pointer hover:text-primary"
+                          onClick={() => handleEdit("profile", profile)}
+                        >
+                          {profile.name}
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{profile.email || "-"}</TableCell>
                         <TableCell>
-                          <Badge variant={
-                            profile.role === "admin" ? "default" : 
-                            profile.role === "teacher" ? "secondary" : 
-                            profile.role === "visitor" ? "outline" :
-                            "outline"
-                          }>
-                            {profile.role === "admin" && "Admin"}
-                            {profile.role === "teacher" && "Professor"}
-                            {profile.role === "student" && "Aluno"}
-                            {profile.role === "visitor" && "Visitante"}
-                          </Badge>
+                          <Select
+                            value={profile.role || "visitor"}
+                            onValueChange={(value) => handleQuickUpdateRole(profile.id, value)}
+                          >
+                            <SelectTrigger className="h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="visitor">Visitante</SelectItem>
+                              <SelectItem value="student">Aluno</SelectItem>
+                              <SelectItem value="teacher">Professor</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell>
-                          {profile.subscription ? (
-                            <span className="text-sm">{profile.subscription.plan_name}</span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">Sem plano</span>
-                          )}
+                          <Select
+                            value={profile.subscription?.plan_name ? 
+                              subscriptionPlans.find(p => p.name === profile.subscription?.plan_name)?.id || "" 
+                              : ""
+                            }
+                            onValueChange={(value) => handleQuickUpdatePlan(profile.id, value)}
+                          >
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="Sem plano" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {subscriptionPlans.map((plan) => (
+                                <SelectItem key={plan.id} value={plan.id}>
+                                  {plan.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                       </TableRow>
                     ))
