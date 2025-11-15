@@ -791,39 +791,51 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          amount_paid: number | null
           community_id: string | null
           created_at: string
           created_by: string
           description: string | null
           due_date: string
+          fees: number | null
           id: string
           paid_at: string | null
+          payment_method: string | null
+          plan_id: string | null
           status: Database["public"]["Enums"]["payment_status"]
           updated_at: string
           user_id: string
         }
         Insert: {
           amount: number
+          amount_paid?: number | null
           community_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
           due_date: string
+          fees?: number | null
           id?: string
           paid_at?: string | null
+          payment_method?: string | null
+          plan_id?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           updated_at?: string
           user_id: string
         }
         Update: {
           amount?: number
+          amount_paid?: number | null
           community_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
           due_date?: string
+          fees?: number | null
           id?: string
           paid_at?: string | null
+          payment_method?: string | null
+          plan_id?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           updated_at?: string
           user_id?: string
@@ -834,6 +846,13 @@ export type Database = {
             columns: ["community_id"]
             isOneToOne: false
             referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
           },
         ]
