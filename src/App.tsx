@@ -71,10 +71,10 @@ const AppContent = () => {
           <NotificationBar />
           <InterviewReminderDialog userId={userId} />
           {/* Mobile Sidebar Trigger - Persistente */}
-          <div className="md:hidden sticky top-0 z-40 bg-background border-b border-border p-2">
+          <div className="md:hidden sticky top-0 z-40 bg-background border-b border-border p-2 safe-area-inset-top">
             <SidebarTrigger />
           </div>
-          <main className="flex-1">
+          <main className="flex-1 overflow-hidden">
             <Routes>
               <Route path="/communities" element={<Communities />} />
               <Route path="/profile" element={<Profile />} />
