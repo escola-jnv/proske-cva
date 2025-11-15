@@ -151,18 +151,6 @@ All colors MUST be HSL.
     }
   }
   
-  /* Prevent overscroll/bounce on mobile */
-  body {
-    overscroll-behavior-y: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  /* Fix for mobile Safari address bar and safe areas */
-  html, body, #root {
-    height: 100%;
-    overflow: hidden;
-  }
-  
   /* Safe area insets for notch/home indicator */
   .safe-area-inset-top {
     padding-top: env(safe-area-inset-top);
