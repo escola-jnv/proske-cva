@@ -31,6 +31,7 @@ type Group = {
   name: string;
   community_id: string;
   unread_count?: number;
+  has_mentions?: boolean;
   order_index?: number;
   required_plan_ids?: string[];
   required_plan_names?: string[];
@@ -297,11 +298,21 @@ export function AppSidebar() {
                 _group_id: g.id 
               });
             
+            // Check for unread mentions
+            const { data: mentionsData } = await supabase
+              .from("user_mentions")
+              .select("id")
+              .eq("user_id", user.id)
+              .eq("group_id", g.id)
+              .eq("is_read", false)
+              .limit(1);
+            
             return {
               id: g.id,
               name: g.name,
               community_id: g.community_id,
               unread_count: unreadData || 0,
+              has_mentions: (mentionsData && mentionsData.length > 0) || false,
               order_index: orderMap.get(g.id) ?? index,
               required_plan_id: g.required_plan_id || null,
               required_plan_name: g.required_plan_name || null,
@@ -426,8 +437,13 @@ export function AppSidebar() {
                         {!isCollapsed && (
                           <>
                             <span className="flex-1">{group.name}</span>
-                            {group.unread_count && group.unread_count > 0 && (
-                              <Badge variant="destructive" className="ml-auto">
+                            {group.has_mentions && (
+                              <Badge variant="destructive" className="ml-auto animate-pulse">
+                                @
+                              </Badge>
+                            )}
+                            {group.unread_count && group.unread_count > 0 && !group.has_mentions && (
+                              <Badge variant="default" className="ml-auto">
                                 {group.unread_count}
                               </Badge>
                             )}

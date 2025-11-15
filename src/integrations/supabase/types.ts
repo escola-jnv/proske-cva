@@ -702,6 +702,7 @@ export type Database = {
           created_at: string
           group_id: string | null
           id: string
+          mentions: string[] | null
           message_type: string | null
           metadata: Json | null
           updated_at: string
@@ -713,6 +714,7 @@ export type Database = {
           created_at?: string
           group_id?: string | null
           id?: string
+          mentions?: string[] | null
           message_type?: string | null
           metadata?: Json | null
           updated_at?: string
@@ -724,6 +726,7 @@ export type Database = {
           created_at?: string
           group_id?: string | null
           id?: string
+          mentions?: string[] | null
           message_type?: string | null
           metadata?: Json | null
           updated_at?: string
@@ -1138,6 +1141,48 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_mentions: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          is_read: boolean
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          is_read?: boolean
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          is_read?: boolean
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_mentions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_mentions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]
