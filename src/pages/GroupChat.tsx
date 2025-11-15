@@ -10,7 +10,6 @@ import { GroupInfoModal } from "@/components/GroupInfoModal";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useChatSounds } from "@/hooks/useChatSounds";
-import { MentionInput } from "@/components/MentionInput";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
@@ -81,8 +80,6 @@ const GroupChat = () => {
   const [onlineUsers, setOnlineUsers] = useState<Array<{id: string, name: string, avatar_url: string | null}>>([]);
   const [userRole, setUserRole] = useState<string>('visitor');
   const [canSendMessages, setCanSendMessages] = useState(true);
-  const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
-  const [allUsers, setAllUsers] = useState<Array<{ id: string; name: string; avatar_url: string | null }>>([]);
   const isMobile = useIsMobile();
   const { playMessageSound, playMentionSound } = useChatSounds();
 
@@ -254,27 +251,9 @@ const GroupChat = () => {
 
       fetchMessages(grpId);
       fetchOnlineUsers(grpId);
-      fetchAllUsers();
     } catch (error: any) {
       console.error("Error fetching group:", error);
       toast.error("Erro ao carregar grupo");
-    }
-  };
-
-  const fetchAllUsers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, name, avatar_url")
-        .order("name", { ascending: true });
-
-      if (error) throw error;
-
-      if (data) {
-        setAllUsers(data);
-      }
-    } catch (error) {
-      console.error("Error fetching all users:", error);
     }
   };
 
@@ -406,13 +385,11 @@ const GroupChat = () => {
         user_id: user?.id,
         group_id: groupId,
         community_id: group?.community_id,
-        mentions: mentionedUsers.length > 0 ? mentionedUsers : null,
       });
 
       if (error) throw error;
 
       setNewMessage("");
-      setMentionedUsers([]);
       inputRef.current?.focus();
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -425,38 +402,8 @@ const GroupChat = () => {
     }
   };
 
-  const handleMention = (userId: string) => {
-    setMentionedUsers(prev => {
-      if (!prev.includes(userId)) {
-        return [...prev, userId];
-      }
-      return prev;
-    });
-  };
-
   const renderMessageContent = (message: Message) => {
-    const isMentioned = message.mentions?.includes(user?.id || '');
-    let content = message.content;
-    
-    // Highlight mentions
-    const mentionRegex = /@(\w+)/g;
-    const parts = content.split(mentionRegex);
-    
-    return (
-      <div className={`${isMentioned ? 'bg-destructive/10 border-l-2 border-destructive pl-2 -ml-2' : ''}`}>
-        {parts.map((part, index) => {
-          if (index % 2 === 1) {
-            // This is a mentioned name
-            return (
-              <span key={index} className="text-primary font-semibold">
-                @{part}
-              </span>
-            );
-          }
-          return <span key={index}>{part}</span>;
-        })}
-      </div>
-    );
+    return <span>{message.content}</span>;
   };
 
   const formatTime = (timestamp: string) => {
@@ -662,13 +609,19 @@ const GroupChat = () => {
             onSubmit={handleSendMessage}
             className="container mx-auto max-w-4xl flex gap-2"
           >
-            <MentionInput
+            <textarea
+              ref={inputRef as any}
               value={newMessage}
-              onChange={setNewMessage}
-              onMention={handleMention}
-              users={allUsers}
-              placeholder="Digite uma mensagem... (use @ para mencionar)"
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage(e as any);
+                }
+              }}
+              placeholder="Digite uma mensagem..."
               className="flex-1 bg-background border border-input rounded-md px-3 py-2.5 text-sm resize-none min-h-[42px]"
+              style={{ minHeight: '40px', resize: 'none' }}
             />
             <Button type="submit" size="icon" disabled={sending || !newMessage.trim()}>
               <Send className="h-5 w-5" />
