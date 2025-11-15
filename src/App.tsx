@@ -11,6 +11,7 @@ import { InterviewReminderDialog } from "@/components/InterviewReminderDialog";
 import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import InstallApp from "./pages/InstallApp";
 import Communities from "./pages/Communities";
 import Profile from "./pages/Profile";
 import CommunityGroups from "./pages/CommunityGroups";
@@ -33,7 +34,7 @@ const AppContent = () => {
   const location = useLocation();
   const [userId, setUserId] = useState<string | null>(null);
   
-  const showSidebar = !["/", "/auth"].includes(location.pathname);
+  const showSidebar = !["/", "/auth", "/install"].includes(location.pathname);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -56,6 +57,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/install" element={<InstallApp />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     );
