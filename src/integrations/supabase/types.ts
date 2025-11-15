@@ -859,9 +859,21 @@ export type Database = {
           effective_key: string | null
           extra_notes: string | null
           grade: number | null
+          grade_audio: number | null
+          grade_interpretacao: number | null
+          grade_mao_direita: number | null
+          grade_mao_esquerda: number | null
+          grade_video: number | null
+          grade_voz: number | null
           harmonic_field: string | null
           id: string
           melodic_reference: string | null
+          obs_audio: string | null
+          obs_interpretacao: string | null
+          obs_mao_direita: string | null
+          obs_mao_esquerda: string | null
+          obs_video: string | null
+          obs_voz: string | null
           recording_date: string
           reviewed_at: string | null
           reviewed_by: string | null
@@ -880,9 +892,21 @@ export type Database = {
           effective_key?: string | null
           extra_notes?: string | null
           grade?: number | null
+          grade_audio?: number | null
+          grade_interpretacao?: number | null
+          grade_mao_direita?: number | null
+          grade_mao_esquerda?: number | null
+          grade_video?: number | null
+          grade_voz?: number | null
           harmonic_field?: string | null
           id?: string
           melodic_reference?: string | null
+          obs_audio?: string | null
+          obs_interpretacao?: string | null
+          obs_mao_direita?: string | null
+          obs_mao_esquerda?: string | null
+          obs_video?: string | null
+          obs_voz?: string | null
           recording_date: string
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -901,9 +925,21 @@ export type Database = {
           effective_key?: string | null
           extra_notes?: string | null
           grade?: number | null
+          grade_audio?: number | null
+          grade_interpretacao?: number | null
+          grade_mao_direita?: number | null
+          grade_mao_esquerda?: number | null
+          grade_video?: number | null
+          grade_voz?: number | null
           harmonic_field?: string | null
           id?: string
           melodic_reference?: string | null
+          obs_audio?: string | null
+          obs_interpretacao?: string | null
+          obs_mao_direita?: string | null
+          obs_mao_esquerda?: string | null
+          obs_video?: string | null
+          obs_voz?: string | null
           recording_date?: string
           reviewed_at?: string | null
           reviewed_by?: string | null

@@ -23,14 +23,45 @@ import {
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Clock, Calendar } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Separator } from "@/components/ui/separator";
 
 const formSchema = z.object({
-  teacher_comments: z.string().min(10, "Comentários devem ter pelo menos 10 caracteres"),
-  grade: z.number().min(0).max(100),
+  grade_mao_direita: z.number().min(1).max(5),
+  grade_mao_esquerda: z.number().min(1).max(5),
+  grade_voz: z.number().min(1).max(5),
+  grade_video: z.number().min(1).max(5),
+  grade_interpretacao: z.number().min(1).max(5),
+  grade_audio: z.number().min(1).max(5),
+  obs_mao_direita: z.string().min(1, "Observação obrigatória quando nota < 5"),
+  obs_mao_esquerda: z.string().min(1, "Observação obrigatória quando nota < 5"),
+  obs_voz: z.string().min(1, "Observação obrigatória quando nota < 5"),
+  obs_video: z.string().min(1, "Observação obrigatória quando nota < 5"),
+  obs_interpretacao: z.string().min(1, "Observação obrigatória quando nota < 5"),
+  obs_audio: z.string().min(1, "Observação obrigatória quando nota < 5"),
+  teacher_comments: z.string().optional(),
+}).refine((data) => {
+  const categories = [
+    { grade: data.grade_mao_direita, obs: data.obs_mao_direita },
+    { grade: data.grade_mao_esquerda, obs: data.obs_mao_esquerda },
+    { grade: data.grade_voz, obs: data.obs_voz },
+    { grade: data.grade_video, obs: data.obs_video },
+    { grade: data.grade_interpretacao, obs: data.obs_interpretacao },
+    { grade: data.grade_audio, obs: data.obs_audio },
+  ];
+  
+  for (const cat of categories) {
+    if (cat.grade < 5 && (!cat.obs || cat.obs.trim() === "")) {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: "Observações obrigatórias quando nota < 5",
+  path: ["teacher_comments"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -45,6 +76,11 @@ interface ReviewSubmissionDialogProps {
     student_id: string;
     community_id: string;
     created_at: string;
+    song_name?: string;
+    harmonic_field?: string;
+    effective_key?: string;
+    bpm?: number;
+    melodic_reference?: string;
   };
   studentName: string;
   studentAvatar?: string;
@@ -68,12 +104,22 @@ export const ReviewSubmissionDialog = ({
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      grade_mao_direita: 5,
+      grade_mao_esquerda: 5,
+      grade_voz: 5,
+      grade_video: 5,
+      grade_interpretacao: 5,
+      grade_audio: 5,
+      obs_mao_direita: "Perfeito!",
+      obs_mao_esquerda: "Perfeito!",
+      obs_voz: "Perfeito!",
+      obs_video: "Perfeito!",
+      obs_interpretacao: "Perfeito!",
+      obs_audio: "Perfeito!",
       teacher_comments: "",
-      grade: 50,
     },
   });
 
-  // Update time ago every minute
   useEffect(() => {
     const updateTimeAgo = () => {
       const time = formatDistanceToNow(new Date(submission.created_at), {
@@ -84,10 +130,27 @@ export const ReviewSubmissionDialog = ({
     };
 
     updateTimeAgo();
-    const interval = setInterval(updateTimeAgo, 60000); // Update every minute
+    const interval = setInterval(updateTimeAgo, 60000);
 
     return () => clearInterval(interval);
   }, [submission.created_at]);
+
+  const calculateFinalGrade = () => {
+    const values = form.watch();
+    const grades = [
+      values.grade_mao_direita,
+      values.grade_mao_esquerda,
+      values.grade_voz,
+      values.grade_video,
+      values.grade_interpretacao,
+      values.grade_audio,
+    ];
+    
+    const average = grades.reduce((acc, grade) => acc + grade, 0) / grades.length;
+    return Math.round((average / 5) * 100);
+  };
+
+  const finalGrade = calculateFinalGrade();
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
@@ -99,8 +162,20 @@ export const ReviewSubmissionDialog = ({
         .from("submissions")
         .update({
           status: "reviewed",
-          teacher_comments: values.teacher_comments,
-          grade: values.grade,
+          grade: finalGrade,
+          teacher_comments: values.teacher_comments || null,
+          grade_mao_direita: values.grade_mao_direita,
+          grade_mao_esquerda: values.grade_mao_esquerda,
+          grade_voz: values.grade_voz,
+          grade_video: values.grade_video,
+          grade_interpretacao: values.grade_interpretacao,
+          grade_audio: values.grade_audio,
+          obs_mao_direita: values.obs_mao_direita,
+          obs_mao_esquerda: values.obs_mao_esquerda,
+          obs_voz: values.obs_voz,
+          obs_video: values.obs_video,
+          obs_interpretacao: values.obs_interpretacao,
+          obs_audio: values.obs_audio,
           reviewed_by: user.id,
           reviewed_at: new Date().toISOString(),
         })
@@ -110,7 +185,7 @@ export const ReviewSubmissionDialog = ({
 
       toast({
         title: "Correção enviada!",
-        description: "O aluno será notificado sobre a correção.",
+        description: `Nota final: ${finalGrade}/100`,
       });
 
       form.reset();
@@ -127,67 +202,159 @@ export const ReviewSubmissionDialog = ({
     }
   };
 
-  const gradeValue = form.watch("grade");
+  const GradeCategory = ({ 
+    name, 
+    fieldName 
+  }: { 
+    name: string; 
+    fieldName: 'grade_mao_direita' | 'grade_mao_esquerda' | 'grade_voz' | 'grade_video' | 'grade_interpretacao' | 'grade_audio'
+  }) => {
+    const gradeValue = form.watch(fieldName);
+    const obsFieldName = fieldName.replace('grade_', 'obs_') as 'obs_mao_direita' | 'obs_mao_esquerda' | 'obs_voz' | 'obs_video' | 'obs_interpretacao' | 'obs_audio';
+    
+    useEffect(() => {
+      if (gradeValue === 5) {
+        form.setValue(obsFieldName, "Perfeito!");
+      } else if (form.getValues(obsFieldName) === "Perfeito!") {
+        form.setValue(obsFieldName, "");
+      }
+    }, [gradeValue]);
+
+    return (
+      <div className="space-y-3 p-4 border rounded-lg bg-card">
+        <div className="flex items-center justify-between">
+          <h4 className="font-medium">{name}</h4>
+          <Badge variant={gradeValue === 5 ? "default" : "secondary"}>
+            {gradeValue}/5
+          </Badge>
+        </div>
+        
+        <FormField
+          control={form.control}
+          name={fieldName}
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <Slider
+                  min={1}
+                  max={5}
+                  step={1}
+                  value={[field.value]}
+                  onValueChange={(value) => field.onChange(value[0])}
+                  className="w-full"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name={obsFieldName}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm">
+                Observação {gradeValue < 5 && <span className="text-destructive">*</span>}
+              </FormLabel>
+              <FormControl>
+                <Textarea
+                  {...field}
+                  placeholder={gradeValue === 5 ? "Perfeito!" : "Descreva o motivo da nota..."}
+                  className="min-h-[60px] resize-none"
+                  disabled={loading}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Corrigir Tarefa</DialogTitle>
           <DialogDescription>
-            Revise o vídeo e forneça feedback ao aluno.
+            Avalie cada categoria de 1 a 5. Observações obrigatórias quando nota menor que 5.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Student Info */}
+        <div className="space-y-6">
           <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
-            <Avatar>
+            <Avatar className="h-12 w-12">
               <AvatarImage src={studentAvatar} />
               <AvatarFallback>{studentName[0]}</AvatarFallback>
             </Avatar>
-            <div>
-              <p className="font-medium">{studentName}</p>
+            <div className="flex-1">
+              <p className="font-semibold">{studentName}</p>
               <p className="text-sm text-muted-foreground">Aluno</p>
             </div>
-          </div>
-
-          {/* Submission Time Info */}
-          <div className="flex flex-wrap gap-2 p-4 bg-primary/5 rounded-lg border border-primary/20">
-            <div className="flex items-center gap-1.5 text-sm">
-              <Calendar className="h-4 w-4 text-primary" />
-              <span className="font-medium text-foreground">
-                Enviado em: {new Date(submission.created_at).toLocaleDateString("pt-BR")} às{" "}
-                {new Date(submission.created_at).toLocaleTimeString("pt-BR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-sm">
-              <Clock className="h-4 w-4 text-destructive" />
-              <span className="font-semibold text-destructive">
-                Aguardando {timeAgo.replace("há ", "")}
-              </span>
+            <div className="text-right">
+              <Badge variant="outline" className="mb-1">
+                <Clock className="h-3 w-3 mr-1" />
+                {timeAgo}
+              </Badge>
+              <p className="text-xs text-muted-foreground">
+                <Calendar className="h-3 w-3 inline mr-1" />
+                {new Date(submission.recording_date).toLocaleDateString("pt-BR")}
+              </p>
             </div>
           </div>
 
-          {/* Task Info */}
-          <div className="space-y-2">
+          <div className="space-y-3 p-4 border rounded-lg">
             <div>
               <p className="text-sm text-muted-foreground">Nome da Tarefa</p>
               <p className="font-medium">{submission.task_name}</p>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Data da Gravação</p>
-              <p>{new Date(submission.recording_date).toLocaleDateString("pt-BR")}</p>
+            
+            {submission.song_name && (
+              <div>
+                <p className="text-sm text-muted-foreground">Nome da Música</p>
+                <p>{submission.song_name}</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              {submission.harmonic_field && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Campo Harmônico</p>
+                  <p>{submission.harmonic_field}</p>
+                </div>
+              )}
+              
+              {submission.effective_key && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Tom Efetivo</p>
+                  <p>{submission.effective_key}</p>
+                </div>
+              )}
+              
+              {submission.melodic_reference && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Referência Melódica</p>
+                  <p>{submission.melodic_reference}</p>
+                </div>
+              )}
+              
+              {submission.bpm && (
+                <div>
+                  <p className="text-sm text-muted-foreground">BPM</p>
+                  <p>{submission.bpm}</p>
+                </div>
+              )}
             </div>
+
             {submission.extra_notes && (
               <div>
                 <p className="text-sm text-muted-foreground">Observações do Aluno</p>
                 <p className="text-sm bg-muted p-3 rounded">{submission.extra_notes}</p>
               </div>
             )}
+
             <div>
               <p className="text-sm text-muted-foreground mb-2">Link do Vídeo</p>
               <a
@@ -197,51 +364,51 @@ export const ReviewSubmissionDialog = ({
                 className="flex items-center gap-2 text-primary hover:underline"
               >
                 <ExternalLink className="h-4 w-4" />
-                Abrir no YouTube
+                Assistir no YouTube
               </a>
             </div>
           </div>
 
-          {/* Review Form */}
+          <Separator />
+
+          <div className="p-4 bg-primary/10 rounded-lg text-center">
+            <p className="text-sm text-muted-foreground mb-1">Nota Final (Média)</p>
+            <p className="text-3xl font-bold">{finalGrade}/100</p>
+          </div>
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="grade"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nota: {gradeValue}/100</FormLabel>
-                    <FormControl>
-                      <Slider
-                        min={0}
-                        max={100}
-                        step={1}
-                        value={[field.value]}
-                        onValueChange={(value) => field.onChange(value[0])}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid gap-4 md:grid-cols-2">
+                <GradeCategory name="Mão Direita" fieldName="grade_mao_direita" />
+                <GradeCategory name="Mão Esquerda" fieldName="grade_mao_esquerda" />
+                <GradeCategory name="Voz" fieldName="grade_voz" />
+                <GradeCategory name="Vídeo" fieldName="grade_video" />
+                <GradeCategory name="Interpretação" fieldName="grade_interpretacao" />
+                <GradeCategory name="Áudio" fieldName="grade_audio" />
+              </div>
+
+              <Separator />
+
               <FormField
                 control={form.control}
                 name="teacher_comments"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Comentários da Correção</FormLabel>
+                    <FormLabel>Comentários Gerais (Opcional)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Forneça feedback detalhado sobre o desempenho do aluno..."
-                        className="min-h-[120px] resize-none"
                         {...field}
+                        placeholder="Comentários adicionais sobre a tarefa..."
+                        className="min-h-[100px]"
+                        disabled={loading}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <div className="flex justify-end gap-2">
+
+              <div className="flex gap-3 justify-end">
                 <Button
                   type="button"
                   variant="outline"
