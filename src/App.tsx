@@ -63,7 +63,6 @@ const AppContent = () => {
 
   return (
     <div className="flex flex-col min-h-screen w-full pb-16">
-      <NotificationBar />
       <InterviewReminderDialog userId={userId} />
       <main className="flex-1">
         <Routes>
