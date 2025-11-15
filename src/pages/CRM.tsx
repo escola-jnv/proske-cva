@@ -7,6 +7,7 @@ import { Plus, Settings, Search } from "lucide-react";
 import { CRMKanban } from "@/components/crm/CRMKanban";
 import { CreateLeadDialog } from "@/components/crm/CreateLeadDialog";
 import { ManageTagsDialog } from "@/components/crm/ManageTagsDialog";
+import { MobileHeader } from "@/components/MobileHeader";
 import { toast } from "sonner";
 
 export default function CRM() {
@@ -107,25 +108,26 @@ export default function CRM() {
   }, [leads, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-[1600px] mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">CRM</h1>
-            <p className="text-muted-foreground">Gerencie leads e alunos</p>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={() => setIsManageTagsOpen(true)} variant="outline">
+    <div className="min-h-screen bg-background">
+      <MobileHeader
+        title="CRM"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsManageTagsOpen(true)}
+            >
               <Settings className="h-4 w-4" />
-              Gerenciar Tags
             </Button>
-            <Button onClick={() => setIsCreateLeadOpen(true)}>
+            <Button size="icon" onClick={() => setIsCreateLeadOpen(true)}>
               <Plus className="h-4 w-4" />
-              Novo Lead
             </Button>
-          </div>
-        </div>
+          </>
+        }
+      />
 
+      <div className="p-4 space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
