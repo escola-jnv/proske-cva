@@ -668,7 +668,7 @@ const GroupChat = () => {
               onMention={handleMention}
               users={allUsers}
               placeholder="Digite uma mensagem... (use @ para mencionar)"
-              className="flex-1 bg-background border border-input rounded-md px-3 py-2.5 text-sm resize-none min-h-[42px] max-h-[120px] overflow-y-auto"
+              className="flex-1 bg-background border border-input rounded-md px-3 py-2.5 text-sm resize-none min-h-[42px]"
             />
             <Button type="submit" size="icon" disabled={sending || !newMessage.trim()}>
               <Send className="h-5 w-5" />
