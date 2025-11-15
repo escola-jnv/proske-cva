@@ -880,6 +880,7 @@ export type Database = {
           song_name: string | null
           status: string
           student_id: string
+          task_code: string | null
           task_name: string
           teacher_comments: string | null
           updated_at: string
@@ -913,6 +914,7 @@ export type Database = {
           song_name?: string | null
           status?: string
           student_id: string
+          task_code?: string | null
           task_name: string
           teacher_comments?: string | null
           updated_at?: string
@@ -946,6 +948,7 @@ export type Database = {
           song_name?: string | null
           status?: string
           student_id?: string
+          task_code?: string | null
           task_name?: string
           teacher_comments?: string | null
           updated_at?: string

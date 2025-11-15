@@ -7,6 +7,7 @@ import { ptBR } from "date-fns/locale";
 
 interface SubmissionCardProps {
   taskId: string;
+  taskCode?: string | null;
   taskName: string;
   studentName?: string;
   studentAvatar?: string;
@@ -18,6 +19,7 @@ interface SubmissionCardProps {
 
 export const SubmissionCard = ({
   taskId,
+  taskCode,
   taskName,
   studentName,
   studentAvatar,
@@ -45,7 +47,9 @@ export const SubmissionCard = ({
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <h3 className="font-medium truncate">{taskName}</h3>
-              <p className="text-xs text-muted-foreground font-mono">#{taskId.slice(0, 8)}</p>
+              <p className="text-xs text-muted-foreground font-mono">
+                {taskCode || `#${taskId.slice(0, 8)}`}
+              </p>
               {studentName && (
                 <p className="text-sm text-muted-foreground mt-1">{studentName}</p>
               )}

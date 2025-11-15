@@ -130,9 +130,12 @@ export const SubmitTaskDialog = ({ communityId }: SubmitTaskDialogProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
+      const finalTaskCode = generateTaskCode();
+
       const { error } = await supabase.from("submissions").insert({
         community_id: communityId,
         student_id: user.id,
+        task_code: finalTaskCode,
         video_url: values.video_url,
         recording_date: values.recording_date || format(new Date(), "yyyy-MM-dd"),
         task_name: values.task_name,

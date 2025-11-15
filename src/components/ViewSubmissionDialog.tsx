@@ -36,7 +36,9 @@ interface ViewSubmissionDialogProps {
     obs_video?: string;
     obs_interpretacao?: string;
     obs_audio?: string;
+    task_code?: string | null;
   };
+  studentName?: string;
   teacherName?: string;
   teacherAvatar?: string;
   open: boolean;
@@ -82,7 +84,12 @@ export const ViewSubmissionDialog = ({
         <DialogHeader>
           <DialogTitle>Detalhes da Tarefa</DialogTitle>
           <DialogDescription>
-            Informações sobre sua tarefa e correção.
+            <span>Informações sobre sua tarefa e correção</span>
+            {submission.task_code && (
+              <span className="ml-2 text-xs font-mono text-muted-foreground">
+                • {submission.task_code}
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 

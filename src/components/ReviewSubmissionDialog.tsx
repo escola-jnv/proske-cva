@@ -81,6 +81,7 @@ interface ReviewSubmissionDialogProps {
     effective_key?: string;
     bpm?: number;
     melodic_reference?: string;
+    task_code?: string | null;
   };
   studentName: string;
   studentAvatar?: string;
