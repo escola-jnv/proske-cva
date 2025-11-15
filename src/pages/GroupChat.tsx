@@ -82,7 +82,7 @@ const GroupChat = () => {
   const [userRole, setUserRole] = useState<string>('visitor');
   const [canSendMessages, setCanSendMessages] = useState(true);
   const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
-  const [groupMembers, setGroupMembers] = useState<Array<{ id: string; name: string; avatar_url: string | null }>>([]);
+  const [allUsers, setAllUsers] = useState<Array<{ id: string; name: string; avatar_url: string | null }>>([]);
   const isMobile = useIsMobile();
   const { playMessageSound, playMentionSound } = useChatSounds();
 
@@ -254,38 +254,27 @@ const GroupChat = () => {
 
       fetchMessages(grpId);
       fetchOnlineUsers(grpId);
-      fetchGroupMembers(grpId);
+      fetchAllUsers();
     } catch (error: any) {
       console.error("Error fetching group:", error);
       toast.error("Erro ao carregar grupo");
     }
   };
 
-  const fetchGroupMembers = async (grpId: string) => {
+  const fetchAllUsers = async () => {
     try {
       const { data, error } = await supabase
-        .from("group_members")
-        .select(`
-          profiles!inner (
-            id,
-            name,
-            avatar_url
-          )
-        `)
-        .eq("group_id", grpId);
+        .from("profiles")
+        .select("id, name, avatar_url")
+        .order("name", { ascending: true });
 
       if (error) throw error;
 
       if (data) {
-        const members = data.map((member: any) => ({
-          id: member.profiles.id,
-          name: member.profiles.name,
-          avatar_url: member.profiles.avatar_url,
-        }));
-        setGroupMembers(members);
+        setAllUsers(data);
       }
     } catch (error) {
-      console.error("Error fetching group members:", error);
+      console.error("Error fetching all users:", error);
     }
   };
 
@@ -677,9 +666,9 @@ const GroupChat = () => {
               value={newMessage}
               onChange={setNewMessage}
               onMention={handleMention}
-              users={groupMembers}
+              users={allUsers}
               placeholder="Digite uma mensagem... (use @ para mencionar)"
-              className="flex-1 bg-background border border-input rounded-md px-3 py-2 text-sm resize-none"
+              className="flex-1 bg-background border border-input rounded-md px-3 py-2.5 text-sm resize-none min-h-[42px] max-h-[120px] overflow-y-auto"
             />
             <Button type="submit" size="icon" disabled={sending || !newMessage.trim()}>
               <Send className="h-5 w-5" />
