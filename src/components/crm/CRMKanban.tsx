@@ -161,29 +161,29 @@ export function CRMKanban({ tags, users, leads, onRefetch }: CRMKanbanProps) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <ScrollArea className="w-full whitespace-nowrap">
-        <div className="flex gap-4 pb-4">
+      <ScrollArea className="w-full whitespace-nowrap rounded-lg">
+        <div className="flex gap-3 pb-4">
           {columns.map((column) => (
             <div
               key={column.id}
               id={column.id}
-              className="flex-shrink-0 w-80 bg-card rounded-lg border shadow-sm"
+              className="flex-shrink-0 w-[280px] sm:w-80 bg-card rounded-lg border shadow-sm"
             >
               <div
-                className="p-4 border-b"
+                className="p-3 border-b"
                 style={{ borderLeftColor: column.color, borderLeftWidth: "4px" }}
               >
-                <h3 className="font-semibold text-foreground">{column.name}</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-semibold text-sm sm:text-base text-foreground">{column.name}</h3>
+                <p className="text-xs text-muted-foreground">
                   {column.items.length} {column.items.length === 1 ? "item" : "itens"}
                 </p>
               </div>
-              <ScrollArea className="h-[calc(100vh-300px)] p-4">
+              <ScrollArea className="h-[calc(100vh-280px)] p-3">
                 <SortableContext
                   items={column.items.map((item) => item.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {column.items.map((item) => (
                       <SortableCRMCard
                         key={item.id}
@@ -204,7 +204,7 @@ export function CRMKanban({ tags, users, leads, onRefetch }: CRMKanbanProps) {
       </ScrollArea>
       <DragOverlay>
         {activeItem && (
-          <div className="opacity-80">
+          <div className="opacity-80 w-[280px] sm:w-80">
             <CRMCard
               item={activeItem}
               isLead={"lead_tags" in activeItem}
