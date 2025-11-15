@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, Phone, MapPin, Plus, Calendar, Pencil } from "lucide-react";
+import { Mail, Phone, MapPin, Plus, Calendar, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Payment = {
@@ -75,6 +75,7 @@ type UserPaymentsModalProps = {
   plans: Plan[];
   onCreatePayment: (payment: Omit<Payment, "id" | "created_by">) => Promise<void>;
   onUpdatePayment: (id: string, payment: Partial<Payment>) => Promise<void>;
+  onDeletePayment: (id: string) => Promise<void>;
   onGenerate12Months: (userId: string, planId: string) => Promise<void>;
 };
 
@@ -87,6 +88,7 @@ export function UserPaymentsModal({
   plans,
   onCreatePayment,
   onUpdatePayment,
+  onDeletePayment,
   onGenerate12Months,
 }: UserPaymentsModalProps) {
   const [editDialog, setEditDialog] = useState<{
@@ -97,6 +99,45 @@ export function UserPaymentsModal({
   const [createDialog, setCreateDialog] = useState(false);
   const [formData, setFormData] = useState<any>({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Payment | null;
+    direction: 'asc' | 'desc';
+  }>({ key: null, direction: 'asc' });
+
+  const handleDeletePayment = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir esta cobrança?")) {
+      return;
+    }
+
+    try {
+      await onDeletePayment(id);
+      toast.success("Cobrança excluída com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao excluir cobrança");
+    }
+  };
+
+  const handleSort = (key: keyof Payment) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedPayments = [...payments].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+    
+    if (aValue === null || aValue === undefined) return 1;
+    if (bValue === null || bValue === undefined) return -1;
+    
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   if (!user) return null;
 
@@ -183,16 +224,35 @@ export function UserPaymentsModal({
     return new Date(dateString).toLocaleDateString("pt-BR");
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
-      pending: { label: "Pendente", variant: "outline" },
-      confirmed: { label: "Confirmado", variant: "default" },
-      overdue: { label: "Atrasado", variant: "destructive" },
-      cancelled: { label: "Cancelado", variant: "secondary" },
-    };
+  const getStatusBadge = (status: string, dueDate: string) => {
+    const today = new Date();
+    const due = new Date(dueDate);
+    const daysUntilDue = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
-    const statusInfo = statusMap[status] || { label: status, variant: "secondary" };
-    return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
+    // Se está confirmado, sempre verde
+    if (status === "confirmed") {
+      return <Badge className="bg-green-600 hover:bg-green-700 text-white">Confirmado</Badge>;
+    }
+    
+    // Se está atrasado, sempre vermelho
+    if (status === "overdue") {
+      return <Badge variant="destructive">Atrasado</Badge>;
+    }
+    
+    // Se está cancelado
+    if (status === "cancelled") {
+      return <Badge variant="secondary">Cancelado</Badge>;
+    }
+    
+    // Se está pendente, verifica se está próximo ao vencimento
+    if (status === "pending") {
+      if (daysUntilDue <= 7 && daysUntilDue >= 0) {
+        return <Badge className="bg-orange-500 hover:bg-orange-600 text-white">Próx. ao Vecto</Badge>;
+      }
+      return <Badge variant="outline">Pendente</Badge>;
+    }
+    
+    return <Badge variant="secondary">{status}</Badge>;
   };
 
   const getInitials = (name: string) => {
@@ -271,10 +331,25 @@ export function UserPaymentsModal({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('due_date')}
+                    >
+                      Vencimento {sortConfig.key === 'due_date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('status')}
+                    >
+                      Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </TableHead>
                     <TableHead>Plano</TableHead>
-                    <TableHead className="text-right">Valor Original</TableHead>
+                    <TableHead 
+                      className="text-right cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('amount')}
+                    >
+                      Valor Original {sortConfig.key === 'amount' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </TableHead>
                     <TableHead className="text-right">Valor Pago</TableHead>
                     <TableHead>Método</TableHead>
                     <TableHead className="text-right">Taxas</TableHead>
@@ -284,17 +359,17 @@ export function UserPaymentsModal({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payments.length === 0 ? (
+                  {sortedPayments.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={10} className="text-center text-muted-foreground">
                         Nenhuma cobrança encontrada
                       </TableCell>
                     </TableRow>
                   ) : (
-                    payments.map((payment) => (
+                    sortedPayments.map((payment) => (
                       <TableRow key={payment.id}>
                         <TableCell>{formatDate(payment.due_date)}</TableCell>
-                        <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                        <TableCell>{getStatusBadge(payment.status, payment.due_date)}</TableCell>
                         <TableCell>{payment.plan_name || "-"}</TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(payment.amount)}
@@ -315,13 +390,23 @@ export function UserPaymentsModal({
                           {payment.description || "-"}
                         </TableCell>
                         <TableCell className="text-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(payment)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditDialog(payment)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeletePayment(payment.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

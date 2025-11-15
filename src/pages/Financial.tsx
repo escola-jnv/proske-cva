@@ -305,11 +305,13 @@ export default function Financial() {
       
       for (let i = 0; i < 12; i++) {
         const dueDate = new Date(today.getFullYear(), today.getMonth() + i, dueDay);
+        // Format date as YYYY-MM-DD in local timezone to avoid UTC conversion issues
+        const formattedDate = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
         
         paymentsToCreate.push({
           user_id: userId,
           amount: plan.price,
-          due_date: dueDate.toISOString(),
+          due_date: formattedDate,
           status: "pending",
           plan_id: planId,
           created_by: user.id,
@@ -367,6 +369,24 @@ export default function Financial() {
 
   const handleDelete = (id: string) => {
     setDeleteDialog({ open: true, id });
+  };
+
+  // Delete payment from modal
+  const handleDeletePaymentFromModal = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("payments")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      await fetchAllData();
+      toast.success("Cobrança excluída com sucesso!");
+    } catch (error: any) {
+      console.error("Error deleting payment:", error);
+      throw error;
+    }
   };
 
   const confirmDelete = async () => {
@@ -865,6 +885,7 @@ export default function Financial() {
         plans={plans}
         onCreatePayment={handleCreatePaymentFromModal}
         onUpdatePayment={handleUpdatePaymentFromModal}
+        onDeletePayment={handleDeletePaymentFromModal}
         onGenerate12Months={handleGenerate12Months}
       />
     </div>
