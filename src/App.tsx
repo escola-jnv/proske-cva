@@ -74,7 +74,7 @@ const AppContent = () => {
           <div className="md:hidden sticky top-0 z-40 bg-background border-b border-border p-2 safe-area-inset-top">
             <SidebarTrigger />
           </div>
-          <main className="flex-1 overflow-hidden">
+          <main className="flex-1">
             <Routes>
               <Route path="/communities" element={<Communities />} />
               <Route path="/profile" element={<Profile />} />
