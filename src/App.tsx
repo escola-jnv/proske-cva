@@ -26,6 +26,7 @@ import Tasks from "./pages/Tasks";
 import Plans from "./pages/Plans";
 import DevTools from "./pages/DevTools";
 import Financial from "./pages/Financial";
+import CRM from "./pages/CRM";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -81,6 +82,7 @@ const AppContent = () => {
               <Route path="/events" element={<Events />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/plans" element={<Plans />} />
+              <Route path="/crm" element={<CRM />} />
               <Route path="/communities/:communityId/groups" element={<CommunityGroups />} />
               <Route path="/communities/:communityId/tasks" element={<CommunityTasks />} />
               <Route path="/communities/:communityId/events" element={<CommunityEvents />} />
