@@ -45,9 +45,10 @@ type StudentLTV = {
 
 type StudentLTVAnalysisProps = {
   onSelectUser?: (userId: string) => void;
+  onRowClick?: (userId: string) => void;
 };
 
-export function StudentLTVAnalysis({ onSelectUser }: StudentLTVAnalysisProps) {
+export function StudentLTVAnalysis({ onSelectUser, onRowClick }: StudentLTVAnalysisProps) {
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<StudentLTV[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -221,19 +222,22 @@ export function StudentLTVAnalysis({ onSelectUser }: StudentLTVAnalysisProps) {
                   <TableHead className="text-right">LTV</TableHead>
                   <TableHead className="text-center">Próx. Pgto</TableHead>
                   <TableHead>Cliente desde</TableHead>
-                  {onSelectUser && <TableHead className="text-center">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredStudents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground">
                       {searchTerm ? "Nenhum aluno encontrado" : "Nenhum aluno cadastrado"}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredStudents.map((student) => (
-                    <TableRow key={student.user_id}>
+                    <TableRow 
+                      key={student.user_id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => onRowClick?.(student.user_id)}
+                    >
                       <TableCell className="font-medium">
                         <div>
                           <div>{student.student_name}</div>
@@ -281,17 +285,6 @@ export function StudentLTVAnalysis({ onSelectUser }: StudentLTVAnalysisProps) {
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(student.customer_since)}
                       </TableCell>
-                      {onSelectUser && (
-                        <TableCell className="text-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onSelectUser(student.user_id)}
-                          >
-                            Ver Cobranças
-                          </Button>
-                        </TableCell>
-                      )}
                     </TableRow>
                   ))
                 )}
