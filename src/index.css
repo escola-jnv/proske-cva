@@ -157,9 +157,18 @@ All colors MUST be HSL.
     -webkit-overflow-scrolling: touch;
   }
   
-  /* Fix for mobile Safari address bar */
+  /* Fix for mobile Safari address bar and safe areas */
   html, body, #root {
     height: 100%;
     overflow: hidden;
+  }
+  
+  /* Safe area insets for notch/home indicator */
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }

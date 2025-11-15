@@ -86,6 +86,36 @@ const GroupChat = () => {
   // Track user activity
   useActivityTracker(user?.id);
 
+  // Calculate header offset for mobile layout
+  useEffect(() => {
+    const calculateHeaderOffset = () => {
+      const notificationBar = document.querySelector('.sticky.top-0.z-50');
+      const mobileTrigger = document.querySelector('.md\\:hidden.sticky.top-0.z-40');
+      let offset = 0;
+      
+      if (notificationBar) {
+        offset += (notificationBar as HTMLElement).offsetHeight;
+      }
+      if (mobileTrigger && window.innerWidth < 768) {
+        offset += (mobileTrigger as HTMLElement).offsetHeight;
+      }
+      
+      document.documentElement.style.setProperty('--header-offset', `${offset}px`);
+    };
+
+    calculateHeaderOffset();
+    window.addEventListener('resize', calculateHeaderOffset);
+    
+    // Recalculate when notifications change
+    const observer = new MutationObserver(calculateHeaderOffset);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      window.removeEventListener('resize', calculateHeaderOffset);
+      observer.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     const {
       data: { subscription },
@@ -441,9 +471,9 @@ const GroupChat = () => {
   }
 
   return (
-    <div className="h-dvh flex flex-col bg-background overflow-hidden">
+    <div className="flex flex-col bg-background" style={{ height: 'calc(100dvh - var(--header-offset, 0px))' }}>
       {/* Header */}
-      <header className="border-b border-border bg-card flex-shrink-0 z-10">
+      <header className="border-b border-border bg-card flex-shrink-0 sticky top-0 z-10">
         <div className="px-4 py-3 flex items-center gap-3">
           <Avatar
             className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
@@ -600,7 +630,7 @@ const GroupChat = () => {
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="border-t border-border bg-card p-4 flex-shrink-0">
+      <div className="border-t border-border bg-card p-4 flex-shrink-0 sticky bottom-0 safe-area-inset-bottom">
         {!canSendMessages ? (
           <div className="container mx-auto max-w-4xl text-center py-2">
             <p className="text-sm text-muted-foreground">
