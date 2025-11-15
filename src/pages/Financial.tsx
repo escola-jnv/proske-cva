@@ -277,6 +277,7 @@ export default function Financial() {
     }
   };
 
+  // Generate 12 months of recurring payments for a user
   const handleGenerate12Months = async (userId: string, planId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -323,6 +324,7 @@ export default function Financial() {
     }
   };
 
+  // Create a new payment from the modal
   const handleCreatePaymentFromModal = async (payment: Omit<Payment, "id" | "created_by">) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -342,6 +344,7 @@ export default function Financial() {
     }
   };
 
+  // Update an existing payment from the modal
   const handleUpdatePaymentFromModal = async (id: string, payment: Partial<Payment>) => {
     try {
       const { error } = await supabase
