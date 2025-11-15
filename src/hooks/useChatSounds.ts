@@ -5,11 +5,10 @@ export const useChatSounds = () => {
   const mentionSound = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Create audio elements for sounds
-    // Using Web Audio API to generate simple beep sounds
+    // Create audio context for generating WhatsApp-like sounds
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
 
-    // Regular message sound - soft beep
+    // WhatsApp-style send message sound - short click/pop
     const createMessageSound = () => {
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
@@ -17,17 +16,20 @@ export const useChatSounds = () => {
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      oscillator.frequency.value = 800;
+      // Quick frequency sweep for click sound
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.03);
       oscillator.type = 'sine';
       
-      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+      // Sharp attack and quick decay
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
       
       oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.1);
+      oscillator.stop(audioContext.currentTime + 0.05);
     };
 
-    // Mention sound - double beep with higher pitch
+    // Received message sound - softer, two-tone
     const createMentionSound = () => {
       const oscillator1 = audioContext.createOscillator();
       const oscillator2 = audioContext.createOscillator();
@@ -37,19 +39,21 @@ export const useChatSounds = () => {
       oscillator2.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      oscillator1.frequency.value = 1200;
+      // Two gentle tones
+      oscillator1.frequency.value = 520;
       oscillator1.type = 'sine';
-      oscillator2.frequency.value = 1400;
+      oscillator2.frequency.value = 440;
       oscillator2.type = 'sine';
       
-      gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+      // Soft volume
+      gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
       
       oscillator1.start(audioContext.currentTime);
-      oscillator1.stop(audioContext.currentTime + 0.1);
+      oscillator1.stop(audioContext.currentTime + 0.08);
       
-      oscillator2.start(audioContext.currentTime + 0.12);
-      oscillator2.stop(audioContext.currentTime + 0.22);
+      oscillator2.start(audioContext.currentTime + 0.06);
+      oscillator2.stop(audioContext.currentTime + 0.18);
     };
 
     messageSound.current = {

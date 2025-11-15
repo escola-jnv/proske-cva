@@ -389,6 +389,9 @@ const GroupChat = () => {
 
       if (error) throw error;
 
+      // Play send message sound
+      playMessageSound();
+
       setNewMessage("");
       inputRef.current?.focus();
     } catch (error: any) {
