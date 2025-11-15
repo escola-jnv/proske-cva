@@ -229,7 +229,7 @@ const Tasks = () => {
                       <p className="text-muted-foreground">
                         Todas as tarefas foram corrigidas
                       </p>
-                    </div> : pendingSubmissions.map(submission => <SubmissionCard key={submission.id} taskName={submission.task_name} studentName={submission.student_name} studentAvatar={submission.student_avatar} createdAt={submission.created_at} status={submission.status} grade={submission.grade || undefined} onClick={() => handleReviewClick(submission)} />)}
+                    </div> : pendingSubmissions.map(submission => <SubmissionCard key={submission.id} taskId={submission.id} taskName={submission.task_name} studentName={submission.student_name} studentAvatar={submission.student_avatar} createdAt={submission.created_at} status={submission.status} grade={submission.grade || undefined} onClick={() => handleReviewClick(submission)} />)}
                 </TabsContent>
 
                 <TabsContent value="completed" className="space-y-4">
@@ -239,7 +239,7 @@ const Tasks = () => {
                       <p className="text-muted-foreground">
                         Tarefas corrigidas aparecerão aqui
                       </p>
-                    </div> : reviewedSubmissions.map(submission => <SubmissionCard key={submission.id} taskName={submission.task_name} studentName={submission.student_name} studentAvatar={submission.student_avatar} createdAt={submission.created_at} status={submission.status} grade={submission.grade || undefined} onClick={() => handleViewClick(submission)} />)}
+                    </div> : reviewedSubmissions.map(submission => <SubmissionCard key={submission.id} taskId={submission.id} taskName={submission.task_name} studentName={submission.student_name} studentAvatar={submission.student_avatar} createdAt={submission.created_at} status={submission.status} grade={submission.grade || undefined} onClick={() => handleViewClick(submission)} />)}
                 </TabsContent>
               </>}
 
@@ -257,7 +257,7 @@ const Tasks = () => {
                       <p className="text-muted-foreground">
                         Envie uma nova tarefa para aparecer aqui
                       </p>
-                    </div> : mySubmissions.filter(s => s.status === "pending").map(submission => <SubmissionCard key={submission.id} taskName={submission.task_name} studentName="Você" studentAvatar={submission.student_avatar} createdAt={submission.created_at} status={submission.status} grade={submission.grade || undefined} onClick={() => handleViewClick(submission)} />)}
+                    </div> : mySubmissions.filter(s => s.status === "pending").map(submission => <SubmissionCard key={submission.id} taskId={submission.id} taskName={submission.task_name} studentName="Você" studentAvatar={submission.student_avatar} createdAt={submission.created_at} status={submission.status} grade={submission.grade || undefined} onClick={() => handleViewClick(submission)} />)}
                 </TabsContent>
 
                 <TabsContent value="completed" className="space-y-4">
@@ -269,7 +269,7 @@ const Tasks = () => {
                       <p className="text-muted-foreground">
                         Tarefas corrigidas aparecerão aqui
                       </p>
-                    </div> : mySubmissions.filter(s => s.status === "reviewed").map(submission => <SubmissionCard key={submission.id} taskName={submission.task_name} studentName="Você" studentAvatar={submission.student_avatar} createdAt={submission.created_at} status={submission.status} grade={submission.grade || undefined} onClick={() => handleViewClick(submission)} />)}
+                    </div> : mySubmissions.filter(s => s.status === "reviewed").map(submission => <SubmissionCard key={submission.id} taskId={submission.id} taskName={submission.task_name} studentName="Você" studentAvatar={submission.student_avatar} createdAt={submission.created_at} status={submission.status} grade={submission.grade || undefined} onClick={() => handleViewClick(submission)} />)}
                 </TabsContent>
               </>}
           </Tabs>
