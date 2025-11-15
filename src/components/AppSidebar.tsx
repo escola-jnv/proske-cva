@@ -429,20 +429,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Tarefas */}
-        <SidebarGroup>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => navigate("/tasks")}
-              >
-                <FileText className="h-4 w-4" />
-                {!isCollapsed && <span>Tarefas</span>}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-
         {/* Admin Tools - Apenas para Admins */}
         {isAdmin && (
           <SidebarGroup>
