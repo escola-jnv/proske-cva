@@ -14,7 +14,7 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { LogOut, FileText, DollarSign, Settings, MessageSquare, Calendar, GraduationCap, Lock } from "lucide-react";
+import { LogOut, FileText, DollarSign, Settings, MessageSquare, Calendar, GraduationCap, Lock, Users } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
 import { SidebarUserHeader } from "@/components/sidebar/SidebarUserHeader";
@@ -521,26 +521,39 @@ export function AppSidebar() {
         )}
 
         {/* Admin Tools - Apenas para Admins */}
-        {isAdmin && (
+        {isTeacherOrAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel>Admin</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  onClick={() => navigate("/financial")}
+                  onClick={() => navigate("/crm")}
+                  isActive={location.pathname === "/crm"}
                 >
-                  <DollarSign className="h-4 w-4" />
-                  {!isCollapsed && <span>Financeiro</span>}
+                  <Users className="h-4 w-4" />
+                  {!isCollapsed && <span>CRM</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => navigate("/dev-tools")}
-                >
-                  <Settings className="h-4 w-4" />
-                  {!isCollapsed && <span>DevTools</span>}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {isAdmin && (
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={() => navigate("/financial")}
+                    >
+                      <DollarSign className="h-4 w-4" />
+                      {!isCollapsed && <span>Financeiro</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={() => navigate("/dev-tools")}
+                    >
+                      <Settings className="h-4 w-4" />
+                      {!isCollapsed && <span>DevTools</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
+              )}
             </SidebarMenu>
           </SidebarGroup>
         )}
