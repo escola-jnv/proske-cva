@@ -14,6 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      assigned_task_students: {
+        Row: {
+          assigned_task_id: string
+          created_at: string | null
+          id: string
+          status: string
+          student_id: string
+          submission_id: string | null
+        }
+        Insert: {
+          assigned_task_id: string
+          created_at?: string | null
+          id?: string
+          status?: string
+          student_id: string
+          submission_id?: string | null
+        }
+        Update: {
+          assigned_task_id?: string
+          created_at?: string | null
+          id?: string
+          status?: string
+          student_id?: string
+          submission_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assigned_task_students_assigned_task_id_fkey"
+            columns: ["assigned_task_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assigned_task_students_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assigned_tasks: {
+        Row: {
+          community_id: string
+          created_at: string | null
+          created_by: string
+          deadline: string | null
+          description: string
+          id: string
+          pdf_url: string | null
+          title: string
+          updated_at: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          community_id: string
+          created_at?: string | null
+          created_by: string
+          deadline?: string | null
+          description: string
+          id?: string
+          pdf_url?: string | null
+          title: string
+          updated_at?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          community_id?: string
+          created_at?: string | null
+          created_by?: string
+          deadline?: string | null
+          description?: string
+          id?: string
+          pdf_url?: string | null
+          title?: string
+          updated_at?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assigned_tasks_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communities: {
         Row: {
           cover_image_url: string | null
