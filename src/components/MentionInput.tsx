@@ -118,7 +118,7 @@ export const MentionInput = ({
         placeholder={placeholder}
         className={className}
         rows={1}
-        style={{ minHeight: '40px', maxHeight: '120px', resize: 'none' }}
+        style={{ minHeight: '40px', resize: 'none' }}
       />
       
       {showSuggestions && (
