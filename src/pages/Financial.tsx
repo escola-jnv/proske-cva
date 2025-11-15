@@ -277,6 +277,87 @@ export default function Financial() {
     }
   };
 
+  const handleGenerate12Months = async (userId: string, planId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const plan = plans.find(p => p.id === planId);
+      if (!plan) throw new Error("Plano não encontrado");
+
+      // Get user's subscription to determine due day
+      const { data: subscription } = await supabase
+        .from("user_subscriptions")
+        .select("due_day")
+        .eq("user_id", userId)
+        .eq("plan_id", planId)
+        .single();
+
+      const dueDay = subscription?.due_day || 10; // Default to day 10 if not set
+
+      const paymentsToCreate = [];
+      const today = new Date();
+      
+      for (let i = 0; i < 12; i++) {
+        const dueDate = new Date(today.getFullYear(), today.getMonth() + i, dueDay);
+        
+        paymentsToCreate.push({
+          user_id: userId,
+          amount: plan.price,
+          due_date: dueDate.toISOString(),
+          status: "pending",
+          plan_id: planId,
+          created_by: user.id,
+          description: `Mensalidade ${i + 1}/12 - ${plan.name}`,
+        });
+      }
+
+      const { error } = await supabase.from("payments").insert(paymentsToCreate);
+      
+      if (error) throw error;
+
+      await fetchAllData();
+    } catch (error: any) {
+      console.error("Error generating payments:", error);
+      throw error;
+    }
+  };
+
+  const handleCreatePaymentFromModal = async (payment: Omit<Payment, "id" | "created_by">) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const { error } = await supabase.from("payments").insert({
+        ...payment,
+        created_by: user.id,
+      });
+
+      if (error) throw error;
+
+      await fetchAllData();
+    } catch (error: any) {
+      console.error("Error creating payment:", error);
+      throw error;
+    }
+  };
+
+  const handleUpdatePaymentFromModal = async (id: string, payment: Partial<Payment>) => {
+    try {
+      const { error } = await supabase
+        .from("payments")
+        .update(payment)
+        .eq("id", id);
+
+      if (error) throw error;
+
+      await fetchAllData();
+    } catch (error: any) {
+      console.error("Error updating payment:", error);
+      throw error;
+    }
+  };
+
   const handleDelete = (id: string) => {
     setDeleteDialog({ open: true, id });
   };
@@ -765,6 +846,19 @@ export default function Financial() {
             : null
         }
         payments={payments.filter((p) => p.user_id === userPaymentsModal.userId)}
+        userActivePlan={(() => {
+          if (!userPaymentsModal.userId) return null;
+          
+          // Find the user's active subscription in the student_ltv_analysis
+          const userPayment = payments.find(p => p.user_id === userPaymentsModal.userId && p.plan_id);
+          if (!userPayment?.plan_id) return null;
+          
+          return plans.find(p => p.id === userPayment.plan_id) || null;
+        })()}
+        plans={plans}
+        onCreatePayment={handleCreatePaymentFromModal}
+        onUpdatePayment={handleUpdatePaymentFromModal}
+        onGenerate12Months={handleGenerate12Months}
       />
     </div>
   );
