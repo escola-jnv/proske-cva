@@ -24,6 +24,7 @@ type Submission = {
   community_id: string;
   student_name: string;
   student_avatar: string | null;
+  task_code?: string | null;
 };
 const Tasks = () => {
   const navigate = useNavigate();

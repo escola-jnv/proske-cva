@@ -30,6 +30,7 @@ type SubmissionWithProfile = Submission & {
   student_avatar?: string;
   teacher_name?: string;
   teacher_avatar?: string;
+  task_code?: string | null;
 };
 
 export default function CommunityTasks() {
@@ -217,6 +218,7 @@ export default function CommunityTasks() {
                 <SubmissionCard
                   key={submission.id}
                   taskId={submission.id}
+                  taskCode={submission.task_code}
                   taskName={submission.task_name}
                   studentName={isTeacher ? submission.student_name : undefined}
                   studentAvatar={isTeacher ? submission.student_avatar : undefined}
