@@ -9,6 +9,8 @@ import { ProfileModal } from "@/components/ProfileModal";
 import { GroupInfoModal } from "@/components/GroupInfoModal";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useChatSounds } from "@/hooks/useChatSounds";
+import { MentionInput } from "@/components/MentionInput";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
@@ -24,6 +26,7 @@ type Message = {
   user_id: string;
   created_at: string;
   message_type?: string;
+  mentions?: string[];
   metadata?: {
     type?: 'task_submission' | 'task_reviewed' | 'task_assigned';
     submission_id?: string;
@@ -78,7 +81,10 @@ const GroupChat = () => {
   const [onlineUsers, setOnlineUsers] = useState<Array<{id: string, name: string, avatar_url: string | null}>>([]);
   const [userRole, setUserRole] = useState<string>('visitor');
   const [canSendMessages, setCanSendMessages] = useState(true);
+  const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
+  const [groupMembers, setGroupMembers] = useState<Array<{ id: string; name: string; avatar_url: string | null }>>([]);
   const isMobile = useIsMobile();
+  const { playMessageSound, playMentionSound } = useChatSounds();
 
   // Track user activity
   useActivityTracker(user?.id);
@@ -147,6 +153,22 @@ const GroupChat = () => {
           } as Message;
 
           setMessages((prev) => [...prev, newMsg]);
+          
+          // Play sounds
+          const isMentioned = newMsg.mentions?.includes(user?.id || '');
+          if (isMentioned) {
+            playMentionSound();
+            // Mark mention as read after a delay
+            setTimeout(async () => {
+              await supabase
+                .from("user_mentions")
+                .update({ is_read: true })
+                .eq("message_id", newMsg.id)
+                .eq("user_id", user?.id);
+            }, 2000);
+          } else if (newMsg.user_id !== user?.id) {
+            playMessageSound();
+          }
         }
       )
       .subscribe();
@@ -232,9 +254,38 @@ const GroupChat = () => {
 
       fetchMessages(grpId);
       fetchOnlineUsers(grpId);
+      fetchGroupMembers(grpId);
     } catch (error: any) {
       console.error("Error fetching group:", error);
       toast.error("Erro ao carregar grupo");
+    }
+  };
+
+  const fetchGroupMembers = async (grpId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("group_members")
+        .select(`
+          profiles!inner (
+            id,
+            name,
+            avatar_url
+          )
+        `)
+        .eq("group_id", grpId);
+
+      if (error) throw error;
+
+      if (data) {
+        const members = data.map((member: any) => ({
+          id: member.profiles.id,
+          name: member.profiles.name,
+          avatar_url: member.profiles.avatar_url,
+        }));
+        setGroupMembers(members);
+      }
+    } catch (error) {
+      console.error("Error fetching group members:", error);
     }
   };
 
@@ -366,11 +417,13 @@ const GroupChat = () => {
         user_id: user?.id,
         group_id: groupId,
         community_id: group?.community_id,
+        mentions: mentionedUsers.length > 0 ? mentionedUsers : null,
       });
 
       if (error) throw error;
 
       setNewMessage("");
+      setMentionedUsers([]);
       inputRef.current?.focus();
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -381,6 +434,40 @@ const GroupChat = () => {
     } finally {
       setSending(false);
     }
+  };
+
+  const handleMention = (userId: string) => {
+    setMentionedUsers(prev => {
+      if (!prev.includes(userId)) {
+        return [...prev, userId];
+      }
+      return prev;
+    });
+  };
+
+  const renderMessageContent = (message: Message) => {
+    const isMentioned = message.mentions?.includes(user?.id || '');
+    let content = message.content;
+    
+    // Highlight mentions
+    const mentionRegex = /@(\w+)/g;
+    const parts = content.split(mentionRegex);
+    
+    return (
+      <div className={`${isMentioned ? 'bg-destructive/10 border-l-2 border-destructive pl-2 -ml-2' : ''}`}>
+        {parts.map((part, index) => {
+          if (index % 2 === 1) {
+            // This is a mentioned name
+            return (
+              <span key={index} className="text-primary font-semibold">
+                @{part}
+              </span>
+            );
+          }
+          return <span key={index}>{part}</span>;
+        })}
+      </div>
+    );
   };
 
   const formatTime = (timestamp: string) => {
@@ -527,7 +614,7 @@ const GroupChat = () => {
                     <p className={`whitespace-pre-wrap break-words ${
                       isAdmin ? "text-[15px] font-bold" : "text-sm"
                     }`}>
-                      {message.content}
+                      {renderMessageContent(message)}
                     </p>
                     
                     {/* Task-specific buttons based on metadata */}
@@ -586,13 +673,13 @@ const GroupChat = () => {
             onSubmit={handleSendMessage}
             className="container mx-auto max-w-4xl flex gap-2"
           >
-            <Input
-              ref={inputRef}
+            <MentionInput
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Digite uma mensagem..."
-              className="flex-1"
-              disabled={sending}
+              onChange={setNewMessage}
+              onMention={handleMention}
+              users={groupMembers}
+              placeholder="Digite uma mensagem... (use @ para mencionar)"
+              className="flex-1 bg-background border border-input rounded-md px-3 py-2 text-sm resize-none"
             />
             <Button type="submit" size="icon" disabled={sending || !newMessage.trim()}>
               <Send className="h-5 w-5" />
