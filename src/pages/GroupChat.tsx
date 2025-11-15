@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ProfileModal } from "@/components/ProfileModal";
 import { GroupInfoModal } from "@/components/GroupInfoModal";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -58,9 +57,10 @@ type Group = {
   allowed_message_roles: string[];
 };
 
-const GroupChat = () => {
+function GroupChat() {
   const navigate = useNavigate();
-  const { groupId } = useParams();
+  const { groupId: paramGroupId } = useParams();
+  const [groupId, setGroupId] = useState<string | null>(paramGroupId || null);
   const [user, setUser] = useState<User | null>(null);
   const [group, setGroup] = useState<Group | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -70,12 +70,6 @@ const GroupChat = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [selectedProfile, setSelectedProfile] = useState<{
-    name: string;
-    avatar_url: string | null;
-    city: string | null;
-  } | null>(null);
-  const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [groupInfoModalOpen, setGroupInfoModalOpen] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Array<{id: string, name: string, avatar_url: string | null}>>([]);
   const [userRole, setUserRole] = useState<string>('visitor');
@@ -127,12 +121,26 @@ const GroupChat = () => {
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null);
 
       if (!session?.user) {
         navigate("/auth");
-      } else if (groupId) {
+        return;
+      }
+      
+      // If no groupId in URL params, fetch the first available group
+      if (!groupId) {
+        const { data: groups } = await supabase
+          .from("conversation_groups")
+          .select("id")
+          .order("created_at", { ascending: true })
+          .limit(1);
+        
+        if (groups && groups.length > 0) {
+          setGroupId(groups[0].id);
+        }
+      } else {
         fetchGroupData(groupId, session.user.id);
       }
 
@@ -447,11 +455,6 @@ const GroupChat = () => {
     });
   };
 
-  const handleAvatarClick = (profile: { name: string; avatar_url: string | null; city: string | null }) => {
-    setSelectedProfile(profile);
-    setProfileModalOpen(true);
-  };
-
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -531,14 +534,13 @@ const GroupChat = () => {
                 <div className="w-10 flex-shrink-0">
                   {isFirstInGroup && (
                     <Avatar 
-                      className={`h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary transition-all ${
+                      className={`h-10 w-10 ${
                         isAdmin 
                           ? "ring-2 ring-destructive ring-offset-2 ring-offset-background" 
                           : isTeacher 
                           ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
                           : ""
                       }`}
-                      onClick={() => handleAvatarClick(message.profiles)}
                     >
                       <AvatarImage src={message.profiles?.avatar_url || undefined} />
                       <AvatarFallback className="text-sm bg-primary/10">
@@ -662,12 +664,6 @@ const GroupChat = () => {
           </form>
         )}
       </div>
-
-      <ProfileModal
-        open={profileModalOpen}
-        onOpenChange={setProfileModalOpen}
-        profile={selectedProfile}
-      />
 
       <GroupInfoModal
         open={groupInfoModalOpen}

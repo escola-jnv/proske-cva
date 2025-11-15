@@ -33,32 +33,32 @@ export function BottomNav() {
     switch (userRole) {
       case "visitor":
         return [
-          { path: "/communities", icon: MessageCircle, label: "Chat" },
+          { path: "/chat", icon: MessageCircle, label: "Chat" },
           { path: "/plans", icon: CreditCard, label: "Assinatura" },
           { path: "/profile", icon: User, label: "Perfil" },
         ];
       
       case "student":
         return [
-          { path: "/communities", icon: Home, label: "Início" },
+          { path: "/chat", icon: Home, label: "Início" },
           { path: "/tasks", icon: FileText, label: "Tarefas" },
-          { path: "/communities", icon: MessageCircle, label: "Chat", highlighted: true },
+          { path: "/chat", icon: MessageCircle, label: "Chat", highlighted: true },
           { path: "/events", icon: Calendar, label: "Eventos" },
           { path: "/profile", icon: User, label: "Perfil" },
         ];
       
       case "teacher":
         return [
-          { path: "/communities", icon: Home, label: "Início" },
+          { path: "/chat", icon: Home, label: "Início" },
           { path: "/tasks", icon: FileText, label: "Tarefas" },
-          { path: "/communities", icon: MessageCircle, label: "Chat" },
+          { path: "/chat", icon: MessageCircle, label: "Chat" },
           { path: "/events", icon: Calendar, label: "Eventos" },
           { path: "/profile", icon: User, label: "Perfil" },
         ];
       
       case "admin":
         return [
-          { path: "/communities", icon: MessageCircle, label: "Chat" },
+          { path: "/chat", icon: MessageCircle, label: "Chat" },
           { path: "/tasks", icon: FileText, label: "Tarefas" },
           { path: "/events", icon: Calendar, label: "Eventos" },
           { path: "/profile", icon: User, label: "Perfil" },
@@ -69,7 +69,7 @@ export function BottomNav() {
       
       default:
         return [
-          { path: "/communities", icon: Home, label: "Início" },
+          { path: "/chat", icon: Home, label: "Início" },
           { path: "/profile", icon: User, label: "Perfil" },
         ];
     }
