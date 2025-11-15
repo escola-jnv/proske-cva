@@ -25,10 +25,20 @@ type Message = {
   created_at: string;
   message_type?: string;
   metadata?: {
+    type?: 'task_submission' | 'task_reviewed' | 'task_assigned';
     submission_id?: string;
     video_url?: string;
     task_name?: string;
+    task_code?: string;
     grade?: number;
+    student_name?: string;
+    assigned_task_id?: string;
+    task_title?: string;
+    students?: Array<{
+      id: string;
+      name: string;
+      avatar_url?: string;
+    }>;
   };
   profiles: {
     name: string;
@@ -453,38 +463,6 @@ const GroupChat = () => {
             const isTeacher = message.user_role === "teacher";
             const isAdmin = message.user_role === "admin";
             const isSpecialRole = isTeacher || isAdmin;
-            const isSystemMessage = message.message_type === 'system';
-            
-            // Render system messages differently
-            if (isSystemMessage) {
-              return (
-                <div key={message.id} className="flex justify-center my-4">
-                  <div className="max-w-[85%] rounded-lg bg-accent/50 border border-accent px-4 py-3 shadow-sm">
-                    <p className="text-sm text-center whitespace-pre-wrap">
-                      {message.content}
-                    </p>
-                    
-                    {/* Show video link if available */}
-                    {message.metadata?.video_url && (
-                      <div className="mt-3 flex justify-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs"
-                          onClick={() => window.open(message.metadata?.video_url, '_blank')}
-                        >
-                          📹 Ver Vídeo da Tarefa
-                        </Button>
-                      </div>
-                    )}
-                    
-                    <span className="text-xs text-muted-foreground block text-center mt-2">
-                      {formatTime(message.created_at)}
-                    </span>
-                  </div>
-                </div>
-              );
-            }
             
             return (
               <div
@@ -551,6 +529,34 @@ const GroupChat = () => {
                     }`}>
                       {message.content}
                     </p>
+                    
+                    {/* Task-specific buttons based on metadata */}
+                    {message.metadata?.type === 'task_submission' && message.metadata.video_url && (
+                      <div className="mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => window.open(message.metadata?.video_url, '_blank')}
+                        >
+                          📹 Assistir Vídeo
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {message.metadata?.type === 'task_assigned' && message.metadata.students && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {message.metadata.students.map((student) => (
+                          <Avatar key={student.id} className="h-6 w-6 border-2 border-background">
+                            <AvatarImage src={student.avatar_url || undefined} />
+                            <AvatarFallback className="text-[10px]">
+                              {student.name?.charAt(0).toUpperCase() || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                        ))}
+                      </div>
+                    )}
+                    
                     <span
                       className={`text-xs mt-1 block ${
                         isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
