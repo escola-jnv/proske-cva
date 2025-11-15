@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Settings } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Settings, Search } from "lucide-react";
 import { CRMKanban } from "@/components/crm/CRMKanban";
 import { CreateLeadDialog } from "@/components/crm/CreateLeadDialog";
 import { ManageTagsDialog } from "@/components/crm/ManageTagsDialog";
@@ -11,6 +12,7 @@ import { toast } from "sonner";
 export default function CRM() {
   const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
   const [isManageTagsOpen, setIsManageTagsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: tags, refetch: refetchTags } = useQuery({
     queryKey: ["crm-tags"],
@@ -79,6 +81,31 @@ export default function CRM() {
     refetchLeads();
   };
 
+  // Filter users and leads based on search query
+  const filteredUsers = useMemo(() => {
+    if (!users || !searchQuery) return users || [];
+    const query = searchQuery.toLowerCase();
+    return users.filter(
+      (user) =>
+        user.name?.toLowerCase().includes(query) ||
+        user.email?.toLowerCase().includes(query) ||
+        user.phone?.toLowerCase().includes(query) ||
+        user.city?.toLowerCase().includes(query)
+    );
+  }, [users, searchQuery]);
+
+  const filteredLeads = useMemo(() => {
+    if (!leads || !searchQuery) return leads || [];
+    const query = searchQuery.toLowerCase();
+    return leads.filter(
+      (lead) =>
+        lead.name?.toLowerCase().includes(query) ||
+        lead.email?.toLowerCase().includes(query) ||
+        lead.phone?.toLowerCase().includes(query) ||
+        lead.city?.toLowerCase().includes(query)
+    );
+  }, [leads, searchQuery]);
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-[1600px] mx-auto space-y-6">
@@ -99,10 +126,20 @@ export default function CRM() {
           </div>
         </div>
 
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, email, telefone ou cidade..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
         <CRMKanban
           tags={tags || []}
-          users={users || []}
-          leads={leads || []}
+          users={filteredUsers}
+          leads={filteredLeads}
           onRefetch={handleRefetch}
         />
       </div>
