@@ -17,6 +17,10 @@ type MentionInputProps = {
   className?: string;
 };
 
+const getFirstName = (fullName: string): string => {
+  return fullName.split(' ')[0];
+};
+
 export const MentionInput = ({
   value,
   onChange,
@@ -70,7 +74,8 @@ export const MentionInput = ({
     
     // Remove the @ and query text
     const beforeMention = textBeforeCursor.replace(/@\w*$/, '');
-    const newText = `${beforeMention}@${user.name} ${textAfterCursor}`;
+    const firstName = getFirstName(user.name);
+    const newText = `${beforeMention}@${firstName} ${textAfterCursor}`;
     
     onChange(newText);
     onMention(user.id);
@@ -78,7 +83,7 @@ export const MentionInput = ({
     
     // Set cursor position after mention
     setTimeout(() => {
-      const newCursorPos = beforeMention.length + user.name.length + 2;
+      const newCursorPos = beforeMention.length + firstName.length + 2;
       textarea.setSelectionRange(newCursorPos, newCursorPos);
       textarea.focus();
     }, 0);
@@ -117,10 +122,10 @@ export const MentionInput = ({
       />
       
       {showSuggestions && (
-        <div className="absolute bottom-full left-0 right-0 mb-2 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
-          <ScrollArea className="max-h-[200px]">
+        <div className="absolute bottom-full left-0 right-0 mb-2 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-50">
+          <ScrollArea className="max-h-[240px]">
             <div className="p-1">
-              {filteredUsers.map((user, index) => (
+              {filteredUsers.slice(0, 8).map((user, index) => (
                 <button
                   key={user.id}
                   onClick={() => insertMention(user)}
@@ -128,13 +133,13 @@ export const MentionInput = ({
                     index === selectedIndex ? 'bg-accent' : ''
                   }`}
                 >
-                  <Avatar className="h-6 w-6">
+                  <Avatar className="h-7 w-7">
                     <AvatarImage src={user.avatar_url || ''} />
-                    <AvatarFallback className="text-xs">
-                      {user.name.substring(0, 2).toUpperCase()}
+                    <AvatarFallback className="text-xs bg-muted">
+                      {getFirstName(user.name).substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm">{user.name}</span>
+                  <span className="text-sm font-medium">{getFirstName(user.name)}</span>
                 </button>
               ))}
             </div>
