@@ -718,28 +718,76 @@ export default function DevTools() {
     if (!type || !id) return;
 
     try {
-      let table: string = "";
-      switch (type) {
-        case "profile":
-          table = "profiles";
-          break;
-        case "community":
-          table = "communities";
-          break;
-        case "group":
-          table = "conversation_groups";
-          break;
-        case "event":
-          table = "events";
-          break;
+      if (type === "profile") {
+        // Deletar usuário de todas as tabelas relacionadas
+        const tables = [
+          'user_roles',
+          'user_subscriptions',
+          'user_course_access',
+          'user_tags',
+          'user_mentions',
+          'user_menu_order',
+          'lesson_progress',
+          'group_members',
+          'community_members',
+          'event_participants',
+          'assigned_task_students',
+          'submissions',
+          'messages',
+          'crm_notes',
+          'interview_schedules',
+          'payments'
+        ];
+
+        // Deletar de todas as tabelas relacionadas primeiro
+        for (const table of tables) {
+          const { error } = await supabase
+            .from(table as any)
+            .delete()
+            .eq('user_id', id);
+          
+          if (error && error.code !== 'PGRST116') { // Ignora erro de nenhum registro encontrado
+            console.warn(`Aviso ao deletar de ${table}:`, error);
+          }
+        }
+
+        // Deletar tabelas onde user_id tem nome diferente
+        await supabase.from('crm_notes' as any).delete().eq('created_by', id);
+        await supabase.from('assigned_task_students' as any).delete().eq('student_id', id);
+        await supabase.from('submissions' as any).delete().eq('student_id', id);
+        await supabase.from('submissions' as any).delete().eq('reviewed_by', id);
+        await supabase.from('interview_schedules' as any).delete().eq('confirmed_by', id);
+        await supabase.from('payments' as any).delete().eq('created_by', id);
+
+        // Por último, deletar o perfil
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', id);
+
+        if (profileError) throw profileError;
+
+      } else {
+        let table: string = "";
+        switch (type) {
+          case "community":
+            table = "communities";
+            break;
+          case "group":
+            table = "conversation_groups";
+            break;
+          case "event":
+            table = "events";
+            break;
+        }
+
+        const { error } = await supabase.from(table as any).delete().eq("id", id);
+        if (error) throw error;
       }
-
-      const { error } = await supabase.from(table as any).delete().eq("id", id);
-
-      if (error) throw error;
 
       toast.success("Deletado com sucesso!");
       setDeleteDialog({ open: false, type: null, id: null });
+      setEditDialog({ open: false, type: null, data: null });
       await fetchAllData();
     } catch (error: any) {
       console.error("Error deleting:", error);
@@ -1503,23 +1551,16 @@ export default function DevTools() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Usuários</CardTitle>
-                  <CardDescription>Visualize e edite perfis de usuários</CardDescription>
+                  <CardDescription>Clique em um usuário para editar</CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
-                  {selectedUsers.length > 0 && (
-                    <Button onClick={handleBulkEdit} variant="default">
-                      Editar {selectedUsers.length} selecionado(s)
-                    </Button>
-                  )}
-                  <div className="relative w-64">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar usuários..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8"
-                    />
-                  </div>
+                <div className="relative w-64">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar usuários..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
                 </div>
               </div>
             </CardHeader>
@@ -1527,37 +1568,27 @@ export default function DevTools() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={selectedUsers.length === filteredProfiles.length && filteredProfiles.length > 0}
-                        onCheckedChange={toggleAllUsers}
-                      />
-                    </TableHead>
                     <TableHead>Avatar</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Plano</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead className="w-[200px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredProfiles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredProfiles.map((profile) => (
-                      <TableRow key={profile.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedUsers.includes(profile.id)}
-                            onCheckedChange={() => toggleUserSelection(profile.id)}
-                          />
-                        </TableCell>
+                      <TableRow 
+                        key={profile.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleEdit("profile", profile)}
+                      >
                         <TableCell>
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={profile.avatar_url || ""} alt={profile.name} />
@@ -1581,62 +1612,10 @@ export default function DevTools() {
                         </TableCell>
                         <TableCell>
                           {profile.subscription ? (
-                            <div className="space-y-1">
-                              <p className="text-sm font-medium">{profile.subscription.plan_name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                R$ {profile.subscription.price.toFixed(2)}
-                              </p>
-                            </div>
+                            <span className="text-sm">{profile.subscription.plan_name}</span>
                           ) : (
                             <span className="text-sm text-muted-foreground">Sem plano</span>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          {profile.subscription ? (
-                            <Badge variant={
-                              new Date(profile.subscription.end_date) > new Date() ? "default" : "destructive"
-                            }>
-                              {new Date(profile.subscription.end_date).toLocaleDateString("pt-BR")}
-                            </Badge>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit("profile", profile)}
-                              title="Editar"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleLinkUser(profile.id, "communities")}
-                              title="Vincular Comunidades"
-                            >
-                              <FolderOpen className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleLinkUser(profile.id, "groups")}
-                              title="Vincular Grupos"
-                            >
-                              <MessageSquare className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete("profile", profile.id)}
-                              title="Deletar"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -2832,6 +2811,16 @@ export default function DevTools() {
           </div>
 
           <DialogFooter>
+            {editDialog.type === "profile" && editDialog.data?.id && (
+              <Button 
+                variant="destructive" 
+                onClick={() => handleDelete("profile", editDialog.data.id)}
+                className="mr-auto"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir Usuário
+              </Button>
+            )}
             <Button variant="outline" onClick={() => {
               setEditDialog({ open: false, type: null, data: null });
               setSelectedGroupPlans([]);
