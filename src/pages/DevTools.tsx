@@ -856,15 +856,26 @@ export default function DevTools() {
 
   const handleQuickUpdateRole = async (userId: string, newRole: string) => {
     try {
-      // Deletar role atual
-      await supabase.from("user_roles").delete().eq("user_id", userId);
+      // Deletar TODAS as roles do usuário
+      const { error: deleteError } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", userId);
+
+      if (deleteError) {
+        console.error("Error deleting roles:", deleteError);
+        throw deleteError;
+      }
       
       // Inserir nova role
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from("user_roles")
         .insert([{ user_id: userId, role: newRole as any }]);
 
-      if (error) throw error;
+      if (insertError) {
+        console.error("Error inserting role:", insertError);
+        throw insertError;
+      }
 
       toast.success("Tipo de usuário atualizado!");
       await fetchAllData();
