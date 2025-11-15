@@ -143,4 +143,23 @@ All colors MUST be HSL.
   .animate-scroll {
     animation: scroll 30s linear infinite;
   }
+
+  /* Mobile viewport height fix */
+  @supports (height: 100dvh) {
+    .h-dvh {
+      height: 100dvh;
+    }
+  }
+  
+  /* Prevent overscroll/bounce on mobile */
+  body {
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Fix for mobile Safari address bar */
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
 }
