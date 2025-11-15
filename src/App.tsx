@@ -11,9 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import InstallApp from "./pages/InstallApp";
-import Communities from "./pages/Communities";
 import Profile from "./pages/Profile";
-import CommunityGroups from "./pages/CommunityGroups";
 import CommunityTasks from "./pages/CommunityTasks";
 import CommunityEvents from "./pages/CommunityEvents";
 import CommunityCourses from "./pages/CommunityCourses";
@@ -69,20 +67,12 @@ const AppContent = () => {
       <InterviewReminderDialog userId={userId} />
       <main className="flex-1">
         <Routes>
-          <Route path="/communities" element={<Communities />} />
+          <Route path="/chat" element={<GroupChat />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/events" element={<Events />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/plans" element={<Plans />} />
           <Route path="/crm" element={<CRM />} />
-          <Route path="/communities/:communityId/groups" element={<CommunityGroups />} />
-          <Route path="/communities/:communityId/tasks" element={<CommunityTasks />} />
-          <Route path="/communities/:communityId/events" element={<CommunityEvents />} />
-          <Route path="/communities/:communityId/courses" element={<CommunityCourses />} />
-          <Route path="/communities/:communityId/courses/create" element={<CourseManagement />} />
-          <Route path="/groups/:groupId/chat" element={<GroupChat />} />
-          <Route path="/courses/:courseId" element={<CourseView />} />
-          <Route path="/courses/:courseId/edit" element={<CourseManagement />} />
           <Route path="/dev-tools" element={<DevTools />} />
           <Route path="/financial" element={<Financial />} />
           <Route path="*" element={<NotFound />} />
