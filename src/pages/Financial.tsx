@@ -55,6 +55,7 @@ import {
   Plus 
 } from "lucide-react";
 import { StudentLTVAnalysis } from "@/components/StudentLTVAnalysis";
+import { UserPaymentsModal } from "@/components/UserPaymentsModal";
 
 type Payment = {
   id: string;
@@ -78,6 +79,10 @@ type Payment = {
 type Profile = {
   id: string;
   name: string;
+  email?: string | null;
+  phone?: string | null;
+  city?: string | null;
+  avatar_url?: string | null;
 };
 
 type Community = {
@@ -110,6 +115,11 @@ export default function Financial() {
     open: boolean;
     id: string | null;
   }>({ open: false, id: null });
+
+  const [userPaymentsModal, setUserPaymentsModal] = useState<{
+    open: boolean;
+    userId: string | null;
+  }>({ open: false, userId: null });
 
   useEffect(() => {
     checkAdminAndFetchData();
@@ -149,7 +159,7 @@ export default function Financial() {
     try {
       const [paymentsRes, profilesRes, communitiesRes, plansRes] = await Promise.all([
         supabase.from("payments").select("*").order("due_date", { ascending: false }),
-        supabase.from("profiles").select("id, name").order("name"),
+        supabase.from("profiles").select("id, name, email, phone, city, avatar_url").order("name"),
         supabase.from("communities").select("id, name").order("name"),
         supabase.from("subscription_plans").select("id, name, price").order("name"),
       ]);
@@ -527,12 +537,17 @@ export default function Financial() {
         </TabsContent>
 
         <TabsContent value="ltv">
-          <StudentLTVAnalysis onSelectUser={(userId) => {
-            setSelectedUserId(userId);
-            // Switch to payments tab
-            const paymentsTab = document.querySelector('[value="payments"]') as HTMLElement;
-            paymentsTab?.click();
-          }} />
+          <StudentLTVAnalysis 
+            onSelectUser={(userId) => {
+              setSelectedUserId(userId);
+              // Switch to payments tab
+              const paymentsTab = document.querySelector('[value="payments"]') as HTMLElement;
+              paymentsTab?.click();
+            }}
+            onRowClick={(userId) => {
+              setUserPaymentsModal({ open: true, userId });
+            }}
+          />
         </TabsContent>
       </Tabs>
 
@@ -736,6 +751,21 @@ export default function Financial() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <UserPaymentsModal
+        open={userPaymentsModal.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            setUserPaymentsModal({ open: false, userId: null });
+          }
+        }}
+        user={
+          userPaymentsModal.userId
+            ? profiles.find((p) => p.id === userPaymentsModal.userId) || null
+            : null
+        }
+        payments={payments.filter((p) => p.user_id === userPaymentsModal.userId)}
+      />
     </div>
   );
 }
