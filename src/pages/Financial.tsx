@@ -60,14 +60,19 @@ type Payment = {
   id: string;
   user_id: string;
   amount: number;
+  amount_paid?: number;
   due_date: string;
   paid_at?: string;
   status: "pending" | "confirmed" | "overdue" | "cancelled";
   description?: string;
   community_id?: string;
+  plan_id?: string;
+  payment_method?: "boleto" | "pix" | "cartao" | "dinheiro" | "transferencia";
+  fees?: number;
   created_by: string;
   user_name?: string;
   community_name?: string;
+  plan_name?: string;
 };
 
 type Profile = {
@@ -80,13 +85,21 @@ type Community = {
   name: string;
 };
 
+type Plan = {
+  id: string;
+  name: string;
+  price: number;
+};
+
 export default function Financial() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [communities, setCommunities] = useState<Community[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   
   const [editDialog, setEditDialog] = useState<{
     open: boolean;
@@ -134,16 +147,21 @@ export default function Financial() {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [paymentsRes, profilesRes, communitiesRes] = await Promise.all([
+      const [paymentsRes, profilesRes, communitiesRes, plansRes] = await Promise.all([
         supabase.from("payments").select("*").order("due_date", { ascending: false }),
         supabase.from("profiles").select("id, name").order("name"),
         supabase.from("communities").select("id, name").order("name"),
+        supabase.from("subscription_plans").select("id, name, price").order("name"),
       ]);
 
       if (profilesRes.data) setProfiles(profilesRes.data);
       if (communitiesRes.data) setCommunities(communitiesRes.data);
       
-      // Fetch payments with user and community names
+      if (profilesRes.data) setProfiles(profilesRes.data);
+      if (communitiesRes.data) setCommunities(communitiesRes.data);
+      if (plansRes.data) setPlans(plansRes.data);
+      
+      // Fetch payments with user, community and plan names
       if (paymentsRes.data) {
         const paymentsWithDetails = await Promise.all(
           paymentsRes.data.map(async (payment) => {
@@ -163,11 +181,22 @@ export default function Financial() {
               communityName = community?.name;
             }
             
+            let planName = null;
+            if (payment.plan_id) {
+              const { data: plan } = await supabase
+                .from("subscription_plans")
+                .select("name")
+                .eq("id", payment.plan_id)
+                .single();
+              planName = plan?.name;
+            }
+            
             return {
               ...payment,
               user_name: profile?.name,
               community_name: communityName,
-            };
+              plan_name: planName,
+            } as Payment;
           })
         );
         setPayments(paymentsWithDetails);
@@ -188,12 +217,17 @@ export default function Financial() {
     setEditDialog({
       open: true,
       data: {
-        user_id: "",
+        user_id: selectedUserId || "",
         amount: 0,
+        amount_paid: 0,
         due_date: new Date().toISOString().split("T")[0],
+        paid_at: "",
         status: "pending",
         description: "",
         community_id: "",
+        plan_id: "",
+        payment_method: "",
+        fees: 0,
       },
     });
   };
@@ -255,11 +289,13 @@ export default function Financial() {
     }
   };
 
-  // Filter payments based on search
-  const filteredPayments = payments.filter((p) =>
-    p.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter payments based on search and selected user
+  const filteredPayments = payments.filter((p) => {
+    const matchesSearch = p.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesUser = !selectedUserId || p.user_id === selectedUserId;
+    return matchesSearch && matchesUser;
+  });
 
   // Calculate financial statistics
   const totalReceivable = payments
@@ -379,6 +415,14 @@ export default function Financial() {
               <CardDescription>Gerencie todos os pagamentos</CardDescription>
             </div>
             <div className="flex gap-2">
+              {selectedUserId && (
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedUserId(null)}
+                >
+                  Limpar Filtro
+                </Button>
+              )}
               <div className="relative w-64">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -400,18 +444,20 @@ export default function Financial() {
             <TableHeader>
               <TableRow>
                 <TableHead>Aluno</TableHead>
-                <TableHead>Valor</TableHead>
+                <TableHead>Valor Original</TableHead>
+                <TableHead>Valor Pago</TableHead>
+                <TableHead>Plano</TableHead>
                 <TableHead>Vencimento</TableHead>
+                <TableHead>Pagamento</TableHead>
+                <TableHead>Método</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Comunidade</TableHead>
-                <TableHead>Descrição</TableHead>
                 <TableHead className="w-[100px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredPayments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
                     Nenhum pagamento encontrado
                   </TableCell>
                 </TableRow>
@@ -422,8 +468,23 @@ export default function Financial() {
                     <TableCell className="font-semibold">
                       R$ {Number(payment.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </TableCell>
+                    <TableCell className="font-semibold text-green-600">
+                      {payment.amount_paid ? `R$ ${Number(payment.amount_paid).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "-"}
+                    </TableCell>
+                    <TableCell>{payment.plan_name || "-"}</TableCell>
                     <TableCell>
                       {new Date(payment.due_date).toLocaleDateString("pt-BR")}
+                    </TableCell>
+                    <TableCell>
+                      {payment.paid_at ? new Date(payment.paid_at).toLocaleDateString("pt-BR") : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {payment.payment_method === "boleto" && "Boleto"}
+                      {payment.payment_method === "pix" && "PIX"}
+                      {payment.payment_method === "cartao" && "Cartão"}
+                      {payment.payment_method === "dinheiro" && "Dinheiro"}
+                      {payment.payment_method === "transferencia" && "Transferência"}
+                      {!payment.payment_method && "-"}
                     </TableCell>
                     <TableCell>
                       <Badge variant={
@@ -438,8 +499,6 @@ export default function Financial() {
                         {payment.status === "cancelled" && "Cancelado"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{payment.community_name || "-"}</TableCell>
-                    <TableCell>{payment.description || "-"}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button
@@ -468,7 +527,12 @@ export default function Financial() {
         </TabsContent>
 
         <TabsContent value="ltv">
-          <StudentLTVAnalysis />
+          <StudentLTVAnalysis onSelectUser={(userId) => {
+            setSelectedUserId(userId);
+            // Switch to payments tab
+            const paymentsTab = document.querySelector('[value="payments"]') as HTMLElement;
+            paymentsTab?.click();
+          }} />
         </TabsContent>
       </Tabs>
 
@@ -500,25 +564,103 @@ export default function Financial() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="amount">Valor (R$)</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                value={editDialog.data?.amount || 0}
-                onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), amount: parseFloat(e.target.value) } }))}
-              />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="amount">Valor Original (R$)</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  value={editDialog.data?.amount || 0}
+                  onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), amount: parseFloat(e.target.value) } }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="amount_paid">Valor Pago (R$)</Label>
+                <Input
+                  id="amount_paid"
+                  type="number"
+                  step="0.01"
+                  value={editDialog.data?.amount_paid || 0}
+                  onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), amount_paid: parseFloat(e.target.value) } }))}
+                />
+              </div>
             </div>
+
             <div>
-              <Label htmlFor="due_date">Data de Vencimento</Label>
-              <Input
-                id="due_date"
-                type="date"
-                value={editDialog.data?.due_date?.split("T")[0] || ""}
-                onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), due_date: e.target.value } }))}
-              />
+              <Label htmlFor="plan_id">Plano</Label>
+              <Select
+                value={editDialog.data?.plan_id || ""}
+                onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), plan_id: value } }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o plano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nenhum</SelectItem>
+                  {plans.map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name} - R$ {plan.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="due_date">Data de Vencimento</Label>
+                <Input
+                  id="due_date"
+                  type="date"
+                  value={editDialog.data?.due_date?.split("T")[0] || ""}
+                  onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), due_date: e.target.value } }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="paid_at">Data de Pagamento</Label>
+                <Input
+                  id="paid_at"
+                  type="date"
+                  value={editDialog.data?.paid_at?.split("T")[0] || ""}
+                  onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), paid_at: e.target.value } }))}
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="payment_method">Método de Pagamento</Label>
+                <Select
+                  value={editDialog.data?.payment_method || ""}
+                  onValueChange={(value) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), payment_method: value } }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o método" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="boleto">Boleto</SelectItem>
+                    <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="cartao">Cartão</SelectItem>
+                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="transferencia">Transferência</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="fees">Taxas (R$)</Label>
+                <Input
+                  id="fees"
+                  type="number"
+                  step="0.01"
+                  value={editDialog.data?.fees || 0}
+                  onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), fees: parseFloat(e.target.value) } }))}
+                />
+              </div>
+            </div>
+            
             <div>
               <Label htmlFor="status">Status</Label>
               <Select
@@ -536,6 +678,7 @@ export default function Financial() {
                 </SelectContent>
               </Select>
             </div>
+            
             <div>
               <Label htmlFor="community_id">Comunidade (Opcional)</Label>
               <Select
@@ -556,11 +699,12 @@ export default function Financial() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="description">Descrição (Opcional)</Label>
+              <Label htmlFor="description">Observações</Label>
               <Textarea
                 id="description"
                 value={editDialog.data?.description || ""}
                 onChange={(e) => setEditDialog(prev => ({ ...prev, data: { ...(prev.data || {}), description: e.target.value } }))}
+                rows={3}
               />
             </div>
           </div>

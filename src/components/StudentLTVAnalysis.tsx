@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -42,7 +43,11 @@ type StudentLTV = {
   customer_since: string;
 };
 
-export function StudentLTVAnalysis() {
+type StudentLTVAnalysisProps = {
+  onSelectUser?: (userId: string) => void;
+};
+
+export function StudentLTVAnalysis({ onSelectUser }: StudentLTVAnalysisProps) {
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<StudentLTV[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -216,6 +221,7 @@ export function StudentLTVAnalysis() {
                   <TableHead className="text-right">LTV</TableHead>
                   <TableHead className="text-center">Próx. Pgto</TableHead>
                   <TableHead>Cliente desde</TableHead>
+                  {onSelectUser && <TableHead className="text-center">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -275,6 +281,17 @@ export function StudentLTVAnalysis() {
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(student.customer_since)}
                       </TableCell>
+                      {onSelectUser && (
+                        <TableCell className="text-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onSelectUser(student.user_id)}
+                          >
+                            Ver Cobranças
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}
