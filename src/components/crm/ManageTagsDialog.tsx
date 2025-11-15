@@ -11,14 +11,84 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface ManageTagsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+}
+
+interface SortableTagItemProps {
+  tag: any;
+  onDelete: (id: string) => void;
+}
+
+function SortableTagItem({ tag, onDelete }: SortableTagItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tag.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between p-3 bg-muted rounded-lg"
+    >
+      <div className="flex items-center gap-2">
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <Badge
+          variant="secondary"
+          style={{
+            backgroundColor: `${tag.color}20`,
+            borderColor: tag.color,
+            color: tag.color,
+          }}
+        >
+          {tag.name}
+        </Badge>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onDelete(tag.id)}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  );
 }
 
 export function ManageTagsDialog({
@@ -28,6 +98,13 @@ export function ManageTagsDialog({
 }: ManageTagsDialogProps) {
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#3b82f6");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const { data: tags, refetch } = useQuery({
     queryKey: ["manage-tags"],
@@ -83,6 +160,41 @@ export function ManageTagsDialog({
       toast.error("Erro ao excluir tag");
     },
   });
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || !tags) return;
+
+    if (active.id !== over.id) {
+      const oldIndex = tags.findIndex((tag) => tag.id === active.id);
+      const newIndex = tags.findIndex((tag) => tag.id === over.id);
+
+      const newTags = arrayMove(tags, oldIndex, newIndex);
+
+      // Update order_index for all tags
+      try {
+        const updates = newTags.map((tag, index) => ({
+          id: tag.id,
+          order_index: index,
+        }));
+
+        for (const update of updates) {
+          await supabase
+            .from("tags")
+            .update({ order_index: update.order_index })
+            .eq("id", update.id);
+        }
+
+        refetch();
+        onSuccess();
+        toast.success("Ordem das tags atualizada!");
+      } catch (error) {
+        console.error("Error updating tag order:", error);
+        toast.error("Erro ao atualizar ordem das tags");
+      }
+    }
+  };
 
   const colorPresets = [
     "#3b82f6", // blue
@@ -151,33 +263,29 @@ export function ManageTagsDialog({
 
           {/* Existing tags */}
           <div className="space-y-2">
-            <Label>Tags Existentes</Label>
+            <Label>Tags Existentes (arraste para reordenar)</Label>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {tags && tags.length > 0 ? (
-                tags.map((tag) => (
-                  <div
-                    key={tag.id}
-                    className="flex items-center justify-between p-2 rounded-md bg-muted/50"
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={tags.map((t) => t.id)}
+                    strategy={verticalListSortingStrategy}
                   >
-                    <Badge
-                      style={{
-                        backgroundColor: `${tag.color}20`,
-                        borderColor: tag.color,
-                        color: tag.color,
-                      }}
-                    >
-                      {tag.name}
-                    </Badge>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => deleteTagMutation.mutate(tag.id)}
-                      disabled={deleteTagMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                ))
+                    <div className="space-y-2">
+                      {tags.map((tag) => (
+                        <SortableTagItem
+                          key={tag.id}
+                          tag={tag}
+                          onDelete={(id) => deleteTagMutation.mutate(id)}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   Nenhuma tag criada ainda
