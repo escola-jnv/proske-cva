@@ -6,8 +6,10 @@ import { FileText, Search } from "lucide-react";
 import { toast } from "sonner";
 import { SubmitTaskDialog } from "@/components/SubmitTaskDialog";
 import { SubmissionCard } from "@/components/SubmissionCard";
+import { AssignedTaskCard } from "@/components/AssignedTaskCard";
 import { ReviewSubmissionDialog } from "@/components/ReviewSubmissionDialog";
 import { ViewSubmissionDialog } from "@/components/ViewSubmissionDialog";
+import { ViewAssignedTaskDialog } from "@/components/ViewAssignedTaskDialog";
 import { Input } from "@/components/ui/input";
 import { CreateAssignedTaskDialog } from "@/components/CreateAssignedTaskDialog";
 
@@ -34,6 +36,18 @@ type SubmissionWithProfile = Submission & {
   task_code?: string | null;
 };
 
+type AssignedTask = {
+  id: string;
+  assigned_task_id: string;
+  title: string;
+  description: string;
+  youtube_url?: string | null;
+  pdf_url?: string | null;
+  deadline?: string | null;
+  created_at: string;
+  status: "pending" | "completed";
+};
+
 export default function CommunityTasks() {
   const navigate = useNavigate();
   const { communityId } = useParams();
@@ -41,9 +55,12 @@ export default function CommunityTasks() {
   const [isTeacher, setIsTeacher] = useState(false);
   const [allSubmissions, setAllSubmissions] = useState<SubmissionWithProfile[]>([]);
   const [mySubmissions, setMySubmissions] = useState<SubmissionWithProfile[]>([]);
+  const [assignedTasks, setAssignedTasks] = useState<AssignedTask[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithProfile | null>(null);
+  const [selectedAssignedTask, setSelectedAssignedTask] = useState<AssignedTask | null>(null);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [assignedTaskDialogOpen, setAssignedTaskDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -65,6 +82,9 @@ export default function CommunityTasks() {
 
       if (communityId) {
         await fetchSubmissions(communityId, user.id, isTeacherOrAdmin);
+        if (!isTeacherOrAdmin) {
+          await fetchAssignedTasks(communityId, user.id);
+        }
       }
       setLoading(false);
     };
@@ -140,6 +160,50 @@ export default function CommunityTasks() {
     }
   };
 
+  const fetchAssignedTasks = async (commId: string, userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("assigned_task_students")
+        .select(`
+          id,
+          status,
+          assigned_task_id,
+          submission_id,
+          assigned_tasks!inner (
+            id,
+            title,
+            description,
+            youtube_url,
+            pdf_url,
+            deadline,
+            created_at,
+            community_id
+          )
+        `)
+        .eq("student_id", userId)
+        .eq("assigned_tasks.community_id", commId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const tasks = (data || []).map((item: any) => ({
+        id: item.id,
+        assigned_task_id: item.assigned_task_id,
+        title: item.assigned_tasks.title,
+        description: item.assigned_tasks.description,
+        youtube_url: item.assigned_tasks.youtube_url,
+        pdf_url: item.assigned_tasks.pdf_url,
+        deadline: item.assigned_tasks.deadline,
+        created_at: item.assigned_tasks.created_at,
+        status: (item.submission_id ? "completed" : "pending") as "completed" | "pending",
+      }));
+
+      setAssignedTasks(tasks);
+    } catch (error: any) {
+      console.error("Error fetching assigned tasks:", error);
+    }
+  };
+
   const handleReviewComplete = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (communityId && user) {
@@ -153,6 +217,12 @@ export default function CommunityTasks() {
     sub.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredAssignedTasks = assignedTasks.filter(task =>
+    task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    task.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const pendingToSubmit = filteredAssignedTasks.filter(t => t.status === "pending");
   const pendingSubmissions = filteredSubmissions.filter(s => s.status === "pending");
   const reviewedSubmissions = filteredSubmissions.filter(s => s.status === "reviewed");
 
@@ -164,11 +234,11 @@ export default function CommunityTasks() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Tarefas para Correção</h1>
+              <h1 className="text-3xl font-bold">Tarefas</h1>
               <p className="text-muted-foreground mt-2">
                 {isTeacher 
                   ? "Visualize e corrija as tarefas enviadas pelos alunos"
-                  : "Acompanhe suas tarefas enviadas e corrigidas"}
+                  : "Acompanhe suas tarefas atribuídas e enviadas"}
               </p>
             </div>
             <div className="flex gap-2">
@@ -189,9 +259,31 @@ export default function CommunityTasks() {
         </div>
 
         <div className="space-y-6 mt-8">
+          {/* Pendentes de Envio - Apenas para alunos */}
+          {!isTeacher && pendingToSubmit.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Pendentes de Envio ({pendingToSubmit.length})</h2>
+              {pendingToSubmit.map((task) => (
+                <AssignedTaskCard
+                  key={task.id}
+                  title={task.title}
+                  description={task.description}
+                  deadline={task.deadline}
+                  createdAt={task.created_at}
+                  status={task.status}
+                  onClick={() => {
+                    setSelectedAssignedTask(task);
+                    setAssignedTaskDialogOpen(true);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Pendentes de Correção */}
           {pendingSubmissions.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Pendentes ({pendingSubmissions.length})</h2>
+              <h2 className="text-xl font-semibold">Pendentes de Correção ({pendingSubmissions.length})</h2>
               {pendingSubmissions.map((submission) => (
                 <SubmissionCard
                   key={submission.id}
@@ -215,6 +307,7 @@ export default function CommunityTasks() {
             </div>
           )}
 
+          {/* Corrigidas */}
           {reviewedSubmissions.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Corrigidas ({reviewedSubmissions.length})</h2>
@@ -238,7 +331,7 @@ export default function CommunityTasks() {
             </div>
           )}
 
-          {pendingSubmissions.length === 0 && reviewedSubmissions.length === 0 && (
+          {pendingSubmissions.length === 0 && reviewedSubmissions.length === 0 && (!isTeacher ? pendingToSubmit.length === 0 : true) && (
             <Card className="p-8 text-center">
               <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">
@@ -269,6 +362,11 @@ export default function CommunityTasks() {
               open={viewDialogOpen}
               onOpenChange={setViewDialogOpen}
               submission={selectedSubmission}
+            />
+            <ViewAssignedTaskDialog
+              open={assignedTaskDialogOpen}
+              onOpenChange={setAssignedTaskDialogOpen}
+              task={selectedAssignedTask}
             />
           </>
         )}
