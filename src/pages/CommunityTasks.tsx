@@ -9,6 +9,7 @@ import { SubmissionCard } from "@/components/SubmissionCard";
 import { ReviewSubmissionDialog } from "@/components/ReviewSubmissionDialog";
 import { ViewSubmissionDialog } from "@/components/ViewSubmissionDialog";
 import { Input } from "@/components/ui/input";
+import { CreateAssignedTaskDialog } from "@/components/CreateAssignedTaskDialog";
 
 type Submission = {
   id: string;
@@ -170,7 +171,10 @@ export default function CommunityTasks() {
                   : "Acompanhe suas tarefas enviadas e corrigidas"}
               </p>
             </div>
-            {!isTeacher && <SubmitTaskDialog communityId={communityId} />}
+            <div className="flex gap-2">
+              <SubmitTaskDialog communityId={communityId} />
+              {isTeacher && <CreateAssignedTaskDialog communityId={communityId} />}
+            </div>
           </div>
 
           <div className="relative">

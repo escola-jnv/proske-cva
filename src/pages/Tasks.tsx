@@ -4,12 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubmissionCard } from "@/components/SubmissionCard";
+import { AssignedTaskCard } from "@/components/AssignedTaskCard";
 import { SubmitTaskDialog } from "@/components/SubmitTaskDialog";
 import { ReviewSubmissionDialog } from "@/components/ReviewSubmissionDialog";
 import { ViewSubmissionDialog } from "@/components/ViewSubmissionDialog";
+import { ViewAssignedTaskDialog } from "@/components/ViewAssignedTaskDialog";
 import { ArrowLeft, FileText } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
+import { cn } from "@/lib/utils";
 type Submission = {
   id: string;
   task_name: string;
@@ -26,6 +29,18 @@ type Submission = {
   student_avatar: string | null;
   task_code?: string | null;
 };
+
+type AssignedTask = {
+  id: string;
+  title: string;
+  description: string;
+  youtube_url?: string | null;
+  pdf_url?: string | null;
+  deadline?: string | null;
+  created_at: string;
+  status: "pending" | "completed";
+  assigned_task_id: string;
+};
 const Tasks = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
@@ -34,6 +49,7 @@ const Tasks = () => {
   const [pendingSubmissions, setPendingSubmissions] = useState<Submission[]>([]);
   const [reviewedSubmissions, setReviewedSubmissions] = useState<Submission[]>([]);
   const [mySubmissions, setMySubmissions] = useState<Submission[]>([]);
+  const [assignedTasks, setAssignedTasks] = useState<AssignedTask[]>([]);
   const [reviewDialog, setReviewDialog] = useState<{
     open: boolean;
     submission: Submission | null;
@@ -47,6 +63,13 @@ const Tasks = () => {
   }>({
     open: false,
     submission: null
+  });
+  const [assignedTaskDialog, setAssignedTaskDialog] = useState<{
+    open: boolean;
+    task: AssignedTask | null;
+  }>({
+    open: false,
+    task: null
   });
   const [communityId, setCommunityId] = useState<string>("");
   useEffect(() => {
@@ -92,6 +115,9 @@ const Tasks = () => {
         setCommunityId(memberData.community_id);
       }
       await fetchSubmissions(userId, isTeacherOrAdmin);
+      if (!isTeacherOrAdmin) {
+        await fetchAssignedTasks(userId);
+      }
     } catch (error: any) {
       console.error("Error checking role:", error);
     }
@@ -168,6 +194,48 @@ const Tasks = () => {
       toast.error("Erro ao carregar tarefas");
     }
   };
+
+  const fetchAssignedTasks = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("assigned_task_students")
+        .select(`
+          id,
+          status,
+          assigned_task_id,
+          assigned_tasks!inner (
+            id,
+            title,
+            description,
+            youtube_url,
+            pdf_url,
+            deadline,
+            created_at
+          )
+        `)
+        .eq("student_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const tasks = (data || []).map((item: any) => ({
+        id: item.id,
+        assigned_task_id: item.assigned_task_id,
+        title: item.assigned_tasks.title,
+        description: item.assigned_tasks.description,
+        youtube_url: item.assigned_tasks.youtube_url,
+        pdf_url: item.assigned_tasks.pdf_url,
+        deadline: item.assigned_tasks.deadline,
+        created_at: item.assigned_tasks.created_at,
+        status: item.status,
+      }));
+
+      setAssignedTasks(tasks);
+    } catch (error: any) {
+      console.error("Error fetching assigned tasks:", error);
+    }
+  };
+
   const handleReviewClick = (submission: Submission) => {
     setReviewDialog({
       open: true,
@@ -211,8 +279,16 @@ const Tasks = () => {
 
       <main className="container mx-auto px-6 py-12">
         <div className="max-w-4xl mx-auto">
-          <Tabs defaultValue="pending" className="space-y-6">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
+          <Tabs defaultValue={isTeacher ? "pending" : "assigned"} className="space-y-6">
+            <TabsList className={cn(
+              "grid w-full max-w-md",
+              isTeacher ? "grid-cols-2" : "grid-cols-3"
+            )}>
+              {!isTeacher && (
+                <TabsTrigger value="assigned">
+                  Atribuídas ({assignedTasks.filter(t => t.status === 'pending').length})
+                </TabsTrigger>
+              )}
               <TabsTrigger value="pending">
                 Pendentes ({pendingCount})
               </TabsTrigger>
@@ -246,6 +322,37 @@ const Tasks = () => {
 
             {/* Student View */}
             {!isTeacher && <>
+                {/* Assigned Tasks Tab */}
+                <TabsContent value="assigned" className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-medium">Tarefas Atribuídas</h2>
+                  </div>
+
+                  {assignedTasks.filter(t => t.status === 'pending').length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">Nenhuma tarefa atribuída</h3>
+                      <p className="text-muted-foreground">
+                        Você não tem tarefas pendentes atribuídas pelos professores
+                      </p>
+                    </div>
+                  ) : (
+                    assignedTasks
+                      .filter(t => t.status === 'pending')
+                      .map(task => (
+                        <AssignedTaskCard
+                          key={task.id}
+                          title={task.title}
+                          description={task.description}
+                          deadline={task.deadline}
+                          createdAt={task.created_at}
+                          status={task.status}
+                          onClick={() => setAssignedTaskDialog({ open: true, task })}
+                        />
+                      ))
+                  )}
+                </TabsContent>
+
                 <TabsContent value="pending" className="space-y-4">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-medium">Aguardando Correção</h2>
@@ -313,6 +420,24 @@ const Tasks = () => {
         });
       }
     }} />}
+
+      {/* Assigned Task Dialog - For viewing assigned tasks */}
+      {assignedTaskDialog.task && (
+        <ViewAssignedTaskDialog
+          task={assignedTaskDialog.task}
+          open={assignedTaskDialog.open}
+          onOpenChange={(open) => {
+            if (!open) {
+              setAssignedTaskDialog({ open: false, task: null });
+            }
+          }}
+          onSubmit={() => {
+            setAssignedTaskDialog({ open: false, task: null });
+            // Open submit dialog with task pre-filled
+            // TODO: enhance SubmitTaskDialog to accept pre-filled data
+          }}
+        />
+      )}
     </div>;
 };
 export default Tasks;
